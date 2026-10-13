@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Đại Việt — M3</title>
+    <style>
+      :root { --ink: #e8dcc0; --muted: #a89c80; --bg: rgba(20, 18, 14, 0.92); --line: #7a6540; --btn: #3a2f1e; --on: #a67c2e; --bad: #e07050; }
+      html, body { margin: 0; height: 100%; background: #111; overflow: hidden; font-family: system-ui, sans-serif; }
+      #game { position: absolute; inset: 0; }
+      #ui { color: var(--ink); font-size: 13px; user-select: none; }
+      button { background: var(--btn); color: var(--ink); border: 1px solid var(--line); padding: 3px 9px; cursor: pointer; font: inherit; }
+      button.active { background: var(--on); color: #111; }
+      button.open { border-color: var(--ink); }
+      .bar { position: absolute; left: 0; right: 0; background: var(--bg); display: flex; flex-direction: column; }
+      .bar.top { top: 0; flex-direction: row; gap: 8px; align-items: center; flex-wrap: wrap; padding: 5px 10px; }
+      .bar.top .title { letter-spacing: 0.04em; }
+      .bar.build { top: 34px; border-top: 1px solid var(--line); }
+      .bar .row { display: flex; gap: 4px; flex-wrap: wrap; padding: 4px 10px; }
+      .bar .row.sub { border-top: 1px dashed var(--line); background: rgba(40, 32, 20, 0.95); }
+      .sp { flex: 1; }
+      .sep { width: 1px; height: 18px; background: var(--line); }
+      .bad { color: var(--bad); }
+      .muted { color: var(--muted); font-size: 12px; }
+      .fps { color: var(--muted); }
+      .panel { position: absolute; top: 104px; width: 330px; max-height: calc(100% - 140px); overflow: auto; background: var(--bg);
+               border: 1px solid var(--line); padding: 8px 12px; box-sizing: border-box; }
+      .panel.info { right: 10px; }
+      .panel.advisor { left: 10px; }
+      .panel .head { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line); padding-bottom: 6px; margin-bottom: 6px; }
+      .panel p { margin: 6px 0; }
+      .panel em { font-style: normal; color: #f0d890; }
+      table.mini { border-collapse: collapse; width: 100%; }
+      table.mini td, table.mini th { padding: 2px 4px; text-align: left; border-bottom: 1px solid rgba(122, 101, 64, 0.35); }
+      table.mini th { color: var(--muted); font-weight: normal; }
+      table.policy button { padding: 1px 5px; font-size: 11px; margin-right: 2px; }
+      .progress { height: 6px; background: #2a2418; border: 1px solid var(--line); margin: 6px 0; }
+      .progress div { height: 100%; background: var(--on); }
+      ul.events { margin: 6px 0; padding-left: 16px; color: var(--muted); }
+      .status { position: absolute; bottom: 0; left: 0; right: 0; padding: 4px 10px; color: #c8bda0; font-size: 12px; background: rgba(20, 18, 14, 0.85); pointer-events: none; }
+      @media (max-width: 700px) { .panel { width: calc(100% - 20px); left: 10px; right: 10px; top: auto; bottom: 28px; max-height: 45%; } }
+    </style>
+  </head>
+  <body>
+    <canvas id="game"></canvas>
+    <div id="ui"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

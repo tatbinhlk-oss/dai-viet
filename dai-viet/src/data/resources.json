@@ -1,0 +1,24 @@
+{
+  "_note": "Thứ tự phải khớp enum Resource trong src/sim/state.ts. kind: food (lương thực), raw (nguyên liệu vào xưởng), good (hàng cho nhà), material (vật liệu, vũ khí).",
+  "list": [
+    { "key": "none", "name": "—", "kind": "none" },
+    { "key": "rice", "name": "Gạo", "kind": "food" },
+    { "key": "fish", "name": "Cá", "kind": "food" },
+    { "key": "veg", "name": "Rau", "kind": "food" },
+    { "key": "pork", "name": "Thịt lợn", "kind": "food" },
+    { "key": "clay", "name": "Đất sét", "kind": "raw" },
+    { "key": "pottery", "name": "Gốm", "kind": "good" },
+    { "key": "salt", "name": "Muối", "kind": "good" },
+    { "key": "cotton", "name": "Bông", "kind": "raw" },
+    { "key": "cloth", "name": "Vải", "kind": "good" },
+    { "key": "teaLeaf", "name": "Lá chè", "kind": "raw" },
+    { "key": "tea", "name": "Trà", "kind": "good" },
+    { "key": "cocoon", "name": "Kén tằm", "kind": "raw" },
+    { "key": "silk", "name": "Lụa", "kind": "good" },
+    { "key": "copperOre", "name": "Quặng đồng", "kind": "raw" },
+    { "key": "bronze", "name": "Đồ đồng", "kind": "good" },
+    { "key": "ironOre", "name": "Quặng sắt", "kind": "raw" },
+    { "key": "weapons", "name": "Vũ khí", "kind": "material" },
+    { "key": "timber", "name": "Gỗ", "kind": "material" }
+  ]
+}
