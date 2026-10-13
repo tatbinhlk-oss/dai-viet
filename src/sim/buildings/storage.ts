@@ -37,7 +37,7 @@ export function incomingLoads(s: GameState, b: Building, r: Resource): number {
   let n = 0;
   for (const f of s.figures) {
     if (f.destBuildingId !== b.id || f.returning || f.resource !== r) continue;
-    if (f.type === FigureType.CartPusher || f.type === FigureType.Warehouseman) n += f.loads;
+    if (f.type === FigureType.CartPusher || f.type === FigureType.Warehouseman || f.type === FigureType.Boat) n += f.loads;
   }
   return n;
 }

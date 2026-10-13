@@ -1,7 +1,8 @@
 // Lệnh từ UI vào sim. Đây là đường DUY NHẤT để thay đổi state từ ngoài, nên replay/undo làm được.
-import { BuildingType, LABOR_CATS, StorePolicy, type GameState, type Resource } from './state';
+import { BuildingType, isDike, LABOR_CATS, StorePolicy, type GameState, type Resource } from './state';
 import { placeBuilding, placeRoad, raze } from './buildings/spawn';
 import { BUILDING_KEYS } from './buildings/defs';
+import { planDike, setSluice } from './buildings/dike';
 
 /** 'road' hoặc khóa công trình trong buildings.json (house, paddy, kiln, warehouse…). */
 export type BuildKind = string;
@@ -13,14 +14,18 @@ export type Command =
   | { type: 'setTax'; rate: number }
   | { type: 'setLaborPriority'; category: number; priority: number }
   | { type: 'setStorePolicy'; buildingId: number; resource: Resource; policy: StorePolicy }
-  | { type: 'setStockpile'; resource: Resource; on: boolean };
+  | { type: 'setStockpile'; resource: Resource; on: boolean }
+  /** M4: mở/đóng cống (đoạn đê đặc biệt) */
+  | { type: 'openSluice'; buildingId: number; open: boolean };
 
 export function applyCommand(s: GameState, c: Command): void {
   switch (c.type) {
     case 'build': {
       if (c.kind === 'road') { placeRoad(s, c.x, c.y); break; }
       const t = BUILDING_KEYS.get(c.kind);
-      if (t !== undefined && t !== BuildingType.None && t !== BuildingType.Ruins) placeBuilding(s, t, c.x, c.y);
+      if (t === undefined || t === BuildingType.None || t === BuildingType.Ruins) break;
+      if (isDike(t)) planDike(s, t, c.x, c.y); // vẽ đoạn mới hoặc tôn cao đoạn có sẵn
+      else placeBuilding(s, t, c.x, c.y);
       break;
     }
     case 'raze':
@@ -48,5 +53,10 @@ export function applyCommand(s: GameState, c: Command): void {
     case 'setStockpile':
       s.stockpile[c.resource] = c.on;
       break;
+    case 'openSluice': {
+      const b = s.buildings[c.buildingId];
+      if (b && b.type === BuildingType.Sluice) setSluice(s, b, c.open);
+      break;
+    }
   }
 }

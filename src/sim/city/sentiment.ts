@@ -3,7 +3,7 @@
 // kéo dần về điểm nghỉ 60 nên một nguyên nhân xấu kéo dài làm lòng dân tụt tới mức cân bằng, không tụt mãi.
 // Tội phạm: mỗi tháng nhà bất mãn nhất sinh dân kêu oan (<50), trộm (<30) hoặc loạn dân (≤10).
 import { BuildingType, FigureType, type GameState, type MoodCause } from '../state';
-import { economy } from '../buildings/defs';
+import { economy, flood } from '../buildings/defs';
 import { foodTypes } from '../buildings/house';
 import { roadAccess } from '../buildings/spawn';
 import { createFigure } from '../figures/figure';
@@ -27,9 +27,12 @@ export function updateSentiment(s: GameState): void {
   let tentPop = 0;
   for (const b of s.buildings) if (b.type === BuildingType.House && b.level <= 1) tentPop += b.population;
   const tentC = s.population >= S.tentMinPopulation && (tentPop * 100) / s.population > S.tentShareBad ? S.tentPenalty : 0;
-  const cityDelta = taxC + unC + tentC;
+  // M4: vỡ đê → −3 mỗi kỳ trong 3 tháng cho cả thành
+  const breachC = s.flood.breachMoodPeriods > 0 ? flood.consequences.moodPenalty : 0;
+  if (s.flood.breachMoodPeriods > 0) s.flood.breachMoodPeriods--;
+  const cityDelta = taxC + unC + tentC + breachC;
 
-  let sum = 0, pop = 0, foodSum = 0, houses = 0;
+  let sum = 0, pop = 0, foodSum = 0, floodSum = 0, houses = 0;
   for (const b of s.buildings) {
     if (b.type !== BuildingType.House || b.population === 0) continue;
     let foodC = 0;
@@ -38,18 +41,22 @@ export function updateSentiment(s: GameState): void {
     else { b.hungryPeriods = 0; foodC = types >= 2 ? S.foodTwoTypes : S.foodOneType; }
     // cộng dồn như Julius, cộng thêm lực kéo về điểm nghỉ để có cân bằng thay vì trôi hẳn về 0 hoặc 100:
     // ở trạng thái dừng, lòng dân ≈ điểm nghỉ + pullDivisor × (tổng điểm mỗi kỳ)
-    const delta = cityDelta + foodC;
+    // M4: nhà bị ngập −3 mỗi kỳ trong 3 tháng
+    let floodC = 0;
+    if (b.floodMoodPeriods > 0) { b.floodMoodPeriods--; floodC = flood.consequences.moodPenalty; }
+    const delta = cityDelta + foodC + floodC;
     const pull = Math.round((S.restingPoint - b.happiness) / S.pullDivisor);
     b.happiness = Math.max(0, Math.min(100, b.happiness + delta + pull));
     sum += b.happiness * b.population;
     pop += b.population;
     foodSum += foodC;
+    floodSum += floodC;
     houses++;
   }
   if (pop > 0) s.sentiment = Math.round(sum / pop);
 
   // nguyên nhân âm lớn nhất
-  const causes: [MoodCause, number][] = [['tax', taxC], ['unemployment', unC], ['tents', tentC], ['food', houses ? foodSum / houses : 0]];
+  const causes: [MoodCause, number][] = [['tax', taxC], ['unemployment', unC], ['tents', tentC], ['food', houses ? foodSum / houses : 0], ['flood', breachC + (houses ? floodSum / houses : 0)]];
   let worst: MoodCause = 'none', worstV = 0;
   for (const [c, v] of causes) if (v < worstV) { worst = c; worstV = v; }
   s.lowMoodCause = worst;
@@ -74,5 +81,5 @@ export function generateCriminals(s: GameState): void {
 }
 
 export const MOOD_CAUSE_TEXT: Record<MoodCause, string> = {
-  none: '—', tax: 'thuế cao', unemployment: 'thất nghiệp', food: 'thiếu ăn', tents: 'quá nhiều lều',
+  none: '—', tax: 'thuế cao', unemployment: 'thất nghiệp', food: 'thiếu ăn', tents: 'quá nhiều lều', flood: 'lũ lụt',
 };

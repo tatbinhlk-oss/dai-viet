@@ -9,6 +9,8 @@ import { createFigure, removeFigure } from '../figures/figure';
 import { startRoam } from '../figures/movement';
 import { sendCart, planWarehouseman } from '../figures/cartpusher';
 import { sendMarketBuyer } from '../figures/market';
+import { paddyYield } from '../flood/consequences';
+import { sendLevyGang } from '../figures/levyWorker';
 
 const PADDY_SEASON: number[] = economy.paddySeason.byMonth;
 
@@ -21,9 +23,9 @@ export const pctWorkers = (b: Building): number => {
 export function updateProduction(s: GameState): void {
   for (const b of s.buildings) {
     const def = BUILDING_DEFS[b.type];
-    if (!def || def.progressMax === 0 || b.figureId !== 0 || b.progress >= def.progressMax) continue;
+    if (!def || def.progressMax === 0 || b.figureId !== 0 || b.progress >= def.progressMax || b.flooded) continue;
     let gain = b.numWorkers;
-    if (b.type === BuildingType.Paddy) gain *= PADDY_SEASON[s.time.month];
+    if (b.type === BuildingType.Paddy) gain = Math.round(gain * PADDY_SEASON[s.time.month] * paddyYield(b));
     if (isWorkshop(b.type)) {
       if (b.store[def.input] < UNITS_PER_LOAD) continue; // hết nguyên liệu
       b.progress = Math.min(def.progressMax, b.progress + gain);
@@ -44,7 +46,7 @@ export function generateFigures(s: GameState): void {
     if (b.type === BuildingType.Market) for (let r = 0; r < b.demand.length; r++) if (b.demand[r] > 0) b.demand[r]--;
 
     const door = roadAccess(s.grid, b);
-    if (door < 0) continue; // không có đường kề → không hoạt động
+    if (door < 0 || b.flooded) continue; // không có đường kề / đang ngập → không hoạt động
 
     // người mộ phu: công trình cần nhân công mà lâu không thấy nhà
     if (def.workers > 0 && b.laborSeekerId === 0 && b.housesCovered < economy.laborSeekerRespawnBelow && s.population > 0) {
@@ -83,6 +85,9 @@ export function generateFigures(s: GameState): void {
         else removeFigure(s, f.id);
       }
     }
+
+    // M4: đình làng cử nhóm phu đê đi đắp đoạn đê đang chờ trong tầm
+    if (b.type === BuildingType.Dinh && b.figureId2 === 0 && b.numWorkers > 0) sendLevyGang(s, b, door);
 
     // phu kho
     if (b.type === BuildingType.Warehouse && b.figureId === 0 && b.numWorkers > 0) {

@@ -1,5 +1,5 @@
 // Đặt và phá đường / công trình. Mọi thay đổi lưới phải đi qua đây để dirty được ghi nhận.
-import { BuildingType, type Building, type GameState, newBuilding } from '../state';
+import { BuildingType, isDike, type Building, type GameState, newBuilding } from '../state';
 import { gridOffset, hasFlag, inBounds, isBuildable, T_BUILDING, T_FLOODPLAIN, T_ROAD, T_TREE, T_WATER, type Grid } from '../map/grid';
 import { BUILDING_DEFS } from './defs';
 import { removeFigure } from '../figures/figure';
@@ -7,8 +7,12 @@ import { removeFigure } from '../figures/figure';
 const markDirty = (s: GameState, x: number, y: number) => s.dirty.add(gridOffset(x, y));
 
 export function placeRoad(s: GameState, x: number, y: number): boolean {
-  if (!isBuildable(s.grid, x, y)) return false;
+  if (!inBounds(x, y)) return false;
   const i = gridOffset(x, y);
+  // M4: đường được vắt qua đoạn đê (dốc đê) — ô giữ cả T_BUILDING lẫn T_ROAD
+  const onDike = (s.grid.terrain[i] & T_BUILDING) !== 0 && isDike(s.buildings[s.grid.buildingId[i]]?.type ?? BuildingType.None);
+  if (!onDike && !isBuildable(s.grid, x, y)) return false;
+  if (onDike && s.grid.terrain[i] & T_ROAD) return false;
   s.grid.terrain[i] = (s.grid.terrain[i] & ~T_TREE) | T_ROAD;
   markDirty(s, x, y);
   return true;
@@ -22,7 +26,9 @@ export function canPlaceBuilding(g: Grid, type: BuildingType, x: number, y: numb
   for (let dy = 0; dy < def.size; dy++) {
     for (let dx = 0; dx < def.size; dx++) {
       const cx = x + dx, cy = y + dy;
-      if (!isBuildable(g, cx, cy)) return false;
+      // đê: đặt được lên ô đường (đường vắt qua đê); các loại khác cần ô trống
+      if (def.terrain === 'land') { if (!inBounds(cx, cy) || (g.terrain[gridOffset(cx, cy)] & (T_WATER | T_BUILDING)) !== 0) return false; }
+      else if (!isBuildable(g, cx, cy)) return false;
       const elev = g.elevation[gridOffset(cx, cy)];
       switch (def.terrain) {
         case 'floodplain': if (!hasFlag(g, cx, cy, T_FLOODPLAIN)) return false; break;
@@ -40,7 +46,7 @@ export function canPlaceBuilding(g: Grid, type: BuildingType, x: number, y: numb
 export function placeBuilding(s: GameState, type: BuildingType, x: number, y: number): number {
   if (!canPlaceBuilding(s.grid, type, x, y)) return 0;
   const def = BUILDING_DEFS[type];
-  if (s.treasury < def.cost) return 0;
+  if (def.cost > 0 && s.treasury < def.cost) return 0; // công trình lao dịch (đê) không tốn quan, đắp được cả khi nợ
   s.treasury -= def.cost;
   s.thisYear.construction += def.cost;
   const id = s.buildings.length;
@@ -99,8 +105,14 @@ export function removeBuilding(s: GameState, b: Building): void {
     }
   }
   releaseFigures(s, b);
+  if (isDike(b.type)) {
+    const o = gridOffset(b.x, b.y);
+    s.grid.dike[o] = 0;
+    s.flood.dikesChanged = true;
+  }
   b.type = BuildingType.None;
   b.population = 0;
+  b.flooded = false;
   b.store.fill(0);
 }
 

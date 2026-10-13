@@ -2,7 +2,7 @@
 import { createRng } from './rng';
 import { createGrid, GRID_SIZE, gridOffset, T_WATER } from './map/grid';
 import { generateTerrain, type TerrainOptions } from './map/terrain';
-import { BuildingType, emptyLedger, FigureType, LABOR_CATS, RES_COUNT, Resource, type Ledger, type MoodCause } from './state';
+import { BuildingType, emptyLedger, FigureType, isDike, LABOR_CATS, RES_COUNT, Resource, TICKS_PER_TILE, type Ledger, type MoodCause } from './state';
 import { newBuilding, type GameState } from './state';
 import { tick } from './tick';
 import { applyCommand, type Command } from './commands';
@@ -11,6 +11,11 @@ import { missingFor } from './buildings/house';
 import { pctWorkers } from './buildings/industry';
 import { roadAccess } from './buildings/spawn';
 import { monthlyTaxBase, monthlyWages } from './city/finance';
+import { computeWaterDist, updateProtection } from './flood/floodFill';
+import { paddyYield } from './flood/consequences';
+import { dikeSafety, workNeeded } from './buildings/dike';
+import { inFloodWatch, LEVEL_NAMES, SEASON_DAYS } from './flood/season';
+import { ticksPerTile } from './figures/movement';
 
 export { tick, applyCommand, GRID_SIZE };
 export type { GameState, Command };
@@ -28,13 +33,14 @@ export function createSim(seed: number, terrain: TerrainOptions = {}): GameState
       if (!(grid.terrain[b] & T_WATER)) { entry = b; break outer; }
     }
   }
-  return {
+  computeWaterDist(grid);
+  const s: GameState = {
     seed,
     rng,
     time: { tick: 0, day: 0, month: 0, year: 0, totalDays: 0 },
     grid,
     buildings: [newBuilding(0, BuildingType.None, 0, 0, 0)],
-    figures: [{ id: 0, type: FigureType.None, mode: 0, x: 0, y: 0, nx: 0, ny: 0, progress: 0, prevOffset: -1, path: new Int32Array(0), pathIdx: 0, buildingId: 0, destBuildingId: 0, roamLength: 0, maxRoamLength: 0, returning: false, resource: Resource.None, loads: 0, cargo: [], waitTicks: 0 }],
+    figures: [{ id: 0, type: FigureType.None, mode: 0, x: 0, y: 0, nx: 0, ny: 0, progress: 0, prevOffset: -1, path: new Int32Array(0), pathIdx: 0, buildingId: 0, destBuildingId: 0, roamLength: 0, maxRoamLength: 0, returning: false, resource: Resource.None, loads: 0, cargo: [], waitTicks: 0, boatHome: -1 }],
     freeFigures: [],
     entryOffset: entry,
     speed: 1,
@@ -53,9 +59,13 @@ export function createSim(seed: number, terrain: TerrainOptions = {}): GameState
     thisYear: emptyLedger(),
     lastYear: emptyLedger(),
     stockpile: new Array(RES_COUNT).fill(false),
+    flood: { peak: 0, nextPeak: 0, forecast: 0, level: 0, dayInSeason: -1, breachMoodPeriods: 0, breachesThisYear: 0, dikesChanged: false, floodedTiles: 0 },
     events: [],
     dirty: new Set(),
   };
+  updateProtection(s);
+  s.dirty.clear(); // snapshot đầu gửi trọn lưới
+  return s;
 }
 
 /** Thông tin công trình cho bảng chi tiết. */
@@ -84,6 +94,15 @@ export interface BuildingInfo {
   policy: number[] | null;
   fireRisk: number;
   damageRisk: number;
+  x: number;
+  y: number;
+  // M4
+  flooded: boolean;
+  /** đê/cống */
+  dike: { height: number; target: number; integrity: number; workPct: number; sluiceOpen: boolean | null; working: boolean } | null;
+  /** ruộng lúa */
+  paddy: { silted: boolean; dryYears: number; yieldPct: number } | null;
+  pollutedDays: number;
 }
 
 export function inspectBuilding(s: GameState, id: number): BuildingInfo | null {
@@ -110,6 +129,15 @@ export function inspectBuilding(s: GameState, id: number): BuildingInfo | null {
     store,
     policy: b.type === BuildingType.Warehouse || b.type === BuildingType.Granary ? [...b.policy] : null,
     fireRisk: b.fireRisk, damageRisk: b.damageRisk,
+    x: b.x, y: b.y,
+    flooded: b.flooded,
+    dike: isDike(b.type) ? {
+      height: b.height, target: b.targetHeight, integrity: b.integrity,
+      workPct: b.height < b.targetHeight ? Math.floor((b.workDone * 100) / workNeeded(b)) : 100,
+      sluiceOpen: b.type === BuildingType.Sluice ? b.sluiceOpen : null, working: b.figureId !== 0,
+    } : null,
+    paddy: b.type === BuildingType.Paddy ? { silted: b.silted, dryYears: b.dryYears, yieldPct: Math.round(paddyYield(b) * 100) } : null,
+    pollutedDays: b.pollutedDays,
   };
 }
 
@@ -138,6 +166,29 @@ export interface CityStats {
   stockpile: boolean[];
   houseLevels: number[]; // số nhà theo bậc 0..10
   events: string[];
+  /** M4: mùa lũ và đê */
+  flood: FloodStats;
+}
+
+export interface FloodStats {
+  /** đang trong các tháng theo dõi lũ (tháng 4–9) */
+  watch: boolean;
+  inSeason: boolean;
+  dayInSeason: number;
+  seasonDays: number;
+  forecast: number;
+  forecastName: string;
+  peak: number;
+  peakName: string;
+  level: number;
+  floodedTiles: number;
+  /** an toàn đê 0–100 = độ bền trung bình đoạn đã đắp */
+  safety: number;
+  dikesBuilt: number;
+  dikesPlanned: number;
+  breachesThisYear: number;
+  siltedPaddies: number;
+  sluices: { id: number; x: number; y: number; open: boolean; height: number }[];
 }
 
 export function cityStats(s: GameState): CityStats {
@@ -148,6 +199,20 @@ export function cityStats(s: GameState): CityStats {
     else if (b.type === BuildingType.House && b.population > 0) houseLevels[b.level]++;
   }
   const base = monthlyTaxBase(s);
+  const dk = dikeSafety(s);
+  let siltedPaddies = 0;
+  const sluices: FloodStats['sluices'] = [];
+  for (const b of s.buildings) {
+    if (b.type === BuildingType.Paddy && b.silted) siltedPaddies++;
+    else if (b.type === BuildingType.Sluice) sluices.push({ id: b.id, x: b.x, y: b.y, open: b.sluiceOpen, height: b.height });
+  }
+  const F = s.flood;
+  const floodStats: FloodStats = {
+    watch: inFloodWatch(s), inSeason: F.dayInSeason >= 0, dayInSeason: F.dayInSeason, seasonDays: SEASON_DAYS,
+    forecast: F.forecast, forecastName: LEVEL_NAMES[F.forecast], peak: F.peak, peakName: LEVEL_NAMES[F.peak], level: F.level,
+    floodedTiles: F.floodedTiles, safety: dk.safety, dikesBuilt: dk.built, dikesPlanned: dk.planned,
+    breachesThisYear: F.breachesThisYear, siltedPaddies, sluices,
+  };
   return {
     sentiment: s.sentiment, lowMoodCause: s.lowMoodCause, taxRate: s.taxRate,
     workforce: s.labor.workforce, employed: s.labor.employed, unemploymentPct: s.labor.unemploymentPct,
@@ -157,6 +222,7 @@ export function cityStats(s: GameState): CityStats {
     estUncollected: Math.floor((base.uncovered * s.taxRate) / 100),
     estWages: monthlyWages(s),
     stored, stockpile: [...s.stockpile], houseLevels, events: [...s.events],
+    flood: floodStats,
   };
 }
 
@@ -184,7 +250,8 @@ export function takeSnapshot(s: GameState, full: boolean, selectedId = 0): Snaps
   let k = 0;
   for (const f of s.figures) {
     if (f.type === FigureType.None) continue;
-    figures[k++] = f.x; figures[k++] = f.y; figures[k++] = f.nx; figures[k++] = f.ny; figures[k++] = f.progress; figures[k++] = f.type;
+    // progress quy về thang TICKS_PER_TILE để render nội suy chung (thuyền nan đi nhanh hơn)
+    figures[k++] = f.x; figures[k++] = f.y; figures[k++] = f.nx; figures[k++] = f.ny; figures[k++] = Math.round((f.progress * TICKS_PER_TILE) / ticksPerTile(f)); figures[k++] = f.type;
     figures[k++] = f.loads > 0 ? f.resource : 0;
   }
   const snap: Snapshot = {
