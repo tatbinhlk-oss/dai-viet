@@ -3,13 +3,13 @@ import { render as renderUI, h } from 'preact';
 import { createRenderApp } from './render/app';
 import type { Snapshot } from './sim';
 import { BUILDING_DEFS, HOUSE_LEVELS } from './sim/buildings/defs';
-import { BuildingType } from './sim/state';
+import { BuildingType, isDike } from './sim/state';
 import type { WorkerIn, WorkerOut } from './worker/sim.worker';
 import { App } from './ui/App';
 import { toolSize } from './ui/BuildBar';
-import { bridge, fps, hoverText, tool, ui } from './ui/store';
+import { bridge, fps, hoverText, overlay, tool, ui } from './ui/store';
 
-const HINT = 'Chuột phải kéo để dời · lăn để zoom · chuột trái để đặt. Công trình cần đường kề; công trình có người làm cần nhà ở gần để người mộ phu tìm được nhân công.';
+const HINT = 'Chuột phải kéo để dời · lăn để zoom · chuột trái để đặt. Công trình cần đường kề; công trình có người làm cần nhà ở gần để người mộ phu tìm được nhân công. Lũ về tháng Sáu: vẽ đê (Đê điều) để đình làng cử phu đi đắp.';
 
 async function main() {
   const canvas = document.getElementById('game') as HTMLCanvasElement;
@@ -27,12 +27,14 @@ async function main() {
     else bridge.cmd({ type: 'build', kind: t, x, y });
   };
   tool.subscribe((t) => { render.ghostSize = toolSize(t); });
+  overlay.subscribe((on) => render.setOverlay(on));
 
   hoverText.value = HINT;
   render.onTileHover = (x, y) => {
     const b = render.tileBuilding(x, y);
     if (!b) { hoverText.value = HINT; return; }
-    hoverText.value = b.type === BuildingType.House ? `${HOUSE_LEVELS[b.level].name} (bậc ${b.level})` : BUILDING_DEFS[b.type].name;
+    hoverText.value = b.type === BuildingType.House ? `${HOUSE_LEVELS[b.level].name} (bậc ${b.level})`
+      : isDike(b.type) ? `${BUILDING_DEFS[b.type].name} cao ${b.level & 15}${b.level & 16 ? ' (đang mở)' : ''}` : BUILDING_DEFS[b.type].name;
   };
 
   let latest: Snapshot | null = null;
@@ -57,6 +59,8 @@ async function main() {
   const seed = Number(params.get('seed') ?? 20261013);
   send({ type: 'init', seed, demo: params.has('demo') });
   if (params.has('demo')) render.lookAt(40, 60);
+  const look = params.get('look')?.split(',').map(Number); // ?look=7,70 đưa camera tới ô (x, y)
+  if (look && look.length === 2 && look.every((v) => Number.isFinite(v))) render.lookAt(look[0], look[1]);
 }
 
 main();

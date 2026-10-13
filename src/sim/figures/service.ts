@@ -1,8 +1,8 @@
 // Walker đi dạo (roamer): dịch vụ, người mộ phu, tuần đinh, thợ cả, lại thu thuế, tội phạm.
 // Mỗi ô đặt chân lên, tác dụng phủ 5×5 quanh mình — figuretype/service.c của Julius.
-import { BuildingType, FigureType, type Building, type Figure, type GameState } from '../state';
+import { BuildingType, FigureType, isDike, type Building, type Figure, type GameState } from '../state';
 import { gridOffset, inBounds } from '../map/grid';
-import { economy, SERVICE_MAX, SERVICE_RANGE } from '../buildings/defs';
+import { economy, flood, SERVICE_MAX, SERVICE_RANGE } from '../buildings/defs';
 import { removeBuilding, roadAccess } from '../buildings/spawn';
 import { nextInt } from '../rng';
 import { removeFigure } from './figure';
@@ -50,7 +50,7 @@ function applyService(s: GameState, f: Figure): void {
       if (found) s.buildings[f.buildingId].housesCovered = economy.laborAccessDays;
       break;
     }
-    case FigureType.Builder: forBuildingsAround(s, f, SERVICE_RANGE, (b) => { b.damageRisk = 0; }); break;
+    case FigureType.Builder: forBuildingsAround(s, f, SERVICE_RANGE, (b) => { b.damageRisk = 0; if (isDike(b.type) && b.height > 0) b.integrity = flood.dike.integrityMax; }); break; // M4: thợ cả kiểm tra đê
     case FigureType.Watchman: {
       forBuildingsAround(s, f, SERVICE_RANGE, (b) => {
         if (b.type === BuildingType.Ruins) removeBuilding(s, b); // dập lửa

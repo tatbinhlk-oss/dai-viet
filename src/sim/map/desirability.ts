@@ -1,8 +1,10 @@
 // Độ hấp dẫn theo vòng — thuật toán map/desirability.c của Julius: giá trị tại vòng 1,
 // cứ `step` vòng thì cộng `delta` (tiến về 0), tới `range` vòng.
 import { BuildingType, type GameState } from '../state';
-import { gridOffset, inBounds } from './grid';
-import { BUILDING_DEFS, HOUSE_LEVELS } from '../buildings/defs';
+import { GRID_CELLS, gridOffset, inBounds, offsetX, offsetY, T_FLOODED, T_FLOODPLAIN, T_SUNKEN, T_UNPROTECTED } from './grid';
+import { BUILDING_DEFS, flood, HOUSE_LEVELS } from '../buildings/defs';
+
+const FD = flood.desirability;
 
 export function updateDesirability(s: GameState): void {
   const d = s.grid.desirability;
@@ -12,6 +14,20 @@ export function updateDesirability(s: GameState): void {
     const des = b.type === BuildingType.House ? HOUSE_LEVELS[b.level].desirability : BUILDING_DEFS[b.type].desirability;
     if (!des) continue;
     addRings(d, b.x, b.y, b.size, des.value, des.step, des.delta, des.range);
+  }
+  // M4 (thiết kế phần 7): ô ngập −15/+5/tầm 2; đất trũng −5/+2/tầm 2; bãi bồi chưa có đê −5 tại ô (mùa khô);
+  // bãi bồi có đê che và cách sông ≤ 6 ô +10 tại ô ("nhà cạnh sông có đê")
+  const g = s.grid;
+  for (let o = 0; o < GRID_CELLS; o++) {
+    const t = g.terrain[o];
+    if (!(t & (T_FLOODED | T_SUNKEN | T_FLOODPLAIN))) continue;
+    const x = offsetX(o), y = offsetY(o);
+    if (t & T_FLOODED) { add(d, x, y, FD.flooded[0]); addRings(d, x, y, 1, FD.flooded[0], FD.flooded[1], FD.flooded[2], FD.flooded[3]); continue; }
+    if (t & T_SUNKEN) { add(d, x, y, FD.sunken[0]); addRings(d, x, y, 1, FD.sunken[0], FD.sunken[1], FD.sunken[2], FD.sunken[3]); }
+    if (t & T_FLOODPLAIN) {
+      if (t & T_UNPROTECTED) add(d, x, y, FD.unprotected);
+      else if (g.waterDist[o] <= FD.riverRange) add(d, x, y, FD.protected);
+    }
   }
 }
 

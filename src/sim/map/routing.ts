@@ -1,6 +1,6 @@
 // Tìm đường BFS trên lưới — tương đương map/routing.c của Julius (tính lazy khi cần).
 // Hai chế độ: chỉ đi trên đường (walker có việc), hoặc đi trên đất (dân nhập cư).
-import { GRID_CELLS, type Grid, isLand, isRoad, neighbors4 } from './grid';
+import { GRID_CELLS, type Grid, isLand, isRoad, isWater, neighbors4 } from './grid';
 
 export const UNREACHABLE = 0xffff;
 
@@ -52,6 +52,8 @@ export const passRoad = isRoad;
 /** Đất đi bộ được; cho phép bước vào ô đích dù là công trình (để tới cửa nhà). */
 export const passLandTo = (target: number) => (g: Grid, o: number): boolean => o === target || isLand(g, o);
 export const passLand = isLand;
+/** Thuyền nan: chỉ đi trên ô sông (M4). */
+export const passWater = isWater;
 
 /** Đường ngắn nhất từ `from` đến `to` theo luật `passable`. */
 export function findPath(g: Grid, from: number, to: number, passable: (g: Grid, o: number) => boolean): Int32Array {

@@ -16,6 +16,8 @@ export interface RenderApp {
   tileBuilding(x: number, y: number): { type: number; level: number } | null;
   /** đưa camera tới ô (x, y) */
   lookAt(x: number, y: number): void;
+  /** M4: lớp phủ vùng ngập */
+  setOverlay(on: boolean): void;
   destroy(): void;
 }
 
@@ -142,6 +144,7 @@ export async function createRenderApp(canvas: HTMLCanvasElement): Promise<Render
       camera.x = p.wx; camera.y = p.wy;
       applyCamera();
     },
+    setOverlay(on) { chunks.setOverlay(on); },
     destroy() { app.destroy(); },
   };
   return result;

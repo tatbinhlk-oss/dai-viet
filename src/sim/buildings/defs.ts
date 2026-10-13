@@ -4,6 +4,7 @@ import buildingsJson from '../../data/buildings.json';
 import housesJson from '../../data/houses.json';
 import economyJson from '../../data/economy.json';
 import resourcesJson from '../../data/resources.json';
+import floodJson from '../../data/flood.json';
 import { BuildingType, FigureType, LaborCat, Resource, RES_COUNT } from '../state';
 
 const lowerFirst = (s: string) => s[0].toLowerCase() + s.slice(1);
@@ -33,7 +34,7 @@ export const GOODS: Resource[] = RESOURCES.map((_, i) => i).filter((i) => RESOUR
 
 // ---------- công trình ----------
 
-export type TerrainRule = 'any' | 'floodplain' | 'highland' | 'mountain' | 'shore';
+export type TerrainRule = 'any' | 'floodplain' | 'highland' | 'mountain' | 'shore' | 'land';
 export interface Desirability { value: number; step: number; delta: number; range: number }
 export interface WalkerDef { figure: FigureType; roam: number; delays: number[] }
 export interface BuildingDef {
@@ -63,6 +64,10 @@ interface RawBuilding {
 }
 
 export const economy = economyJson;
+/** Số cân bằng lũ và đê (M4). */
+export const flood = floodJson;
+if (flood.peakChances.byLevel.reduce((a, v) => a + v, 0) !== 100) throw new Error('flood.json: peakChances phải cộng đúng 100');
+if (flood.season.riseDays + flood.season.holdDays + flood.season.recedeDays !== 64) throw new Error('flood.json: mùa lũ phải đúng 64 ngày (4 tháng)');
 const DELAYS = economy.spawnDelays as unknown as Record<string, number[]>;
 
 const desir = (a: number[] | null | undefined): Desirability | null => (a ? { value: a[0], step: a[1], delta: a[2], range: a[3] } : null);

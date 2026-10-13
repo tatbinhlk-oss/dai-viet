@@ -15,7 +15,7 @@ export function Advisors() {
   return (
     <div class="panel advisor">
       <div class="head">
-        <strong>{{ labor: 'Lao động', finance: 'Tài chính', mood: 'Dân tình', storage: 'Kho hàng' }[p]}</strong>
+        <strong>{{ labor: 'Lao động', finance: 'Tài chính', mood: 'Dân tình', storage: 'Kho hàng', flood: 'Thủy lợi' }[p]}</strong>
         <button onClick={() => (panel.value = null)}>✕</button>
       </div>
       {p === 'labor' && (
@@ -68,6 +68,38 @@ export function Advisors() {
               {c.houseLevels.map((n, lvl) => (n > 0 ? <tr><td>{HOUSE_LEVELS[lvl].name}</td><td>{n}</td></tr> : null))}
             </tbody>
           </table>
+          {c.events.length > 0 && <ul class="events">{[...c.events].reverse().map((e) => <li>{e}</li>)}</ul>}
+        </>
+      )}
+      {p === 'flood' && (
+        <>
+          <p>
+            {c.flood.inSeason
+              ? <>Lũ <strong>{c.flood.peakName}</strong> (đỉnh mức {c.flood.peak}) · nước mức {c.flood.level} · ngày {c.flood.dayInSeason + 1}/{c.flood.seasonDays}{c.flood.floodedTiles > 0 && <span class="bad"> · ngập {num(c.flood.floodedTiles)} ô</span>}</>
+              : c.flood.forecast
+                ? <>Nha môn dự báo lũ <strong>{c.flood.forecastName}</strong> (mức {c.flood.forecast}), đúng 7 phần 10</>
+                : <>Ngoài mùa lũ. Lũ về ngày 1 tháng Sáu, rút hết tháng Chín; nha môn báo trước từ tháng Tư.</>}
+          </p>
+          <p>
+            Đê: {c.flood.dikesBuilt} đoạn đã đắp{c.flood.dikesPlanned > 0 && <>, {c.flood.dikesPlanned} đoạn chờ phu đê đắp hoặc tôn cao</>}
+            {c.flood.dikesBuilt > 0 && <> · an toàn <span class={c.flood.safety < 60 ? 'bad' : ''}>{c.flood.safety}%</span></>}
+            {c.flood.breachesThisYear > 0 && <span class="bad"> · vỡ {c.flood.breachesThisYear} đoạn năm nay</span>}
+          </p>
+          <p class="muted">Mực lũ 1 nhỏ (45%), 2 vừa (35%), 3 lớn (15%), 4 đại hồng thủy (5%). Ô ngập khi cao độ + cao đê &lt; mực nước. Đê cao 1 trên bãi bồi chắn lũ vừa, cao 2 chắn lũ lớn, cao 3 chắn đại hồng thủy. Nước chạm đê làm mòn độ bền; thợ cả đi qua sửa lại.</p>
+          <p>Ruộng có phù sa: {c.flood.siltedPaddies}. Ruộng trong đê 5 năm không ngập thì bạc màu −10%; mở cống cho nước vào để lấy phù sa.</p>
+          {c.flood.sluices.length > 0 && (
+            <table class="mini">
+              <thead><tr><th>Cống</th><th>Cao</th><th></th></tr></thead>
+              <tbody>
+                {c.flood.sluices.map((sl) => (
+                  <tr>
+                    <td>({sl.x}, {sl.y})</td><td>{sl.height}</td>
+                    <td><button class={sl.open ? 'active' : ''} onClick={() => bridge.cmd({ type: 'openSluice', buildingId: sl.id, open: !sl.open })}>{sl.open ? 'Đang mở' : 'Đóng'}</button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
           {c.events.length > 0 && <ul class="events">{[...c.events].reverse().map((e) => <li>{e}</li>)}</ul>}
         </>
       )}

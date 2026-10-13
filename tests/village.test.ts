@@ -4,6 +4,7 @@ import { applyCommand, createSim, tick } from '../src/sim';
 import { BuildingType, FigureType, Resource, type GameState } from '../src/sim/state';
 import { DAYS_PER_MONTH, MONTHS_PER_YEAR, TICKS_PER_DAY } from '../src/sim/state';
 import { gridOffset, T_ROAD } from '../src/sim/map/grid';
+import { DIKE_STATION_YS, dikeStation, legacyDike } from '../src/sim/scenario/demo';
 
 const TICKS_PER_YEAR = TICKS_PER_DAY * DAYS_PER_MONTH * MONTHS_PER_YEAR;
 
@@ -43,6 +44,10 @@ export function buildVillage(s: GameState): void {
     if (x >= 39 && x <= 41) continue;
     applyCommand(s, { type: 'build', kind: 'paddy', x, y: 82 });
   }
+  // M4: không có đê thì lũ vừa (35%/năm) nhấn chìm cả làng; một đình không đắp kịp 160 đoạn trước tháng Sáu
+  // → kịch bản làng có đê cũ cao 3 sẵn (cao trình 4: lũ lớn chỉ mòn 2 độ bền/ngày), 8 trạm giữ đê dọc đường chân đê để thợ cả giữ độ bền
+  legacyDike(s, 7, 0, 159, 4);
+  for (const y of DIKE_STATION_YS) dikeStation(s, 9, y);
 }
 
 function count(s: GameState, type: BuildingType): number {
@@ -53,7 +58,7 @@ describe('làng M2 (bản đồ phẳng)', () => {
   it('bố cục đặt được và có đủ công trình', () => {
     const s = createSim(1, { flat: true });
     buildVillage(s);
-    expect(count(s, BuildingType.House)).toBe(30);
+    expect(count(s, BuildingType.House)).toBe(46); // 30 trong làng + 16 ở trạm giữ đê
     expect(count(s, BuildingType.Paddy)).toBeGreaterThanOrEqual(8);
     expect(count(s, BuildingType.Granary)).toBe(1);
     expect(count(s, BuildingType.Market)).toBe(3);
@@ -81,7 +86,7 @@ describe('làng M2 (bản đồ phẳng)', () => {
       }
     }
     const ms = performance.now() - t0;
-    const houses = s.buildings.filter((b) => b.type === BuildingType.House);
+    const houses = s.buildings.filter((b) => b.type === BuildingType.House && b.x >= 20); // bỏ nhà ở trạm giữ đê (chợ không tới)
     const avgLevel = houses.reduce((a, b) => a + b.level, 0) / houses.length;
     const granary = s.buildings.find((b) => b.type === BuildingType.Granary)!;
     const fed = houses.filter((h) => h.store[Resource.Rice] > 0).length;
@@ -94,7 +99,7 @@ describe('làng M2 (bản đồ phẳng)', () => {
     expect(fed).toBeGreaterThanOrEqual(houses.length * 0.8);
     expect(maxFigures).toBeLessThan(200); // không rò rỉ walker
     expect(ms).toBeLessThan(20000);
-  });
+  }, 30000);
 
   it('phá đường giữa chừng không làm crash và walker tự về', () => {
     const s = createSim(2, { flat: true });

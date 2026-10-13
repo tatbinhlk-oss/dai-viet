@@ -1,19 +1,23 @@
 // Di chuyển theo ô: mỗi tick progress += 1; đủ TICKS_PER_TILE thì sang ô kế.
 // Hai chế độ: Walk (theo path BFS) và Roam (ngẫu nhiên trên đường, không quay đầu nếu còn lối khác).
-import { FigureMode, TICKS_PER_TILE, type Figure, type GameState } from '../state';
-import { gridOffset, isRoad, neighbors4, offsetX, offsetY, type Grid } from '../map/grid';
-import { findPath, passLandTo, passRoad } from '../map/routing';
+import { FigureMode, FigureType, TICKS_PER_TILE, type Figure, type GameState } from '../state';
+import { gridOffset, isRoad, isWater, neighbors4, offsetX, offsetY, T_BUILDING, T_FLOODED, T_WATER, type Grid } from '../map/grid';
+import { findPath, passLandTo, passRoad, passWater } from '../map/routing';
 import { nextInt } from '../rng';
+import { flood } from '../buildings/defs';
+
+/** Số tick đi một ô: thuyền nan nhanh hơn người đi bộ (M4). */
+export const ticksPerTile = (f: Figure): number => (f.type === FigureType.Boat ? flood.boat.ticksPerTile : TICKS_PER_TILE);
 
 const nb = new Int32Array(4);
 const cands = new Int32Array(4);
 
 export const figureOffset = (f: Figure): number => gridOffset(f.x, f.y);
 
-/** Đặt path tới `to`; trả false nếu không tới được. */
+/** Đặt path tới `to`; trả false nếu không tới được. Thuyền nan đi trên ô sông. */
 export function setWalkPath(s: GameState, f: Figure, to: number, onRoad: boolean): boolean {
   const from = figureOffset(f);
-  const path = findPath(s.grid, from, to, onRoad ? passRoad : passLandTo(to));
+  const path = findPath(s.grid, from, to, f.type === FigureType.Boat ? passWater : onRoad ? passRoad : passLandTo(to));
   if (path.length === 0 && from !== to) return false;
   f.path = path;
   f.pathIdx = 0;
@@ -41,7 +45,7 @@ export function step(s: GameState, f: Figure): StepResult {
   const g = s.grid;
   // đang ở giữa hai ô
   if (f.nx !== f.x || f.ny !== f.y) {
-    if (++f.progress < TICKS_PER_TILE) return StepResult.Moving;
+    if (++f.progress < ticksPerTile(f)) return StepResult.Moving;
     f.prevOffset = gridOffset(f.x, f.y);
     f.x = f.nx; f.y = f.ny; f.progress = 0;
     return StepResult.ArrivedTile;
@@ -52,7 +56,8 @@ export function step(s: GameState, f: Figure): StepResult {
     const next = f.path[f.pathIdx];
     // ô kế bị chặn (đường bị phá) → báo để hành vi tính lại
     const isLast = f.pathIdx === f.path.length - 1;
-    if (!isLast && !isRoad(g, next) && !isLandFree(g, next)) return StepResult.Blocked;
+    if (f.type === FigureType.Boat) { if (!isWater(g, next)) return StepResult.Blocked; }
+    else if (!isLast && !isRoad(g, next) && !isLandFree(g, next)) return StepResult.Blocked;
     f.pathIdx++;
     f.nx = offsetX(next); f.ny = offsetY(next);
     return StepResult.Moving;
@@ -73,5 +78,5 @@ export function step(s: GameState, f: Figure): StepResult {
 }
 
 function isLandFree(g: Grid, o: number): boolean {
-  return (g.terrain[o] & 0b101) === 0; // không nước, không công trình
+  return (g.terrain[o] & (T_WATER | T_BUILDING | T_FLOODED)) === 0; // không nước, không công trình, không ngập
 }

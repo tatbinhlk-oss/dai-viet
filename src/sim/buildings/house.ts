@@ -69,6 +69,10 @@ export function decayServices(s: GameState): void {
     const def = BUILDING_DEFS[w.type];
     if (!def || def.waterLevel === 0) continue;
     if (def.workers > 0 && w.numWorkers <= 0) continue;
+    // M4: giếng ngập bị nhiễm bẩn 2 tháng — cấp nước kém đi một bậc (giếng thường: không có nước)
+    let lvl = def.waterLevel;
+    if (w.pollutedDays > 0) { w.pollutedDays--; lvl--; }
+    if (lvl <= 0) continue;
     const R = def.waterRange;
     for (let dy = -R; dy <= R; dy++) {
       for (let dx = -R; dx <= R; dx++) {
@@ -77,7 +81,7 @@ export function decayServices(s: GameState): void {
         const id = s.grid.buildingId[gridOffset(x, y)];
         if (!id) continue;
         const h = s.buildings[id];
-        if (h.type === BuildingType.House && h.water < def.waterLevel) h.water = def.waterLevel;
+        if (h.type === BuildingType.House && h.water < lvl) h.water = lvl;
       }
     }
   }

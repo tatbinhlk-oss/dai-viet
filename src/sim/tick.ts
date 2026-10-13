@@ -10,6 +10,7 @@ import { updateLabor } from './city/labor';
 import { generateCriminals, updateSentiment } from './city/sentiment';
 import { updateFinance } from './city/finance';
 import { updateRisks } from './city/risk';
+import { updateFlood } from './flood/season';
 
 const MAX_EVENTS = 8;
 
@@ -32,7 +33,7 @@ export function tick(s: GameState): void {
     case 22: if (day === 0 || day === 8) updateSentiment(s); break;
     case 23: if (day === 0) generateCriminals(s); break;
     case 25: updateLabor(s); break;
-    case 26: break; // M4: flood.update(s)
+    case 26: updateFlood(s); break; // M4: mùa lũ, flood-fill, đê
     case 43: updateRisks(s); break;
     case 49:
       if (s.events.length > MAX_EVENTS) s.events.splice(0, s.events.length - MAX_EVENTS);

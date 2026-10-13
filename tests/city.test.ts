@@ -8,8 +8,8 @@ import { BUILDING_DEFS, RESOURCES } from '../src/sim/buildings/defs';
 import { missingFor } from '../src/sim/buildings/house';
 
 const TICKS_PER_YEAR = TICKS_PER_DAY * DAYS_PER_MONTH * MONTHS_PER_YEAR;
-/** Vốn kịch bản của màn thử (Caesar 3 cho 5.000–20.000 tùy màn). */
-const START_FUNDS = 8000;
+/** Vốn kịch bản của màn thử (Caesar 3 cho 5.000–20.000 tùy màn); M4 thêm 1.000 cho 8 trạm giữ đê. */
+const START_FUNDS = 9000;
 const DEBUG = (globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env.DEBUG_TOWN;
 
 function count(s: GameState, t: BuildingType): number { return s.buildings.filter((b) => b.type === t).length; }

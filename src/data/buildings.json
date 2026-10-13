@@ -1,5 +1,5 @@
 {
-  "_note": "Bảng công trình. Khóa = tên trong BuildingType (camelCase). terrain: any | floodplain (bãi bồi) | highland (đất cao, elevation ≥2, không bãi bồi) | mountain (elevation ≥3) | shore (kề nước). desirability: [giá trị vòng 1, bước, Δ, tầm]. walker: roamer sinh ra (figure, số ô đi dạo, bảng chu kỳ). produces/input: Resource; progressMax: 200 nguyên liệu, 400 xưởng. fire: cộng khi trúng 1/8 mỗi ngày (Julius: mọi công trình không phải nhà +5, 0 = không bắt lửa; nhà theo houses.json); damage: cộng mỗi ngày.",
+  "_note": "Bảng công trình. Khóa = tên trong BuildingType (camelCase). terrain: any | floodplain (bãi bồi) | highland (đất cao, elevation ≥2, không bãi bồi) | mountain (elevation ≥3) | shore (kề nước) | land (đê: mọi ô đất, đặt được lên đường để làm dốc qua đê). desirability: [giá trị vòng 1, bước, Δ, tầm]. walker: roamer sinh ra (figure, số ô đi dạo, bảng chu kỳ). produces/input: Resource; progressMax: 200 nguyên liệu, 400 xưởng. fire: cộng khi trúng 1/8 mỗi ngày (Julius: mọi công trình không phải nhà +5, 0 = không bắt lửa; nhà theo houses.json); damage: cộng mỗi ngày.",
   "house":         { "name": "Lều", "group": "home", "size": 1, "cost": 10, "workers": 0, "fire": 0, "damage": 1 },
   "paddy":         { "name": "Ruộng lúa", "group": "farm", "size": 2, "cost": 40, "workers": 10, "labor": "food", "terrain": "floodplain", "produces": "rice", "progressMax": 200, "fire": 5, "damage": 0 },
   "fishWharf":     { "name": "Bến cá", "group": "farm", "size": 2, "cost": 60, "workers": 6, "labor": "food", "terrain": "shore", "produces": "fish", "progressMax": 200, "fire": 5, "damage": 1, "desirability": [-2, 1, 1, 2] },
@@ -34,5 +34,8 @@
   "yamen":         { "name": "Nha môn", "group": "admin", "size": 2, "cost": 200, "workers": 10, "labor": "govReligion", "fire": 5, "damage": 1, "desirability": [4, 1, -1, 4], "walker": { "figure": "taxCollector", "roam": 96, "delays": "patrol" } },
   "garden":        { "name": "Vườn cây", "group": "decor", "size": 1, "cost": 12, "workers": 0, "fire": 0, "damage": 0, "desirability": [3, 1, -1, 3] },
   "lotusPond":     { "name": "Ao sen", "group": "decor", "size": 1, "cost": 20, "workers": 0, "fire": 0, "damage": 0, "desirability": [4, 1, -1, 4] },
-  "ruins":         { "name": "Đống tro", "group": "none", "size": 1, "cost": 0, "workers": 0, "fire": 0, "damage": 0, "desirability": [-5, 1, 2, 2] }
+  "ruins":         { "name": "Đống tro", "group": "none", "size": 1, "cost": 0, "workers": 0, "fire": 0, "damage": 0, "desirability": [-5, 1, 2, 2] },
+  "dike":          { "name": "Đoạn đê", "group": "dike", "size": 1, "cost": 0, "workers": 0, "terrain": "land", "fire": 0, "damage": 0 },
+  "sluice":        { "name": "Cống", "group": "dike", "size": 1, "cost": 40, "workers": 0, "terrain": "land", "fire": 0, "damage": 0 },
+  "dock":          { "name": "Bến thuyền", "group": "dike", "size": 1, "cost": 60, "workers": 4, "labor": "industry", "terrain": "shore", "fire": 5, "damage": 1, "desirability": [-2, 1, 1, 2] }
 }
