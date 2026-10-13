@@ -3,17 +3,18 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Đại Việt — M1</title>
+    <title>Đại Việt — M2</title>
     <style>
       html, body { margin: 0; height: 100%; background: #111; overflow: hidden; font-family: system-ui, sans-serif; }
       #game { position: absolute; inset: 0; }
-      #ui { position: absolute; top: 0; left: 0; right: 0; display: flex; gap: 8px; align-items: center;
+      #ui { position: absolute; top: 0; left: 0; right: 0; display: flex; gap: 6px; align-items: center; flex-wrap: wrap;
             padding: 6px 10px; background: rgba(20, 18, 14, 0.9); color: #e8dcc0; font-size: 14px; user-select: none; }
       #ui button { background: #3a2f1e; color: #e8dcc0; border: 1px solid #7a6540; padding: 4px 10px; cursor: pointer; font: inherit; }
       #ui button.active { background: #a67c2e; color: #111; }
       #ui .sp { flex: 1; }
-      #status { position: absolute; bottom: 0; left: 0; right: 0; padding: 4px 10px; color: #9a8f78; font-size: 12px;
-                background: rgba(20, 18, 14, 0.8); pointer-events: none; }
+      #ui .sep { width: 1px; height: 20px; background: #7a6540; margin: 0 4px; }
+      #status { position: absolute; bottom: 0; left: 0; right: 0; padding: 4px 10px; color: #c8bda0; font-size: 12px;
+                background: rgba(20, 18, 14, 0.85); pointer-events: none; }
     </style>
   </head>
   <body>
@@ -21,18 +22,26 @@
     <div id="ui">
       <strong>Đại Việt</strong>
       <span id="date">—</span>
+      <span class="sep"></span>
+      <span id="pop">—</span>
+      <span class="sep"></span>
       <button data-speed="0">⏸</button>
       <button data-speed="1" class="active">▶</button>
       <button data-speed="2">▶▶</button>
       <button data-speed="3">▶▶▶</button>
       <span class="sp"></span>
       <button data-tool="road" class="active">Đường</button>
-      <button data-tool="house">Lều tranh</button>
+      <button data-tool="house">Lều</button>
+      <button data-tool="well">Giếng</button>
+      <button data-tool="paddy">Ruộng lúa</button>
+      <button data-tool="granary">Vựa thóc</button>
+      <button data-tool="market">Chợ</button>
+      <button data-tool="dinh">Đình</button>
       <button data-tool="raze">Phá</button>
       <span class="sp"></span>
       <span id="fps">—</span>
     </div>
-    <div id="status">Kéo chuột phải hoặc giữ Space + kéo để dời; lăn chuột để zoom 0,5× / 1× / 2×; chuột trái để đặt.</div>
+    <div id="status"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

@@ -18,7 +18,7 @@ Thêm `?seed=123` vào URL để đổi bản đồ.
 ## Cột mốc
 
 - [x] **M1 Lưới** — grid 160×160, sông và vùng ngập, đặt đường / lều tranh / phá, camera, lịch tick 50/ngày
-- [ ] **M2 Walker** — roamer, hauler, BFS; ruộng → xe bò → vựa → chợ → nhà; nhà bậc 1–5
+- [x] **M2 Walker** — roamer, hauler, BFS; ruộng → xe bò → vựa → chợ → nhà; nhà bậc 1–5; dân nhập cư
 - [ ] **M3 Kinh tế** — xưởng, kho, lao động, thuế, sentiment, nhà bậc 6–8
 - [ ] **M4 Lũ đê** — mùa lũ, đê, vỡ đê, phù sa, cống
 - [ ] **M5 Triều đình** — 4 chỉ số, chiếu chỉ, tín ngưỡng, khoa cử
@@ -28,6 +28,10 @@ Thêm `?seed=123` vào URL để đổi bản đồ.
 
 ```
 src/sim/      mô phỏng — không import Pixi/DOM; tick.ts giữ lịch 50 việc/ngày
+  map/        grid, terrain, routing (BFS), desirability
+  buildings/  defs (bảng số), spawn, house (bậc 1–5), industry (ruộng, vựa, chợ, sinh walker)
+  figures/    figure (pool), movement (walk/roam), behaviors (roamer, xe bò, người gánh chợ, dân nhập cư)
+  city/       population (di cư)
 src/worker/   vòng lặp sim trong Worker, gửi snapshot
 src/render/   iso.ts (hằng số ô, chiếu, neo, zIndex), chunks.ts, app.ts
 src/main.ts   nối worker ↔ render ↔ ui
