@@ -61,12 +61,7 @@ export function legacyDike(s: GameState, x: number, y0: number, y1: number, cres
 export function dikeStation(s: GameState, x: number, y: number): void {
   applyCommand(s, { type: 'build', kind: 'builderPost', x, y });
   applyCommand(s, { type: 'build', kind: 'watchPost', x, y: y + 1 });
-  for (const dy of [3, 4]) {
-    const n = s.buildings.length;
-    applyCommand(s, { type: 'build', kind: 'house', x, y: y + dy });
-    const h = s.buildings[n];
-    if (h && h.type === BuildingType.House) { h.population = HOUSE_LEVELS[1].capacity; setHouseLevel(s, h, 1); }
-  }
+  for (const dy of [3, 4]) seededHouse(s, x, y + dy);
   applyCommand(s, { type: 'build', kind: 'well', x, y: y + 5 });
 }
 
@@ -105,7 +100,7 @@ export function buildTown(s: GameState): void {
     ['saltPan', 4, 60], ['saltPan', 4, 62],
     ['fishWharf', 4, 67], ['fishWharf', 4, 69], ['saltPan', 4, 71], ['saltPan', 4, 73],
     ['paddy', 4, 77], ['paddy', 4, 81], ['paddy', 4, 83],
-    ['paddy', 10, 67], ['vegGarden', 12, 67], ['paddy', 10, 70], ['paddy', 12, 70], ['paddy', 14, 70],
+    ['paddy', 10, 67], ['vegGarden', 12, 67], ['pigSty', 14, 67], ['paddy', 10, 70], ['paddy', 12, 70], ['paddy', 14, 70], ['vegGarden', 16, 70], ['pigSty', 18, 70],
     // đất cao x ≥ 70, núi x ≥ 100
     ['cottonField', 70, 64], ['teaHill', 72, 64], ['mulberryField', 74, 64], ['lumberCamp', 76, 64],
     ['loom', 78, 64], ['teaHouse', 80, 64], ['silkWorkshop', 82, 64], ['warehouse', 84, 63],
@@ -114,15 +109,37 @@ export function buildTown(s: GameState): void {
     ['watchPost', 16, 67], ['builderPost', 17, 67], ['watchPost', 32, 67], ['builderPost', 33, 67], ['watchPost', 40, 67], ['builderPost', 41, 67],
     ['watchPost', 80, 67], ['builderPost', 81, 67], ['watchPost', 98, 67], ['builderPost', 99, 67], ['watchPost', 5, 75], ['builderPost', 5, 76],
   ];
-  for (let x = 8; x <= 16; x++) road(x, 69); // ruộng lúa phía nam, kề đường chân đê
+  for (let x = 8; x <= 20; x++) road(x, 69); // ruộng lúa, trại phía nam, kề đường chân đê, nối trục x=20
   for (const [kind, x, y] of place) applyCommand(s, { type: 'build', kind, x, y });
   // M4: đê dọc x=7 từ mép bắc tới mép nam. Thị trấn dựng sẵn 1.000 dân không kịp đắp 160 đoạn trước lũ năm 1,
-  // nên kịch bản có đê cũ cao 2 (cao trình 3, chắn lũ vừa) và người chơi vẽ tôn lên cao 4 (cao trình 5) cho phu đê đắp:
+  // nên kịch bản có đê cũ cao 3 (cao trình 4, chắn lũ lớn) và người chơi vẽ tôn lên cao 4 (cao trình 5) cho phu đê đắp:
   // đê cao hơn đỉnh lũ 1 mức thì nước không mòn đê; bằng đỉnh thì mòn 2/ngày, thợ cả phải qua đều.
   // Bến cá, ruộng muối ở x=4–5 nằm ngoài đê; đường chân đê x=8 với 8 trạm giữ đê.
-  legacyDike(s, 7, 0, 159, 3);
+  legacyDike(s, 7, 0, 159, 4);
   planDikeLine(s, 7, 0, 159, 5);
   for (const y of DIKE_STATION_YS) dikeStation(s, 9, y);
+  // M5: bốn tín ngưỡng đủ đền (đình, chùa có sẵn): miếu Hà Bá ven sông, đàn tế ngoài đồng — không có thì thần quở
+  road(5, 59); road(6, 59);
+  for (const [kind, x, y] of [['shrine', 4, 79], ['shrine', 4, 59], ['altar', 19, 51], ['altar', 19, 57]] as [string, number, number][]) applyCommand(s, { type: 'build', kind, x, y });
+}
+
+/** Lều có sẵn dân (kịch bản) để trạm thợ / điếm canh xa thị trấn có nhân công ngay. */
+export function seededHouse(s: GameState, x: number, y: number): void {
+  const n = s.buildings.length;
+  applyCommand(s, { type: 'build', kind: 'house', x, y });
+  const h = s.buildings[n];
+  if (h && h.type === BuildingType.House) { h.population = HOUSE_LEVELS[1].capacity; setHouseLevel(s, h, 1); }
+}
+
+/**
+ * M5: thị trấn mẫu cho màn Sơn Nam — thêm trường học và thủy đình cho Văn hiến, khoa cử và nhà quan lại;
+ * xóm thợ mỏ cạnh điếm canh / trại thợ khu mỏ để mỏ không sập (binh dịch cần vũ khí từ lò rèn).
+ */
+export function buildCourtTown(s: GameState): void {
+  buildTown(s);
+  for (const [kind, x, y] of [['academy', 60, 57], ['puppetStage', 60, 54]] as [string, number, number][]) applyCommand(s, { type: 'build', kind, x, y });
+  seededHouse(s, 96, 67); seededHouse(s, 97, 67);
+  applyCommand(s, { type: 'build', kind: 'well', x: 96, y: 68 });
 }
 
 /** Ưu tiên lao động người chơi thường đặt: tuần đinh, lương thực, thợ cả. */

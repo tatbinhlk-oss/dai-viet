@@ -51,8 +51,16 @@ export enum BuildingType {
   Dike = 36, // đoạn đê 1×1, cao 1–4, đắp bằng phu đê
   Sluice = 37, // cống: đoạn đê có nút đóng/mở
   Dock = 38, // bến thuyền kề sông — nút mạng đường thủy
+  // --- M5: triều đình ---
+  Academy = 39, // trường học (Nho học) — thầy giáo, phủ academy
+  PuppetStage = 40, // thủy đình — phường rối nước
+  Shrine = 41, // miếu Hà Bá ven sông — ông từ, Thủy thần
+  Altar = 42, // đàn tế Tiên nông ngoài đồng — ông từ
+  VanMieu = 43, // Văn Miếu — đền lớn, cần phẩm hàm 5
 }
 export const isDike = (t: BuildingType): boolean => t === BuildingType.Dike || t === BuildingType.Sluice;
+/** Bậc nhà quan lại thấp nhất (Tư dinh). */
+export const HOUSE_TIER_MANDARIN = 9;
 
 export enum Resource {
   None = 0,
@@ -70,11 +78,11 @@ export const RES_COUNT = 19;
 export const FOODS: readonly Resource[] = [Resource.Rice, Resource.Fish, Resource.Veg, Resource.Pork];
 export const isFood = (r: Resource): boolean => r >= Resource.Rice && r <= Resource.Pork;
 
-/** 9 ngành lao động, thứ tự mặc định như Julius. */
+/** 9 ngành lao động như Julius + ngành thứ 10 lao dịch (M5: rút trước theo chiếu chỉ, không chỉnh ưu tiên). */
 export enum LaborCat {
-  Food = 0, Industry = 1, Engineering = 2, Water = 3, Watch = 4, Military = 5, Entertainment = 6, HealthEdu = 7, GovReligion = 8,
+  Food = 0, Industry = 1, Engineering = 2, Water = 3, Watch = 4, Military = 5, Entertainment = 6, HealthEdu = 7, GovReligion = 8, Corvee = 9,
 }
-export const LABOR_CATS = 9;
+export const LABOR_CATS = 10;
 
 export enum FigureType {
   None = 0,
@@ -101,6 +109,14 @@ export enum FigureType {
   // M4
   LevyWorker = 20, // phu đê — nhóm dân đình làng đi đắp đê
   Boat = 21, // thuyền nan chở hàng trên sông
+  // M5
+  Messenger = 22, // sứ giả triều đình: từ mép bản đồ tới nha môn giao chiếu chỉ
+  Convoy = 23, // đoàn xe cống nạp ra mép bản đồ
+  Soldiers = 24, // đinh tráng đi trận
+  TempleKeeper = 25, // ông từ — miếu, đàn tế, Văn Miếu
+  Academic = 26, // thầy giáo — trường học
+  Puppeteer = 27, // phường rối nước
+  Mandarin = 28, // quan đi kiệu từ tư dinh / phủ đệ
 }
 
 export enum FigureMode {
@@ -128,6 +144,10 @@ export interface Building {
   school: number;
   clinic: number;
   entertainment: number;
+  academy: number; // M5: trường học
+  puppet: number; // M5: rối nước
+  shrine: number; // M5: đền (miếu, Văn Miếu) — ông từ
+  altar: number; // M5: đàn tế Tiên nông
   marketAccess: number;
   taxCoverage: number; // ngày còn lại được thu thuế (đặt 50 khi lại thu thuế đi qua)
   happiness: number; // 0..100
@@ -210,6 +230,9 @@ export interface Ledger {
   wages: number;
   construction: number;
   stolen: number;
+  tribute: number; // M5: cống nạp
+  salary: number; // M5: bổng lộc
+  festivals: number; // M5: lễ hội, Tết
 }
 
 export interface Labor {
@@ -222,7 +245,107 @@ export interface Labor {
   allocated: number[];
 }
 
-export type MoodCause = 'none' | 'tax' | 'unemployment' | 'food' | 'tents' | 'flood';
+export type MoodCause = 'none' | 'tax' | 'unemployment' | 'food' | 'tents' | 'flood' | 'corvee';
+
+// ---------- M5: triều đình ----------
+
+export type EdictType = 'goods' | 'troops' | 'corvee' | 'money' | 'ritual' | 'dike';
+export type EdictState = 'coming' | 'active' | 'done' | 'failed';
+
+/** Chiếu chỉ — thiết kế phần 6. */
+export interface Edict {
+  id: number;
+  type: EdictType;
+  title: string;
+  /** năm, tháng sứ giả xuất phát */
+  year: number;
+  month: number;
+  /** thuế vật: loại hàng; nghi lễ: loại công trình */
+  resource: Resource;
+  building: BuildingType;
+  /** số kiện / đinh / ngày-người / quan / công trình / đoạn đê */
+  amount: number;
+  /** đê: mức cao yêu cầu */
+  height: number;
+  /** hạn (totalDays); đặt khi sứ giả tới */
+  deadlineDay: number;
+  deadlineMonths: number;
+  reward: number;
+  state: EdictState;
+  extended: boolean;
+  /** lao dịch: ngày-người đã làm, % nhân công đang khóa; binh dịch: ngày về, số người về */
+  progress: number;
+  corveePct: number;
+  returnDay: number;
+  survivors: number;
+}
+
+export interface CourtState {
+  favor: number;
+  rank: number; // 0..8
+  salaryLevel: number; // 0..8, người chơi tự đặt
+  personalFunds: number; // bổng lộc tích lũy, dùng tiến cống
+  tributeDue: number; // cống nạp năm nay (tính đầu năm)
+  tributePaid: boolean;
+  tributeMissedYears: number; // liên tiếp
+  giftsInWindow: number[]; // totalDays các lần tiến cống trong 12 tháng
+  edicts: Edict[];
+  nextEdictId: number;
+  dismissalDay: number; // -1 = chưa; ngày bị thay
+  milestonesHit: number[]; // 25/50/75% dân mục tiêu: 0 chưa, 1 đạt (+5), 2 trễ (−2)
+  graduates: number; // người đỗ khoa cử còn sống
+  lastExamYear: number;
+  /** số nhân công đang lao dịch hôm nay */
+  corveeWorkers: number;
+}
+
+export enum Deity { ThanhHoang = 0, Phat = 1, ThuyThan = 2, TienNong = 3 }
+export const DEITIES = 4;
+
+export interface DeityState {
+  mood: number; // 0..100
+  bolts: number; // sét giận
+  monthsSinceFestival: number;
+  blessings: number;
+  wraths: number;
+}
+
+export interface WorshipState {
+  gods: DeityState[];
+  healersOffDays: number; // Phật quở nhỏ
+  paddyFreezeDays: number; // Tiên nông quở
+  healthBonusMonths: number; // Phật phù hộ
+  floodLevelMod: number; // Thủy thần: ±1 cho mùa lũ tới
+}
+
+export interface Ratings {
+  culture: number;
+  prosperity: number;
+  peace: number;
+  health: number;
+  /** đếm trong năm cho Trị an / Thịnh vượng */
+  yearsCalm: number;
+  destroyedThisYear: number;
+  thievesThisYear: number;
+  riotsThisYear: number;
+  breachesThisYear: number;
+  floodedHousesThisYear: number;
+  paddiesFloodedThisYear: number;
+  floodedWellMonths: number;
+  plaguePending: boolean; // Phật quở lớn
+}
+
+export interface Goals { population: number; culture: number; prosperity: number; peace: number; favor: number }
+
+export interface ScenarioState {
+  key: string;
+  name: string;
+  goals: Goals;
+  timeLimitYears: number;
+  milestoneYears: number[];
+}
+
+export type GameOver = '' | 'won' | 'dismissed' | 'timeout';
 
 /** Mùa lũ — thiết kế phần 5. */
 export interface FloodState {
@@ -269,6 +392,12 @@ export interface GameState {
   /** tích trữ toàn thành: không cho chợ/xưởng lấy ra */
   stockpile: boolean[];
   flood: FloodState;
+  // M5
+  court: CourtState;
+  worship: WorshipState;
+  ratings: Ratings;
+  scenario: ScenarioState;
+  gameOver: GameOver;
   /** sự kiện gần đây cho UI (cháy, sập, trộm…), tối đa 8 dòng */
   events: string[];
   dirty: Set<number>; // offset ô đã đổi kể từ snapshot trước
@@ -278,7 +407,7 @@ export function newBuilding(id: number, type: BuildingType, x: number, y: number
   return {
     id, type, x, y, size,
     level: 0, population: 0, water: 0,
-    dinh: 0, temple: 0, school: 0, clinic: 0, entertainment: 0, marketAccess: 0, taxCoverage: 0,
+    dinh: 0, temple: 0, school: 0, clinic: 0, entertainment: 0, academy: 0, puppet: 0, shrine: 0, altar: 0, marketAccess: 0, taxCoverage: 0,
     happiness: 60, hungryPeriods: 0, evolveDays: 0, devolveDays: 0,
     store: new Array(RES_COUNT).fill(0),
     demand: new Array(RES_COUNT).fill(0),
@@ -291,4 +420,4 @@ export function newBuilding(id: number, type: BuildingType, x: number, y: number
   };
 }
 
-export const emptyLedger = (): Ledger => ({ taxes: 0, wages: 0, construction: 0, stolen: 0 });
+export const emptyLedger = (): Ledger => ({ taxes: 0, wages: 0, construction: 0, stolen: 0, tribute: 0, salary: 0, festivals: 0 });

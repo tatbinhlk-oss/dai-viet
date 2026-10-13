@@ -1,0 +1,26 @@
+{
+  "_note": "Màn mẫu M5: trấn thủ lộ Sơn Nam trên bản đồ phẳng với thị trấn mẫu. Năm 1..N: chiếu chỉ và sự kiện; mục tiêu = dân + ngưỡng 4 chỉ số. Trị an và Thịnh vượng khởi đầu 0 và cộng theo năm (yên ổn +2/+2/+5…, lãi +5…) nên ngưỡng màn đầu thấp.",
+  "key": "sonNam",
+  "name": "Lộ Sơn Nam",
+  "map": "flat",
+  "rank": 3,
+  "favor": 50,
+  "treasury": 10000,
+  "goals": { "population": 1000, "culture": 30, "prosperity": 15, "peace": 15, "favor": 55 },
+  "timeLimitYears": 10,
+  "milestoneYears": [2, 4, 6],
+  "edicts": [
+    { "year": 1, "type": "goods", "resource": "pottery", "amount": 6, "deadlineMonths": 18, "reward": 6 },
+    { "year": 2, "type": "money", "amount": 400, "deadlineMonths": 12, "reward": 5 },
+    { "year": 2, "type": "dike", "amount": 100, "height": 2, "deadlineMonths": 24, "reward": 10 },
+    { "year": 3, "type": "ritual", "building": "academy", "amount": 1, "deadlineMonths": 24, "reward": 6 },
+    { "year": 4, "type": "troops", "amount": 30, "deadlineMonths": 12, "reward": 8 },
+    { "year": 5, "type": "corvee", "amount": 2000, "deadlineMonths": 24, "reward": 6 },
+    { "year": 6, "type": "goods", "resource": "silk", "amount": 4, "deadlineMonths": 18, "reward": 8 }
+  ],
+  "events": [
+    { "year": 3, "kind": "rain" },
+    { "year": 5, "kind": "inspector" },
+    { "year": 7, "kind": "rain" }
+  ]
+}

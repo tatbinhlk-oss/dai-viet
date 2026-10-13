@@ -38,6 +38,23 @@ function applyService(s: GameState, f: Figure): void {
     case FigureType.Teacher: forHousesAround(s, f, (b) => { b.school = SERVICE_MAX; }); break;
     case FigureType.Healer: forHousesAround(s, f, (b) => { b.clinic = SERVICE_MAX; }); break;
     case FigureType.Actor: forHousesAround(s, f, (b) => { b.entertainment = SERVICE_MAX; }); break;
+    // M5
+    case FigureType.Academic: forHousesAround(s, f, (b) => { b.academy = SERVICE_MAX; }); break;
+    case FigureType.Puppeteer: forHousesAround(s, f, (b) => { b.entertainment = SERVICE_MAX; b.puppet = SERVICE_MAX; }); break;
+    case FigureType.TempleKeeper: {
+      const home = s.buildings[f.buildingId];
+      const altar = home.type === BuildingType.Altar;
+      forHousesAround(s, f, (b) => { if (altar) b.altar = SERVICE_MAX; else b.shrine = SERVICE_MAX; });
+      break;
+    }
+    case FigureType.Mandarin: {
+      // quan đi kiệu: +1 độ hấp dẫn tạm thời (8 ngày) trong 3×3 quanh đường đi
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        const x = f.x + dx, y = f.y + dy;
+        if (inBounds(x, y)) s.grid.prestige[gridOffset(x, y)] = 8;
+      }
+      break;
+    }
     case FigureType.TaxCollector: forHousesAround(s, f, (b) => { b.taxCoverage = economy.taxCoverageDays; }); break;
     case FigureType.MarketTrader: {
       const m = s.buildings[f.buildingId];
@@ -73,6 +90,7 @@ function applyService(s: GameState, f: Figure): void {
       forBuildingsAround(s, f, 1, (b) => {
         if (b.type !== BuildingType.House && b.type !== BuildingType.Ruins && b.type !== BuildingType.None && b.fireRisk <= economy.risk.fireThreshold) {
           b.fireRisk = economy.risk.fireThreshold + 1;
+          if (b.type !== BuildingType.WatchPost) s.ratings.destroyedThisYear++; // M5: Trị an −1 mỗi công trình bị phá (không tính lều, điếm canh)
         }
       });
       break;

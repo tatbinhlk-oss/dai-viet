@@ -56,6 +56,8 @@ export function InfoPanel() {
               <tr><td>Chùa</td><td>{svc.temple ? 'có' : '—'}</td><td>Thầy đồ</td><td>{svc.school ? 'có' : '—'}</td></tr>
               <tr><td>Thầy lang</td><td>{svc.clinic ? 'có' : '—'}</td><td>Hát chèo</td><td>{svc.entertainment ? 'có' : '—'}</td></tr>
               <tr><td>Chợ</td><td>{svc.market ? 'có' : '—'}</td><td>Thuế</td><td>{svc.tax ? 'đang thu' : 'chưa có lại'}</td></tr>
+              <tr><td>Trường học</td><td>{svc.academy ? 'có' : '—'}</td><td>Rối nước</td><td>{svc.puppet ? 'có' : '—'}</td></tr>
+              <tr><td>Đền</td><td>{svc.shrine ? 'có' : '—'}</td><td>Đàn tế</td><td>{svc.altar ? 'có' : '—'}</td></tr>
             </tbody>
           </table>
         </>

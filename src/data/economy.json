@@ -13,7 +13,8 @@
     "service": [3, 7, 15, 29, 44],
     "patrol": [0, 1, 3, 7, 15],
     "market": [2, 5, 10, 20, 30],
-    "temple": [3, 7, 10, 15, 20]
+    "temple": [3, 7, 10, 15, 20],
+    "mandarin": 16
   },
   "serviceMax": 96,
   "taxCoverageDays": 50,

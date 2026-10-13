@@ -76,8 +76,13 @@ const TYPE_COLORS: Partial<Record<BuildingType, [number, number, number]>> = {
   [BuildingType.LotusPond]: C(0x4a7a90, 0x3a6474, 0x70b0a0),
   [BuildingType.Ruins]: C(0x3a3430, 0x2a2420, 0x4a3a30),
   [BuildingType.Dock]: C(0x7a5a3a, 0x5e4630, 0x9a7a4a),
+  [BuildingType.Academy]: C(0xc8b090, 0xa89070, 0x6a3a2a),
+  [BuildingType.PuppetStage]: C(0x6a8aa0, 0x506a80, 0xa03a3a),
+  [BuildingType.Shrine]: C(0x9a5a4a, 0x7a4638, 0x3a6a8a),
+  [BuildingType.Altar]: C(0xa08a5a, 0x806e48, 0xd8b870),
+  [BuildingType.VanMieu]: C(0xd8c0a0, 0xb8a080, 0x8a2a2a),
 };
-const FLAT = new Set<BuildingType>([BuildingType.Paddy, BuildingType.VegGarden, BuildingType.CottonField, BuildingType.TeaHill, BuildingType.MulberryField, BuildingType.SaltPan, BuildingType.ClayPit, BuildingType.Garden, BuildingType.LotusPond, BuildingType.Ruins]);
+const FLAT = new Set<BuildingType>([BuildingType.Paddy, BuildingType.VegGarden, BuildingType.CottonField, BuildingType.TeaHill, BuildingType.MulberryField, BuildingType.SaltPan, BuildingType.ClayPit, BuildingType.Garden, BuildingType.LotusPond, BuildingType.Ruins, BuildingType.Altar]);
 const HEIGHT_BY_SIZE = [0, 10, 18, 26];
 function typeHeight(t: BuildingType, size: number, level: number): number {
   if (t === BuildingType.House) return 10 + Math.min(level, 10) * 1.5;

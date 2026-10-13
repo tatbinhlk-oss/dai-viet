@@ -1,7 +1,8 @@
 import { BUILDING_DEFS, BUILDING_KEYS } from '../sim/buildings/defs';
 import { BuildingType } from '../sim/state';
 import { GROUPS, TERRAIN_HINT } from './format';
-import { bridge, hoverText, openGroup, overlay, tool } from './store';
+import { bridge, hoverText, openGroup, overlay, tool, ui } from './store';
+import { RANK_NAMES } from '../sim/city/court';
 
 const byGroup = new Map<string, string[]>();
 for (const [key, t] of BUILDING_KEYS) {
@@ -22,6 +23,7 @@ function describe(key: string): string {
   if (d.workers) parts.push(`${d.workers} người làm`);
   if (TERRAIN_HINT[d.terrain]) parts.push(TERRAIN_HINT[d.terrain]);
   if (d.terrain === 'land') parts.push('phu đê từ đình làng tới đắp; đặt lại lên đoạn có sẵn để tôn cao');
+  if (d.rank > 0) parts.push(`cần phẩm hàm ${RANK_NAMES[d.rank]}`);
   return parts.join(' · ');
 }
 
@@ -44,6 +46,7 @@ export function BuildBar() {
           {(byGroup.get(g) ?? []).map((key) => (
             <button
               class={tool.value === key ? 'active' : ''}
+              disabled={BUILDING_DEFS[BUILDING_KEYS.get(key)!].rank > (ui.value?.city.court.rank ?? 0)}
               onClick={() => pick(key)}
               onMouseEnter={() => (hoverText.value = describe(key))}
             >

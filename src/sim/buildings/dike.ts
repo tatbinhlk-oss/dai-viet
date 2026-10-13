@@ -83,6 +83,7 @@ export function breachDike(s: GameState, b: Building): void {
   removeBuilding(s, b);
   sinkTile(s, o);
   s.flood.breachesThisYear++;
+  s.ratings.breachesThisYear++; // M5: Trị an
   s.flood.breachMoodPeriods = flood.consequences.breachMoodPeriods;
   s.events.push(`Vỡ đê tại (${b.x}, ${b.y})!`);
 }

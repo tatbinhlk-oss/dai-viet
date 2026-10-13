@@ -1,11 +1,12 @@
 // Lao động 9 ngành — city/labor.c của Julius.
 // Nhân công = 60% dân (trừ quan lại). Ngành có ưu tiên được lấp trước theo thứ tự; phần còn lại chia theo tỉ lệ nhu cầu.
 // Trong một ngành, mỗi công trình nhận cùng tỉ lệ phần trăm. Công trình chưa có người mộ phu thấy nhà thì không có người.
-import { BuildingType, LABOR_CATS, type GameState } from '../state';
+import { BuildingType, LABOR_CATS, LaborCat, type GameState } from '../state';
+import { corveePct } from './court';
 import { BUILDING_DEFS, economy, HOUSE_LEVELS } from '../buildings/defs';
 import { roadAccess } from '../buildings/spawn';
 
-export const LABOR_NAMES = ['Lương thực', 'Thủ công & buôn bán', 'Thợ cả', 'Nước', 'Tuần phòng', 'Quân sự', 'Giải trí', 'Y tế & giáo dục', 'Hành chính & tín ngưỡng'];
+export const LABOR_NAMES = ['Lương thực', 'Thủ công & buôn bán', 'Thợ cả', 'Nước', 'Tuần phòng', 'Quân sự', 'Giải trí', 'Y tế & giáo dục', 'Hành chính & tín ngưỡng', 'Lao dịch'];
 
 /** Mỗi ngày (tick 25). */
 export function updateLabor(s: GameState): void {
@@ -29,11 +30,17 @@ export function updateLabor(s: GameState): void {
 
   const alloc = new Array(LABOR_CATS).fill(0);
   let left = L.workforce;
+  // 0. M5: lao dịch theo chiếu chỉ rút trước, người chơi không chỉnh được
+  const corvee = Math.floor((L.workforce * corveePct(s)) / 100);
+  needed[LaborCat.Corvee] = corvee;
+  alloc[LaborCat.Corvee] = corvee;
+  left -= corvee;
+  s.court.corveeWorkers = corvee;
   // 1. ngành có ưu tiên, theo thứ tự 1 → 9
-  const prioritized = [...Array(LABOR_CATS).keys()].filter((c) => L.priority[c] > 0).sort((a, b) => L.priority[a] - L.priority[b]);
+  const prioritized = [...Array(LABOR_CATS).keys()].filter((c) => c !== LaborCat.Corvee && L.priority[c] > 0).sort((a, b) => L.priority[a] - L.priority[b]);
   for (const c of prioritized) { alloc[c] = Math.min(needed[c], left); left -= alloc[c]; }
   // 2. còn lại chia theo tỉ lệ
-  const rest = [...Array(LABOR_CATS).keys()].filter((c) => L.priority[c] === 0);
+  const rest = [...Array(LABOR_CATS).keys()].filter((c) => c !== LaborCat.Corvee && L.priority[c] === 0);
   const restNeed = rest.reduce((a, c) => a + needed[c], 0);
   if (restNeed <= left) for (const c of rest) { alloc[c] = needed[c]; left -= needed[c]; }
   else if (restNeed > 0) {

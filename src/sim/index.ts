@@ -16,6 +16,12 @@ import { paddyYield } from './flood/consequences';
 import { dikeSafety, workNeeded } from './buildings/dike';
 import { inFloodWatch, LEVEL_NAMES, SEASON_DAYS } from './flood/season';
 import { ticksPerTile } from './figures/movement';
+import { initCourt, giftCost, RANK_NAMES, SALARY, EDICT_TYPE_TEXT, storedLoads, draftablePopulation } from './city/court';
+import { initWorship, coverage, DEITY_NAMES, festivalCost, moodTarget, templeCount } from './city/worship';
+import { cultureBreakdown, initRatings, prosperityCap } from './city/ratings';
+import { currentRatings } from './scenario/victory';
+import { court as courtCfg } from './buildings/defs';
+import type { Edict, EdictState, EdictType, Goals, GameOver } from './state';
 
 export { tick, applyCommand, GRID_SIZE };
 export type { GameState, Command };
@@ -60,6 +66,11 @@ export function createSim(seed: number, terrain: TerrainOptions = {}): GameState
     lastYear: emptyLedger(),
     stockpile: new Array(RES_COUNT).fill(false),
     flood: { peak: 0, nextPeak: 0, forecast: 0, level: 0, dayInSeason: -1, breachMoodPeriods: 0, breachesThisYear: 0, dikesChanged: false, floodedTiles: 0 },
+    court: initCourt(0, courtCfg.favor.start),
+    worship: initWorship(),
+    ratings: initRatings(),
+    scenario: { key: 'sandbox', name: 'Tự do', goals: { population: 0, culture: 0, prosperity: 0, peace: 0, favor: 0 }, timeLimitYears: 0, milestoneYears: [] },
+    gameOver: '',
     events: [],
     dirty: new Set(),
   };
@@ -83,7 +94,7 @@ export interface BuildingInfo {
   missing: string | null;
   /** nhà: thiếu gì để GIỮ bậc hiện tại (sắp tụt) */
   devolving: string | null;
-  services: { water: number; dinh: number; temple: number; school: number; clinic: number; entertainment: number; market: number; tax: number };
+  services: { water: number; dinh: number; temple: number; school: number; clinic: number; entertainment: number; market: number; tax: number; academy: number; puppet: number; shrine: number; altar: number };
   workers: number;
   workersNeeded: number;
   laborAccess: boolean;
@@ -122,7 +133,7 @@ export function inspectBuilding(s: GameState, id: number): BuildingInfo | null {
     nextLevel: isHouse && b.level < MAX_HOUSE_LEVEL ? HOUSE_LEVELS[b.level + 1].name : null,
     missing: isHouse && b.level < MAX_HOUSE_LEVEL && b.population > 0 ? missingFor(s, b, b.level + 1) : null,
     devolving: isHouse && b.population > 0 ? missingFor(s, b, b.level) : null,
-    services: { water: b.water, dinh: b.dinh, temple: b.temple, school: b.school, clinic: b.clinic, entertainment: b.entertainment, market: b.marketAccess, tax: b.taxCoverage },
+    services: { water: b.water, dinh: b.dinh, temple: b.temple, school: b.school, clinic: b.clinic, entertainment: b.entertainment, market: b.marketAccess, tax: b.taxCoverage, academy: b.academy, puppet: b.puppet, shrine: b.shrine, altar: b.altar },
     workers: b.numWorkers, workersNeeded: def.workers,
     laborAccess: b.housesCovered > 0, roadAccess: roadAccess(s.grid, b) >= 0,
     progress: b.progress, progressMax: def.progressMax,
@@ -168,6 +179,35 @@ export interface CityStats {
   events: string[];
   /** M4: mùa lũ và đê */
   flood: FloodStats;
+  /** M5 */
+  ratings: RatingStats;
+  court: CourtStats;
+  worship: WorshipStats;
+  scenario: { key: string; name: string; goals: Goals; current: Goals; timeLimitYears: number; gameOver: GameOver };
+}
+
+export interface RatingStats {
+  culture: number; prosperity: number; prosperityCap: number; peace: number; health: number;
+  cultureBreakdown: { key: string; name: string; coverage: number; points: number; max: number }[];
+  yearsCalm: number;
+}
+export interface EdictInfo {
+  id: number; type: EdictType; typeText: string; title: string; state: EdictState; extended: boolean;
+  /** ngày còn lại tới hạn (hoặc −1) */
+  daysLeft: number; reward: number; amount: number; progress: number; corveePct: number;
+  /** có đủ điều kiện thi hành ngay (thuế vật/tiền/binh dịch) */
+  ready: boolean; have: number; need: number;
+}
+export interface CourtStats {
+  favor: number; rank: number; rankName: string; salaryLevel: number; salaryNames: string[]; salaryTable: number[];
+  personalFunds: number; tributeDue: number; tributePaid: boolean; tributeMissedYears: number;
+  giftsInWindow: number; giftCosts: number[]; giftFavor: number[];
+  edicts: EdictInfo[]; dismissalDays: number; graduates: number; corveeWorkers: number; corveePctOptions: number[];
+}
+export interface WorshipStats {
+  gods: { deity: number; name: string; mood: number; target: number; bolts: number; monthsSinceFestival: number; temples: number; coverage: number; blessings: number; wraths: number }[];
+  festivalCosts: number[];
+  healersOffDays: number; paddyFreezeDays: number; healthBonusMonths: number;
 }
 
 export interface FloodStats {
@@ -213,6 +253,29 @@ export function cityStats(s: GameState): CityStats {
     floodedTiles: F.floodedTiles, safety: dk.safety, dikesBuilt: dk.built, dikesPlanned: dk.planned,
     breachesThisYear: F.breachesThisYear, siltedPaddies, sluices,
   };
+  const C = s.court;
+  const edicts: EdictInfo[] = C.edicts.filter((e) => e.state !== 'coming' || e.deadlineDay === -2).map((e) => {
+    let have = 0, need = 0;
+    if (e.type === 'goods') { have = storedLoads(s, e.resource); need = e.amount; }
+    else if (e.type === 'money') { have = s.treasury; need = e.amount; }
+    else if (e.type === 'troops') { have = Math.min(draftablePopulation(s), storedLoads(s, Resource.Weapons) * courtCfg.troops.menPerWeaponLoad); need = e.amount; }
+    return {
+      id: e.id, type: e.type, typeText: EDICT_TYPE_TEXT[e.type], title: e.title, state: e.state, extended: e.extended,
+      daysLeft: e.state === 'active' ? e.deadlineDay - s.time.totalDays : -1, reward: e.reward, amount: e.amount, progress: e.progress, corveePct: e.corveePct,
+      ready: e.state === 'active' && need > 0 && have >= need, have, need,
+    };
+  });
+  const courtStats: CourtStats = {
+    favor: C.favor, rank: C.rank, rankName: RANK_NAMES[C.rank], salaryLevel: C.salaryLevel, salaryNames: RANK_NAMES, salaryTable: SALARY,
+    personalFunds: C.personalFunds, tributeDue: C.tributeDue, tributePaid: C.tributePaid, tributeMissedYears: C.tributeMissedYears,
+    giftsInWindow: C.giftsInWindow.length, giftCosts: [0, 1, 2].map((k) => giftCost(s, k)), giftFavor: courtCfg.gifts.favor,
+    edicts, dismissalDays: C.dismissalDay >= 0 ? C.dismissalDay - s.time.totalDays : -1, graduates: C.graduates, corveeWorkers: C.corveeWorkers, corveePctOptions: courtCfg.corvee.pctOptions,
+  };
+  const worshipStats: WorshipStats = {
+    gods: s.worship.gods.map((g, d) => ({ deity: d, name: DEITY_NAMES[d], mood: g.mood, target: moodTarget(s, d), bolts: g.bolts, monthsSinceFestival: g.monthsSinceFestival, temples: templeCount(s, d), coverage: coverage(s, d), blessings: g.blessings, wraths: g.wraths })),
+    festivalCosts: [0, 1, 2].map((k) => festivalCost(s, k)),
+    healersOffDays: s.worship.healersOffDays, paddyFreezeDays: s.worship.paddyFreezeDays, healthBonusMonths: s.worship.healthBonusMonths,
+  };
   return {
     sentiment: s.sentiment, lowMoodCause: s.lowMoodCause, taxRate: s.taxRate,
     workforce: s.labor.workforce, employed: s.labor.employed, unemploymentPct: s.labor.unemploymentPct,
@@ -223,6 +286,10 @@ export function cityStats(s: GameState): CityStats {
     estWages: monthlyWages(s),
     stored, stockpile: [...s.stockpile], houseLevels, events: [...s.events],
     flood: floodStats,
+    ratings: { culture: s.ratings.culture, prosperity: s.ratings.prosperity, prosperityCap: prosperityCap(s), peace: s.ratings.peace, health: s.ratings.health, cultureBreakdown: cultureBreakdown(s), yearsCalm: s.ratings.yearsCalm },
+    court: courtStats,
+    worship: worshipStats,
+    scenario: { key: s.scenario.key, name: s.scenario.name, goals: { ...s.scenario.goals }, current: currentRatings(s), timeLimitYears: s.scenario.timeLimitYears, gameOver: s.gameOver },
   };
 }
 

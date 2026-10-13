@@ -19,6 +19,8 @@ export function updateDesirability(s: GameState): void {
   // bãi bồi có đê che và cách sông ≤ 6 ô +10 tại ô ("nhà cạnh sông có đê")
   const g = s.grid;
   for (let o = 0; o < GRID_CELLS; o++) {
+    // M5: quan đi kiệu qua: +1 tạm thời, giảm dần theo ngày
+    if (g.prestige[o] > 0) { g.prestige[o]--; d[o] = Math.min(100, d[o] + 1); }
     const t = g.terrain[o];
     if (!(t & (T_FLOODED | T_SUNKEN | T_FLOODPLAIN))) continue;
     const x = offsetX(o), y = offsetY(o);

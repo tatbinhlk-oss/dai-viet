@@ -11,6 +11,12 @@ import { generateCriminals, updateSentiment } from './city/sentiment';
 import { updateFinance } from './city/finance';
 import { updateRisks } from './city/risk';
 import { updateFlood } from './flood/season';
+import { updateCourt } from './city/court';
+import { updateWorshipDaily, updateWorshipMonthly } from './city/worship';
+import { updateCulture, updateYearlyRatings } from './city/ratings';
+import { updateHealth } from './city/health';
+import { updateScenarioEvents } from './scenario/events';
+import { checkVictory } from './scenario/victory';
 
 const MAX_EVENTS = 8;
 
@@ -21,7 +27,7 @@ export function tick(s: GameState): void {
   const { day } = s.time;
   switch (s.time.tick) {
     case 0:
-      if (day === 0) { updateFinance(s); consumeGoods(s); } // theo tháng. M5: Ân sủng
+      if (day === 0) { updateFinance(s); consumeGoods(s); if (s.time.month === 0 && s.time.totalDays > 0) updateYearlyRatings(s); } // theo tháng; đầu năm: Thịnh vượng, Trị an (M5)
       if (day === 0 || day === 8) consumeFood(s);
       break;
     case 1: evolveHouses(s); break;
@@ -34,10 +40,13 @@ export function tick(s: GameState): void {
     case 23: if (day === 0) generateCriminals(s); break;
     case 25: updateLabor(s); break;
     case 26: updateFlood(s); break; // M4: mùa lũ, flood-fill, đê
+    case 27: updateScenarioEvents(s); updateCourt(s); updateWorshipDaily(s); if (day === 0) { updateWorshipMonthly(s); updateHealth(s); } break; // M5: triều đình, tín ngưỡng, sức khỏe
     case 43: updateRisks(s); break;
     case 49:
+      if (day === 0) updateCulture(s); // M5: Văn hiến theo tháng
+      checkVictory(s);
       if (s.events.length > MAX_EVENTS) s.events.splice(0, s.events.length - MAX_EVENTS);
-      break; // M5: city_ratings_update (theo tháng)
+      break;
     default: break;
   }
   advanceTime(s);
