@@ -1,0 +1,20 @@
+{
+  "_note": "Bảng nhà ở (thiết kế phần 2). Yêu cầu ở mỗi bậc là phần THÊM so với bậc trước; code cộng dồn. desirability: [giá trị, bước, Δ, tầm] nhà tỏa ra quanh mình. maxLevel: bậc cao nhất đang mở (M3 = 8; M5 mở 9–10).",
+  "_fire": "fire: cộng khi trúng 1/8 mỗi ngày, như Julius (lều 10, nhà vừa 5, nhà lớn 2; nhà trống 0)",
+  "maxLevel": 8,
+  "evolveAfterDays": 4,
+  "devolveAfterDays": 8,
+  "levels": [
+    { "name": "Lều trống", "tier": 0, "capacity": 5, "tax": 0, "fire": 0, "desirability": null, "needs": {} },
+    { "name": "Lều tranh", "tier": 0, "capacity": 5, "tax": 1, "fire": 8, "desirability": [-1, 1, 1, 1], "needs": {} },
+    { "name": "Nhà tranh vách đất", "tier": 0, "capacity": 8, "tax": 1, "fire": 8, "desirability": [-1, 1, 1, 1], "needs": { "water": 1 } },
+    { "name": "Nhà tranh", "tier": 0, "capacity": 11, "tax": 1, "fire": 5, "desirability": null, "needs": { "foodTypes": 1 } },
+    { "name": "Nhà gỗ lợp lá", "tier": 0, "capacity": 14, "tax": 2, "fire": 5, "desirability": null, "needs": { "dinh": true, "desirability": 5 } },
+    { "name": "Nhà gỗ lợp ngói", "tier": 0, "capacity": 17, "tax": 2, "fire": 5, "desirability": [1, 1, -1, 1], "needs": { "goods": ["pottery"], "foodTypes": 2, "temple": true, "desirability": 12 } },
+    { "name": "Nhà ba gian", "tier": 1, "capacity": 20, "tax": 3, "fire": 5, "desirability": [1, 1, -1, 1], "needs": { "school": true, "clinic": true, "goods": ["salt"], "desirability": 20 } },
+    { "name": "Nhà ngói năm gian", "tier": 1, "capacity": 24, "tax": 4, "fire": 2, "desirability": [2, 1, -1, 2], "needs": { "goods": ["cloth"], "water": 2, "entertainment": true, "desirability": 30 } },
+    { "name": "Nhà phố bán hàng", "tier": 1, "capacity": 28, "tax": 5, "fire": 2, "desirability": [3, 1, -1, 2], "needs": { "foodTypes": 3, "goods": ["tea"], "market": true, "desirability": 40 } },
+    { "name": "Tư dinh", "tier": 2, "capacity": 40, "tax": 9, "fire": 2, "desirability": [4, 1, -1, 3], "needs": { "goods": ["silk"], "desirability": 55 } },
+    { "name": "Phủ đệ", "tier": 2, "capacity": 90, "tax": 14, "fire": 2, "desirability": [5, 1, -1, 3], "needs": { "goods": ["bronze"], "desirability": 70 } }
+  ]
+}

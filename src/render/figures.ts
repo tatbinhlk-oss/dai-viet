@@ -4,13 +4,31 @@ import { FIG_STRIDE } from '../sim';
 import { FigureType, TICKS_PER_TILE } from '../sim/state';
 import { HALF_H, tileToWorld } from './iso';
 
-const FIG_COLOR: Record<number, number> = {
+// màu áo theo loại walker (placeholder trước khi có sprite)
+const FIG_COLOR: Partial<Record<FigureType, number>> = {
   [FigureType.DinhRoamer]: 0xf0e0a0,
   [FigureType.MarketTrader]: 0xe07050,
   [FigureType.MarketBuyer]: 0xd0a040,
   [FigureType.CartPusher]: 0x6a4a2a,
   [FigureType.Immigrant]: 0x80c0e0,
+  [FigureType.Emigrant]: 0x8090a0,
+  [FigureType.LaborSeeker]: 0xb0b0b0,
+  [FigureType.Monk]: 0xe8a030,
+  [FigureType.Teacher]: 0x4a6aa0,
+  [FigureType.Healer]: 0x5aa070,
+  [FigureType.WellKeeper]: 0x60a0d0,
+  [FigureType.Actor]: 0xd04080,
+  [FigureType.Watchman]: 0xc03020,
+  [FigureType.Builder]: 0x3a5a9a,
+  [FigureType.TaxCollector]: 0x202020,
+  [FigureType.Warehouseman]: 0x8a6a4a,
+  [FigureType.Protester]: 0xe0e040,
+  [FigureType.Thief]: 0x402040,
+  [FigureType.Rioter]: 0xff2010,
 };
+// màu kiện hàng trên xe bò / quang gánh, theo Resource
+const RES_COLOR = [0, 0xf0f0d8, 0x80a8c0, 0x60b040, 0xd08080, 0xa06040, 0xc07040, 0xffffff, 0xf0f0f0, 0x6080c0, 0x4a8a30, 0x8a6a30, 0xf0e8c0, 0xe8c840, 0xb87040, 0xc89040, 0x707078, 0x9090a0, 0x8a5a2a];
+const isCarrier = (t: number) => t === FigureType.CartPusher || t === FigureType.Warehouseman;
 
 export class FigureLayer {
   readonly container = new Container();
@@ -18,6 +36,7 @@ export class FigureLayer {
   private target = new Float32Array(0); // [x, y] × n (pixel thế giới)
   private shown = new Float32Array(0);
   private types = new Int16Array(0);
+  private res = new Int16Array(0);
   private count = 0;
 
   setSnapshot(figs: Int16Array): void {
@@ -27,6 +46,7 @@ export class FigureLayer {
       t.set(this.target); s.set(this.shown);
       this.target = t; this.shown = s;
       this.types = new Int16Array(n);
+      this.res = new Int16Array(n);
     }
     for (let i = 0; i < n; i++) {
       const k = i * FIG_STRIDE;
@@ -40,6 +60,7 @@ export class FigureLayer {
       }
       this.target[i * 2] = wx; this.target[i * 2 + 1] = wy;
       this.types[i] = figs[k + 5];
+      this.res[i] = figs[k + 6];
     }
     this.count = n;
     while (this.pool.length < n) {
@@ -50,15 +71,20 @@ export class FigureLayer {
     for (let i = 0; i < this.pool.length; i++) {
       const g = this.pool[i];
       g.visible = i < n;
-      if (i < n && (g as unknown as { _t?: number })._t !== this.types[i]) {
-        (g as unknown as { _t?: number })._t = this.types[i];
-        g.clear();
-        const t = this.types[i];
-        if (t === FigureType.CartPusher) {
-          g.rect(-7, -10, 14, 8).fill(FIG_COLOR[t]).rect(-5, -4, 10, 3).fill(0xd8c080);
-        } else {
-          g.circle(0, -6, 4).fill(FIG_COLOR[t] ?? 0xffffff).rect(-2, -3, 4, 6).fill(0x2a2a2a);
-        }
+      if (i >= n) continue;
+      const key = this.types[i] * 64 + this.res[i]; // vẽ lại khi đổi loại hoặc đổi hàng đang chở
+      const gg = g as unknown as { _k?: number };
+      if (gg._k === key) continue;
+      gg._k = key;
+      g.clear();
+      const t = this.types[i];
+      const color = FIG_COLOR[t as FigureType] ?? 0xffffff;
+      if (isCarrier(t)) {
+        g.rect(-7, -10, 14, 8).fill(color);
+        if (this.res[i]) g.rect(-5, -14, 10, 5).fill(RES_COLOR[this.res[i]] ?? 0xffffff);
+      } else {
+        g.circle(0, -6, 4).fill(color).rect(-2, -3, 4, 6).fill(0x2a2a2a);
+        if (t === FigureType.MarketBuyer) g.rect(-7, -8, 3, 3).fill(0xd8c080).rect(4, -8, 3, 3).fill(0xd8c080);
       }
     }
   }

@@ -2,10 +2,15 @@
 import { createRng } from './rng';
 import { createGrid, GRID_SIZE, gridOffset, T_WATER } from './map/grid';
 import { generateTerrain, type TerrainOptions } from './map/terrain';
-import { BuildingType, FigureType, type GameState } from './state';
-import { newBuilding } from './state';
+import { BuildingType, emptyLedger, FigureType, LABOR_CATS, RES_COUNT, Resource, type Ledger, type MoodCause } from './state';
+import { newBuilding, type GameState } from './state';
 import { tick } from './tick';
 import { applyCommand, type Command } from './commands';
+import { BUILDING_DEFS, economy, HOUSE_LEVELS, MAX_HOUSE_LEVEL, RESOURCES } from './buildings/defs';
+import { missingFor } from './buildings/house';
+import { pctWorkers } from './buildings/industry';
+import { roadAccess } from './buildings/spawn';
+import { monthlyTaxBase, monthlyWages } from './city/finance';
 
 export { tick, applyCommand, GRID_SIZE };
 export type { GameState, Command };
@@ -14,7 +19,6 @@ export function createSim(seed: number, terrain: TerrainOptions = {}): GameState
   const rng = createRng(seed);
   const grid = createGrid();
   generateTerrain(grid, rng, terrain);
-  // cửa ngõ: ô đất đầu tiên ở mép trái tính từ giữa
   // cửa ngõ: ô đất gần mép trái nhất, ưu tiên hàng giữa; sông ở mép thì lùi vào trong
   let entry = gridOffset(0, GRID_SIZE / 2);
   outer: for (let x = 0; x < GRID_SIZE; x++) {
@@ -30,20 +34,131 @@ export function createSim(seed: number, terrain: TerrainOptions = {}): GameState
     time: { tick: 0, day: 0, month: 0, year: 0, totalDays: 0 },
     grid,
     buildings: [newBuilding(0, BuildingType.None, 0, 0, 0)],
-    figures: [{ id: 0, type: FigureType.None, mode: 0, x: 0, y: 0, nx: 0, ny: 0, progress: 0, prevOffset: -1, path: new Int32Array(0), pathIdx: 0, buildingId: 0, destBuildingId: 0, roamLength: 0, maxRoamLength: 0, returning: false, loads: 0, waitTicks: 0 }],
+    figures: [{ id: 0, type: FigureType.None, mode: 0, x: 0, y: 0, nx: 0, ny: 0, progress: 0, prevOffset: -1, path: new Int32Array(0), pathIdx: 0, buildingId: 0, destBuildingId: 0, roamLength: 0, maxRoamLength: 0, returning: false, resource: Resource.None, loads: 0, cargo: [], waitTicks: 0 }],
     freeFigures: [],
     entryOffset: entry,
     speed: 1,
-    treasury: 5000,
+    treasury: economy.startTreasury,
     population: 0,
     housingCapacity: 0,
     migrationCooldown: 0,
+    migrationQuota: 0,
+    taxRate: economy.defaultTaxRate,
+    sentiment: economy.sentiment.start,
+    lowMoodCause: 'none',
+    labor: {
+      workforce: 0, employed: 0, unemploymentPct: 0,
+      priority: new Array(LABOR_CATS).fill(0), needed: new Array(LABOR_CATS).fill(0), allocated: new Array(LABOR_CATS).fill(0),
+    },
+    thisYear: emptyLedger(),
+    lastYear: emptyLedger(),
+    stockpile: new Array(RES_COUNT).fill(false),
+    events: [],
     dirty: new Set(),
   };
 }
 
-/** Thông tin một ô cho UI hover. */
-export interface TileInfo { type: BuildingType; level: number; population: number; food: number; stock: number; progress: number }
+/** Thông tin công trình cho bảng chi tiết. */
+export interface BuildingInfo {
+  id: number;
+  type: BuildingType;
+  name: string;
+  isHouse: boolean;
+  level: number;
+  population: number;
+  capacity: number;
+  happiness: number;
+  /** nhà: thiếu gì để lên bậc kế; null = đang chờ lên / đã tối đa */
+  nextLevel: string | null;
+  missing: string | null;
+  /** nhà: thiếu gì để GIỮ bậc hiện tại (sắp tụt) */
+  devolving: string | null;
+  services: { water: number; dinh: number; temple: number; school: number; clinic: number; entertainment: number; market: number; tax: number };
+  workers: number;
+  workersNeeded: number;
+  laborAccess: boolean;
+  roadAccess: boolean;
+  progress: number;
+  progressMax: number;
+  store: { resource: Resource; name: string; units: number }[];
+  policy: number[] | null;
+  fireRisk: number;
+  damageRisk: number;
+}
+
+export function inspectBuilding(s: GameState, id: number): BuildingInfo | null {
+  const b = s.buildings[id];
+  if (!b || b.type === BuildingType.None) return null;
+  const def = BUILDING_DEFS[b.type];
+  const isHouse = b.type === BuildingType.House;
+  const lvl = HOUSE_LEVELS[b.level];
+  const store: BuildingInfo['store'] = [];
+  for (let r = 1; r < RES_COUNT; r++) if (b.store[r] > 0) store.push({ resource: r, name: RESOURCES[r].name, units: b.store[r] });
+  return {
+    id, type: b.type,
+    name: isHouse ? lvl.name : def.name,
+    isHouse, level: b.level, population: b.population,
+    capacity: isHouse ? HOUSE_LEVELS[Math.max(1, b.level)].capacity : 0,
+    happiness: b.happiness,
+    nextLevel: isHouse && b.level < MAX_HOUSE_LEVEL ? HOUSE_LEVELS[b.level + 1].name : null,
+    missing: isHouse && b.level < MAX_HOUSE_LEVEL && b.population > 0 ? missingFor(s, b, b.level + 1) : null,
+    devolving: isHouse && b.population > 0 ? missingFor(s, b, b.level) : null,
+    services: { water: b.water, dinh: b.dinh, temple: b.temple, school: b.school, clinic: b.clinic, entertainment: b.entertainment, market: b.marketAccess, tax: b.taxCoverage },
+    workers: b.numWorkers, workersNeeded: def.workers,
+    laborAccess: b.housesCovered > 0, roadAccess: roadAccess(s.grid, b) >= 0,
+    progress: b.progress, progressMax: def.progressMax,
+    store,
+    policy: b.type === BuildingType.Warehouse || b.type === BuildingType.Granary ? [...b.policy] : null,
+    fireRisk: b.fireRisk, damageRisk: b.damageRisk,
+  };
+}
+
+export const buildingIdAt = (s: GameState, x: number, y: number): number =>
+  x >= 0 && y >= 0 && x < GRID_SIZE && y < GRID_SIZE ? s.grid.buildingId[gridOffset(x, y)] : 0;
+
+/** Số liệu thành phố cho thanh trên và bảng cố vấn. */
+export interface CityStats {
+  sentiment: number;
+  lowMoodCause: MoodCause;
+  taxRate: number;
+  workforce: number;
+  employed: number;
+  unemploymentPct: number;
+  laborPriority: number[];
+  laborNeeded: number[];
+  laborAllocated: number[];
+  thisYear: Ledger;
+  lastYear: Ledger;
+  /** ước tính tháng tới */
+  estTaxes: number;
+  estUncollected: number;
+  estWages: number;
+  /** tổng hàng trong vựa + kho, đơn vị */
+  stored: number[];
+  stockpile: boolean[];
+  houseLevels: number[]; // số nhà theo bậc 0..10
+  events: string[];
+}
+
+export function cityStats(s: GameState): CityStats {
+  const stored = new Array(RES_COUNT).fill(0);
+  const houseLevels = new Array(HOUSE_LEVELS.length).fill(0);
+  for (const b of s.buildings) {
+    if (b.type === BuildingType.Granary || b.type === BuildingType.Warehouse) for (let r = 1; r < RES_COUNT; r++) stored[r] += b.store[r];
+    else if (b.type === BuildingType.House && b.population > 0) houseLevels[b.level]++;
+  }
+  const base = monthlyTaxBase(s);
+  return {
+    sentiment: s.sentiment, lowMoodCause: s.lowMoodCause, taxRate: s.taxRate,
+    workforce: s.labor.workforce, employed: s.labor.employed, unemploymentPct: s.labor.unemploymentPct,
+    laborPriority: [...s.labor.priority], laborNeeded: [...s.labor.needed], laborAllocated: [...s.labor.allocated],
+    thisYear: { ...s.thisYear }, lastYear: { ...s.lastYear },
+    estTaxes: Math.floor((base.covered * s.taxRate) / 100),
+    estUncollected: Math.floor((base.uncovered * s.taxRate) / 100),
+    estWages: monthlyWages(s),
+    stored, stockpile: [...s.stockpile], houseLevels, events: [...s.events],
+  };
+}
 
 /** Snapshot gửi sang render. Lưới gửi trọn lần đầu, sau đó chỉ ô đã đổi; figure gửi mỗi lần. */
 export interface Snapshot {
@@ -52,15 +167,17 @@ export interface Snapshot {
   treasury: number;
   population: number;
   housingCapacity: number;
+  city: CityStats;
+  selected: BuildingInfo | null;
   full?: { terrain: Uint16Array; elevation: Uint8Array; bType: Uint8Array; bLevel: Uint8Array };
   changed?: { offsets: Uint32Array; terrain: Uint16Array; bType: Uint8Array; bLevel: Uint8Array };
-  /** [x, y, nx, ny, progress, type] × n */
+  /** [x, y, nx, ny, progress, type, resource] × n */
   figures: Int16Array;
 }
 
-export const FIG_STRIDE = 6;
+export const FIG_STRIDE = 7;
 
-export function takeSnapshot(s: GameState, full: boolean): Snapshot {
+export function takeSnapshot(s: GameState, full: boolean, selectedId = 0): Snapshot {
   let n = 0;
   for (const f of s.figures) if (f.type !== FigureType.None) n++;
   const figures = new Int16Array(n * FIG_STRIDE);
@@ -68,6 +185,7 @@ export function takeSnapshot(s: GameState, full: boolean): Snapshot {
   for (const f of s.figures) {
     if (f.type === FigureType.None) continue;
     figures[k++] = f.x; figures[k++] = f.y; figures[k++] = f.nx; figures[k++] = f.ny; figures[k++] = f.progress; figures[k++] = f.type;
+    figures[k++] = f.loads > 0 ? f.resource : 0;
   }
   const snap: Snapshot = {
     time: { ...s.time },
@@ -75,6 +193,8 @@ export function takeSnapshot(s: GameState, full: boolean): Snapshot {
     treasury: s.treasury,
     population: s.population,
     housingCapacity: s.housingCapacity,
+    city: cityStats(s),
+    selected: selectedId ? inspectBuilding(s, selectedId) : null,
     figures,
   };
   const g = s.grid;
@@ -91,9 +211,4 @@ export function takeSnapshot(s: GameState, full: boolean): Snapshot {
   return snap;
 }
 
-export function tileInfo(s: GameState, x: number, y: number): TileInfo | null {
-  const id = s.grid.buildingId[gridOffset(x, y)];
-  if (!id) return null;
-  const b = s.buildings[id];
-  return { type: b.type, level: b.level, population: b.population, food: b.food, stock: b.stock, progress: b.progress };
-}
+export { pctWorkers };

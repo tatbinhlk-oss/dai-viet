@@ -1,5 +1,5 @@
 // Mảng figure cố định, tái dùng slot — như figure/figure.c của Julius.
-import { FigureMode, FigureType, type Figure, type GameState } from '../state';
+import { FigureMode, FigureType, Resource, type Figure, type GameState } from '../state';
 import { offsetX, offsetY } from '../map/grid';
 
 export const MAX_FIGURES = 1000;
@@ -15,7 +15,7 @@ export function createFigure(s: GameState, type: FigureType, offset: number, bui
     x, y, nx: x, ny: y, progress: 0, prevOffset: -1,
     path: new Int32Array(0), pathIdx: 0,
     buildingId, destBuildingId: 0,
-    roamLength: 0, maxRoamLength: 0, returning: false, loads: 0, waitTicks: 0,
+    roamLength: 0, maxRoamLength: 0, returning: false, resource: Resource.None, loads: 0, cargo: [], waitTicks: 0,
   };
   s.figures[id] = f;
   return f;
@@ -28,6 +28,7 @@ export function removeFigure(s: GameState, id: number): void {
   if (b) {
     if (b.figureId === id) b.figureId = 0;
     if (b.figureId2 === id) b.figureId2 = 0;
+    if (b.laborSeekerId === id) b.laborSeekerId = 0;
   }
   f.type = FigureType.None;
   f.mode = FigureMode.Idle;

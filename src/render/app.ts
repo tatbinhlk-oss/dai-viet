@@ -14,6 +14,8 @@ export interface RenderApp {
   ghostSize: number;
   applySnapshot(snap: Snapshot): void;
   tileBuilding(x: number, y: number): { type: number; level: number } | null;
+  /** đưa camera tới ô (x, y) */
+  lookAt(x: number, y: number): void;
   destroy(): void;
 }
 
@@ -135,6 +137,11 @@ export async function createRenderApp(canvas: HTMLCanvasElement): Promise<Render
       figures.setSnapshot(snap.figures);
     },
     tileBuilding: (x, y) => chunks.buildingAt(x, y),
+    lookAt(x, y) {
+      const p = tileToWorld(x, y);
+      camera.x = p.wx; camera.y = p.wy;
+      applyCamera();
+    },
     destroy() { app.destroy(); },
   };
   return result;

@@ -1,7 +1,7 @@
 // Cổng M2: làng tự vận hành — dân đến, ruộng → xe bò → vựa → chợ → nhà, nhà lên bậc.
 import { describe, expect, it } from 'vitest';
 import { applyCommand, createSim, tick } from '../src/sim';
-import { BuildingType, FigureType, type GameState } from '../src/sim/state';
+import { BuildingType, FigureType, Resource, type GameState } from '../src/sim/state';
 import { DAYS_PER_MONTH, MONTHS_PER_YEAR, TICKS_PER_DAY } from '../src/sim/state';
 import { gridOffset, T_ROAD } from '../src/sim/map/grid';
 
@@ -12,7 +12,7 @@ const TICKS_PER_YEAR = TICKS_PER_DAY * DAYS_PER_MONTH * MONTHS_PER_YEAR;
  *  - trục đường từ cửa ngõ (0,80) sang phải tới x=60, cộng hai đường ngang y=76 và y=84
  *  - 30 nhà dọc hai bên y=77 và y=83, ruộng 2×2 ở phía nam, vựa/chợ/giếng/đình ở giữa
  */
-function buildVillage(s: GameState): void {
+export function buildVillage(s: GameState): void {
   const road = (x: number, y: number) => applyCommand(s, { type: 'build', kind: 'road', x, y });
   for (let x = 4; x <= 60; x++) road(x, 80);
   for (let x = 20; x <= 60; x++) { road(x, 76); road(x, 84); }
@@ -31,6 +31,13 @@ function buildVillage(s: GameState): void {
   applyCommand(s, { type: 'build', kind: 'market', x: 34, y: 77 });
   applyCommand(s, { type: 'build', kind: 'market', x: 50, y: 77 });
   applyCommand(s, { type: 'build', kind: 'granary', x: 44, y: 77 });
+  // M3: không có tuần đinh / thợ cả thì nhà cháy và sập
+  for (const x of [24, 56]) applyCommand(s, { type: 'build', kind: 'watchPost', x, y: 77 });
+  for (const x of [26, 54]) applyCommand(s, { type: 'build', kind: 'builderPost', x, y: 77 });
+  // M3: có lao động thì cần đủ việc làm — thêm vườn rau (loại lương thực thứ 2), chợ thứ 3, nha môn
+  for (const x of [37, 41, 47]) applyCommand(s, { type: 'build', kind: 'vegGarden', x, y: 77 });
+  applyCommand(s, { type: 'build', kind: 'market', x: 21, y: 77 });
+  applyCommand(s, { type: 'build', kind: 'yamen', x: 57, y: 77 });
   // ruộng 2×2 kề đường y=84 từ phía nam: y=85..86 chỗ không có nhà → dùng hàng y=81..82 kề đường 84 từ phía bắc
   for (let x = 22; x <= 58; x += 3) {
     if (x >= 39 && x <= 41) continue;
@@ -49,7 +56,9 @@ describe('làng M2 (bản đồ phẳng)', () => {
     expect(count(s, BuildingType.House)).toBe(30);
     expect(count(s, BuildingType.Paddy)).toBeGreaterThanOrEqual(8);
     expect(count(s, BuildingType.Granary)).toBe(1);
-    expect(count(s, BuildingType.Market)).toBe(2);
+    expect(count(s, BuildingType.Market)).toBe(3);
+    expect(count(s, BuildingType.VegGarden)).toBe(3);
+    expect(count(s, BuildingType.Yamen)).toBe(1);
     expect(s.grid.terrain[gridOffset(4, 80)] & T_ROAD).toBeTruthy();
   });
 
@@ -75,9 +84,9 @@ describe('làng M2 (bản đồ phẳng)', () => {
     const houses = s.buildings.filter((b) => b.type === BuildingType.House);
     const avgLevel = houses.reduce((a, b) => a + b.level, 0) / houses.length;
     const granary = s.buildings.find((b) => b.type === BuildingType.Granary)!;
-    const fed = houses.filter((h) => h.food > 0).length;
+    const fed = houses.filter((h) => h.store[Resource.Rice] > 0).length;
     // eslint-disable-next-line no-console
-    console.log({ population: s.population, capacity: s.housingCapacity, avgLevel: avgLevel.toFixed(2), granary: granary.stock, fed, maxFigures, cartsSeen, tradersSeen, ms: Math.round(ms) });
+    console.log({ population: s.population, capacity: s.housingCapacity, avgLevel: avgLevel.toFixed(2), granary: granary.store[Resource.Rice], employed: s.labor.employed, workforce: s.labor.workforce, sentiment: s.sentiment, treasury: s.treasury, fed, maxFigures, cartsSeen, tradersSeen, ms: Math.round(ms) });
     expect(s.population).toBeGreaterThanOrEqual(300);
     expect(cartsSeen).toBeGreaterThan(0);
     expect(tradersSeen).toBeGreaterThan(0);
@@ -105,6 +114,6 @@ describe('làng M2 (bản đồ phẳng)', () => {
     buildVillage(a); buildVillage(b);
     for (let i = 0; i < TICKS_PER_YEAR; i++) { tick(a); tick(b); }
     expect(a.population).toBe(b.population);
-    expect(a.buildings.map((x) => x.level + ':' + x.population + ':' + x.stock)).toEqual(b.buildings.map((x) => x.level + ':' + x.population + ':' + x.stock));
+    expect(a.buildings.map((x) => x.level + ':' + x.population + ':' + x.store.join(','))).toEqual(b.buildings.map((x) => x.level + ':' + x.population + ':' + x.store.join(',')));
   });
 });

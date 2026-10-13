@@ -2,14 +2,14 @@
 // cứ `step` vòng thì cộng `delta` (tiến về 0), tới `range` vòng.
 import { BuildingType, type GameState } from '../state';
 import { gridOffset, inBounds } from './grid';
-import { BUILDING_DEFS } from '../buildings/defs';
+import { BUILDING_DEFS, HOUSE_LEVELS } from '../buildings/defs';
 
 export function updateDesirability(s: GameState): void {
   const d = s.grid.desirability;
   d.fill(0);
   for (const b of s.buildings) {
     if (b.type === BuildingType.None) continue;
-    const des = BUILDING_DEFS[b.type].desirability;
+    const des = b.type === BuildingType.House ? HOUSE_LEVELS[b.level].desirability : BUILDING_DEFS[b.type].desirability;
     if (!des) continue;
     addRings(d, b.x, b.y, b.size, des.value, des.step, des.delta, des.range);
   }

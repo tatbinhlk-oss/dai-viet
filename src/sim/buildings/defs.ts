@@ -1,49 +1,156 @@
-// Bảng công trình M2. Số liệu lấy từ tài liệu thiết kế (phần 2, 4, 7); đổi ở đây, không đổi trong code logic.
-import { BuildingType } from '../state';
+// Nạp bảng số từ src/data/*.json và đổi sang kiểu có enum. Chỉnh cân bằng ở JSON, không ở đây.
+// File này kiểm tra dữ liệu ngay khi nạp: thiếu khóa hay sai tên là ném lỗi (test bắt được).
+import buildingsJson from '../../data/buildings.json';
+import housesJson from '../../data/houses.json';
+import economyJson from '../../data/economy.json';
+import resourcesJson from '../../data/resources.json';
+import { BuildingType, FigureType, LaborCat, Resource, RES_COUNT } from '../state';
 
+const lowerFirst = (s: string) => s[0].toLowerCase() + s.slice(1);
+function enumKeys<T extends Record<string, string | number>>(e: T): Map<string, number> {
+  const m = new Map<string, number>();
+  for (const k of Object.keys(e)) if (isNaN(Number(k))) m.set(lowerFirst(k), e[k] as number);
+  return m;
+}
+const FIGURE_KEYS = enumKeys(FigureType);
+const LABOR_KEYS = enumKeys(LaborCat);
+export const BUILDING_KEYS = enumKeys(BuildingType); // 'paddy' → BuildingType.Paddy
+
+// ---------- tài nguyên ----------
+
+export type ResourceKind = 'none' | 'food' | 'raw' | 'good' | 'material';
+export interface ResourceDef { key: string; name: string; kind: ResourceKind }
+export const RESOURCES: ResourceDef[] = resourcesJson.list as ResourceDef[];
+if (RESOURCES.length !== RES_COUNT) throw new Error(`resources.json có ${RESOURCES.length} loại, enum có ${RES_COUNT}`);
+const RES_KEYS = new Map(RESOURCES.map((r, i) => [r.key, i]));
+function res(key: string | undefined): Resource {
+  if (!key) return Resource.None;
+  const r = RES_KEYS.get(key);
+  if (r === undefined) throw new Error(`Không có tài nguyên "${key}"`);
+  return r;
+}
+export const GOODS: Resource[] = RESOURCES.map((_, i) => i).filter((i) => RESOURCES[i].kind === 'good');
+
+// ---------- công trình ----------
+
+export type TerrainRule = 'any' | 'floodplain' | 'highland' | 'mountain' | 'shore';
+export interface Desirability { value: number; step: number; delta: number; range: number }
+export interface WalkerDef { figure: FigureType; roam: number; delays: number[] }
 export interface BuildingDef {
+  key: string;
   name: string;
+  group: string;
   size: number;
   cost: number;
-  needsFloodplain: boolean; // ruộng lúa
-  // độ hấp dẫn: giá trị tại vòng 1, mỗi `step` vòng cộng thêm `delta`, tới `range` vòng
-  desirability: { value: number; step: number; delta: number; range: number } | null;
-  spawnsRoamer: boolean;
-  maxRoam: number;
+  workers: number;
+  labor: LaborCat | -1;
+  terrain: TerrainRule;
+  produces: Resource;
+  input: Resource;
+  progressMax: number;
+  fire: number;
+  damage: number;
+  desirability: Desirability | null;
+  walker: WalkerDef | null;
+  waterLevel: number;
+  waterRange: number;
 }
 
-export const BUILDING_DEFS: Record<BuildingType, BuildingDef> = {
-  [BuildingType.None]: { name: '', size: 0, cost: 0, needsFloodplain: false, desirability: null, spawnsRoamer: false, maxRoam: 0 },
-  [BuildingType.House]: { name: 'Nhà', size: 1, cost: 10, needsFloodplain: false, desirability: null, spawnsRoamer: false, maxRoam: 0 },
-  [BuildingType.Paddy]: { name: 'Ruộng lúa', size: 2, cost: 40, needsFloodplain: true, desirability: null, spawnsRoamer: false, maxRoam: 0 },
-  [BuildingType.Granary]: { name: 'Vựa thóc', size: 3, cost: 100, needsFloodplain: false, desirability: { value: -4, step: 1, delta: 1, range: 3 }, spawnsRoamer: false, maxRoam: 0 },
-  [BuildingType.Market]: { name: 'Chợ', size: 2, cost: 50, needsFloodplain: false, desirability: { value: -2, step: 1, delta: 1, range: 3 }, spawnsRoamer: true, maxRoam: 192 },
-  [BuildingType.Well]: { name: 'Giếng', size: 1, cost: 15, needsFloodplain: false, desirability: { value: 4, step: 1, delta: -1, range: 4 }, spawnsRoamer: false, maxRoam: 0 },
-  [BuildingType.Dinh]: { name: 'Đình làng', size: 2, cost: 120, needsFloodplain: false, desirability: { value: 8, step: 2, delta: -2, range: 6 }, spawnsRoamer: true, maxRoam: 96 },
-};
+interface RawBuilding {
+  name: string; group: string; size: number; cost: number; workers: number; labor?: string; terrain?: string;
+  produces?: string; input?: string; progressMax?: number; fire: number; damage: number;
+  desirability?: number[]; walker?: { figure: string; roam: number; delays: string }; waterLevel?: number; waterRange?: number;
+}
 
-/** Tên và sức chứa nhà theo bậc (1×1). Bậc 0 = lều trống. */
-export const HOUSE_LEVELS = [
-  { name: 'Lều trống', capacity: 5 },
-  { name: 'Lều tranh', capacity: 5 },
-  { name: 'Nhà tranh', capacity: 8 },
-  { name: 'Nhà đất', capacity: 12 },
-  { name: 'Nhà gỗ', capacity: 16 },
-  { name: 'Nhà gạch', capacity: 20 },
-];
-export const MAX_HOUSE_LEVEL = 5;
+export const economy = economyJson;
+const DELAYS = economy.spawnDelays as unknown as Record<string, number[]>;
 
-export const WELL_RANGE = 2; // ô, mỗi phía
+const desir = (a: number[] | null | undefined): Desirability | null => (a ? { value: a[0], step: a[1], delta: a[2], range: a[3] } : null);
+
+function toDef(key: string, r: RawBuilding): BuildingDef {
+  let labor: LaborCat | -1 = -1;
+  if (r.labor) {
+    const l = LABOR_KEYS.get(r.labor);
+    if (l === undefined) throw new Error(`${key}: ngành lao động "${r.labor}" không có`);
+    labor = l;
+  }
+  let walker: WalkerDef | null = null;
+  if (r.walker) {
+    const f = FIGURE_KEYS.get(r.walker.figure);
+    if (f === undefined) throw new Error(`${key}: walker "${r.walker.figure}" không có`);
+    const d = DELAYS[r.walker.delays];
+    if (!d) throw new Error(`${key}: bảng chu kỳ "${r.walker.delays}" không có`);
+    walker = { figure: f, roam: r.walker.roam, delays: d };
+  }
+  return {
+    key, name: r.name, group: r.group, size: r.size, cost: r.cost, workers: r.workers, labor,
+    terrain: (r.terrain ?? 'any') as TerrainRule,
+    produces: res(r.produces), input: res(r.input), progressMax: r.progressMax ?? 0,
+    fire: r.fire, damage: r.damage, desirability: desir(r.desirability), walker,
+    waterLevel: r.waterLevel ?? 0, waterRange: r.waterRange ?? 0,
+  };
+}
+
+const NONE_DEF = toDef('none', { name: '', group: 'none', size: 0, cost: 0, workers: 0, fire: 0, damage: 0 });
+export const BUILDING_DEFS: BuildingDef[] = [];
+for (const [key, type] of BUILDING_KEYS) {
+  if (type === BuildingType.None) { BUILDING_DEFS[type] = NONE_DEF; continue; }
+  const raw = (buildingsJson as unknown as Record<string, RawBuilding>)[key];
+  if (!raw) throw new Error(`buildings.json thiếu "${key}"`);
+  BUILDING_DEFS[type] = toDef(key, raw);
+}
+
+export const isRawProducer = (t: BuildingType): boolean => BUILDING_DEFS[t].produces !== Resource.None && BUILDING_DEFS[t].input === Resource.None;
+export const isWorkshop = (t: BuildingType): boolean => BUILDING_DEFS[t].input !== Resource.None;
+
+// ---------- nhà ở ----------
+
+export interface HouseNeeds {
+  water: number; foodTypes: number; dinh: boolean; temple: boolean; school: boolean; clinic: boolean;
+  entertainment: boolean; market: boolean; goods: Resource[]; desirability: number;
+}
+export interface HouseLevel {
+  name: string; tier: number; capacity: number; tax: number; fire: number;
+  desirability: Desirability | null;
+  /** yêu cầu CỘNG DỒN để ở bậc này */
+  needs: HouseNeeds;
+}
+
+interface RawNeeds { water?: number; foodTypes?: number; dinh?: boolean; temple?: boolean; school?: boolean; clinic?: boolean; entertainment?: boolean; market?: boolean; goods?: string[]; desirability?: number }
+const cumulative: HouseNeeds = { water: 0, foodTypes: 0, dinh: false, temple: false, school: false, clinic: false, entertainment: false, market: false, goods: [], desirability: -100 };
+export const HOUSE_LEVELS: HouseLevel[] = housesJson.levels.map((l) => {
+  const n = l.needs as RawNeeds;
+  if (n.water !== undefined) cumulative.water = n.water;
+  if (n.foodTypes !== undefined) cumulative.foodTypes = n.foodTypes;
+  if (n.dinh) cumulative.dinh = true;
+  if (n.temple) cumulative.temple = true;
+  if (n.school) cumulative.school = true;
+  if (n.clinic) cumulative.clinic = true;
+  if (n.entertainment) cumulative.entertainment = true;
+  if (n.market) cumulative.market = true;
+  if (n.goods) cumulative.goods = [...cumulative.goods, ...n.goods.map(res)];
+  if (n.desirability !== undefined) cumulative.desirability = n.desirability;
+  return { name: l.name, tier: l.tier, capacity: l.capacity, tax: l.tax, fire: l.fire, desirability: desir(l.desirability), needs: { ...cumulative, goods: [...cumulative.goods] } };
+});
+export const MAX_HOUSE_LEVEL: number = housesJson.maxLevel;
+export const EVOLVE_AFTER_DAYS: number = housesJson.evolveAfterDays;
+export const DEVOLVE_AFTER_DAYS: number = housesJson.devolveAfterDays;
+
+// ---------- hằng số dùng chung ----------
+
+export const UNITS_PER_LOAD = 100;
+export const FOOD_PER_LOAD = UNITS_PER_LOAD;
 export const SERVICE_RANGE = 2; // walker phủ 5×5 quanh ô đang đứng
-export const SERVICE_MAX = 96; // như MAX_COVERAGE của Julius, giảm 1/ngày
-export const FOOD_PER_LOAD = 100;
-export const PADDY_MAX_PROGRESS = 200; // như MAX_PROGRESS_RAW
-export const PADDY_PROGRESS_PER_DAY = 4; // ~50 ngày/kiện; chỉnh ở M3 khi có lao động
-export const GRANARY_CAPACITY = 24 * FOOD_PER_LOAD;
-export const MARKET_CAPACITY = 8 * FOOD_PER_LOAD;
-export const MARKET_BUYER_LOADS = 4;
-export const MARKET_REORDER_BELOW = 4 * FOOD_PER_LOAD;
-export const SPAWN_DELAY_DAYS = 3; // 100% nhân công theo Julius; M3 nối với lao động
-export const MIGRATION_INTERVAL_DAYS = 2;
-export const MIGRANT_GROUP_MIN = 4;
-export const MIGRANT_GROUP_RANDOM = 4;
+export const SERVICE_MAX: number = economy.serviceMax; // như MAX_COVERAGE của Julius, giảm 1/ngày
+export const GRANARY_CAPACITY = economy.granaryCapacityLoads * UNITS_PER_LOAD;
+export const MIGRATION_INTERVAL_DAYS = 1;
+
+/** Chu kỳ sinh walker theo % nhân công (bảng 5 mức của Julius). Trả −1 nếu không có người làm. */
+export function spawnDelay(delays: number[], pctWorkers: number): number {
+  if (pctWorkers >= 100) return delays[0];
+  if (pctWorkers >= 75) return delays[1];
+  if (pctWorkers >= 50) return delays[2];
+  if (pctWorkers >= 25) return delays[3];
+  if (pctWorkers > 0) return delays[4];
+  return -1;
+}

@@ -4,7 +4,10 @@ import { type Rng, nextFloat, nextInt } from '../rng';
 import { GRID_SIZE, type Grid, gridOffset, inBounds, T_FLOODPLAIN, T_TREE, T_WATER } from './grid';
 
 export interface TerrainOptions {
-  /** Bản đồ phẳng cho test: sông thẳng ở mép trái (x < 4), toàn bộ đất là bãi bồi elevation 1, không cây. */
+  /**
+   * Bản đồ phẳng cho test: sông thẳng ở mép trái (x < 4), bãi bồi elevation 1 tới x < 70,
+   * đất cao elevation 2 tới x < 100, núi elevation 3 phía đông. Không cây.
+   */
   flat?: boolean;
 }
 
@@ -15,7 +18,8 @@ export function generateTerrain(g: Grid, rng: Rng, opts: TerrainOptions = {}): v
       for (let x = 0; x < n; x++) {
         const i = gridOffset(x, y);
         if (x < 4) { g.terrain[i] = T_WATER; g.elevation[i] = 0; }
-        else { g.terrain[i] = T_FLOODPLAIN; g.elevation[i] = 1; }
+        else if (x < 70) { g.terrain[i] = T_FLOODPLAIN; g.elevation[i] = 1; }
+        else { g.terrain[i] = 0; g.elevation[i] = x < 100 ? 2 : 3; }
       }
     }
     return;
