@@ -21,6 +21,9 @@ export function missingFor(s: GameState, b: Building, level: number): string | n
   if (n.school && b.school <= 0) return 'lớp học thầy đồ';
   if (n.clinic && b.clinic <= 0) return 'thầy lang';
   if (n.entertainment && b.entertainment <= 0) return 'hát chèo';
+  if (n.puppet && b.puppet <= 0) return 'rối nước';
+  if (n.academy && b.academy <= 0) return 'trường học';
+  if (n.shrine && b.shrine <= 0) return 'đền (miếu, Văn Miếu)';
   for (const g of n.goods) if (b.store[g] <= 0) return RESOURCES[g].name.toLowerCase();
   if (n.market && b.marketAccess <= 0) return 'chợ phiên';
   if (s.grid.desirability[anchorOffset(b.x, b.y, b.size)] < n.desirability) return `độ hấp dẫn ≥ ${n.desirability}`;
@@ -61,6 +64,10 @@ export function decayServices(s: GameState): void {
     if (b.school > 0) b.school--;
     if (b.clinic > 0) b.clinic--;
     if (b.entertainment > 0) b.entertainment--;
+    if (b.academy > 0) b.academy--;
+    if (b.puppet > 0) b.puppet--;
+    if (b.shrine > 0) b.shrine--;
+    if (b.altar > 0) b.altar--;
     if (b.marketAccess > 0) b.marketAccess--;
     if (b.taxCoverage > 0) b.taxCoverage--;
     b.water = 0;

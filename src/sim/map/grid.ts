@@ -21,6 +21,7 @@ export interface Grid {
   desirability: Int8Array; // độ hấp dẫn, tính lại mỗi ngày
   dike: Uint8Array; // M4: mức cao đê hữu hiệu tại ô (cống mở = 0); flood-fill lan khi elevation + dike < mực lũ
   waterDist: Uint8Array; // M4: khoảng cách (BFS 4 hướng) tới ô sông gần nhất, tính một lần khi sinh bản đồ
+  prestige: Uint8Array; // M5: số ngày còn +1 độ hấp dẫn do quan đi kiệu qua
 }
 
 export function createGrid(): Grid {
@@ -33,6 +34,7 @@ export function createGrid(): Grid {
     desirability: new Int8Array(GRID_CELLS),
     dike: new Uint8Array(GRID_CELLS),
     waterDist: new Uint8Array(GRID_CELLS),
+    prestige: new Uint8Array(GRID_CELLS),
   };
 }
 

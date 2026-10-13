@@ -5,6 +5,7 @@ import housesJson from '../../data/houses.json';
 import economyJson from '../../data/economy.json';
 import resourcesJson from '../../data/resources.json';
 import floodJson from '../../data/flood.json';
+import courtJson from '../../data/court.json';
 import { BuildingType, FigureType, LaborCat, Resource, RES_COUNT } from '../state';
 
 const lowerFirst = (s: string) => s[0].toLowerCase() + s.slice(1);
@@ -55,17 +56,22 @@ export interface BuildingDef {
   walker: WalkerDef | null;
   waterLevel: number;
   waterRange: number;
+  /** M5: phẩm hàm tối thiểu để xây (0 = ai cũng xây được) */
+  rank: number;
 }
 
 interface RawBuilding {
   name: string; group: string; size: number; cost: number; workers: number; labor?: string; terrain?: string;
   produces?: string; input?: string; progressMax?: number; fire: number; damage: number;
-  desirability?: number[]; walker?: { figure: string; roam: number; delays: string }; waterLevel?: number; waterRange?: number;
+  desirability?: number[]; walker?: { figure: string; roam: number; delays: string }; waterLevel?: number; waterRange?: number; rank?: number;
 }
 
 export const economy = economyJson;
 /** Số cân bằng lũ và đê (M4). */
 export const flood = floodJson;
+/** Triều đình, tín ngưỡng, chỉ số (M5). */
+export const court = courtJson;
+if (court.ranks.names.length !== 9 || court.ranks.salary.length !== 9) throw new Error('court.json: phải có 9 phẩm hàm');
 if (flood.peakChances.byLevel.reduce((a, v) => a + v, 0) !== 100) throw new Error('flood.json: peakChances phải cộng đúng 100');
 if (flood.season.riseDays + flood.season.holdDays + flood.season.recedeDays !== 64) throw new Error('flood.json: mùa lũ phải đúng 64 ngày (4 tháng)');
 const DELAYS = economy.spawnDelays as unknown as Record<string, number[]>;
@@ -92,7 +98,7 @@ function toDef(key: string, r: RawBuilding): BuildingDef {
     terrain: (r.terrain ?? 'any') as TerrainRule,
     produces: res(r.produces), input: res(r.input), progressMax: r.progressMax ?? 0,
     fire: r.fire, damage: r.damage, desirability: desir(r.desirability), walker,
-    waterLevel: r.waterLevel ?? 0, waterRange: r.waterRange ?? 0,
+    waterLevel: r.waterLevel ?? 0, waterRange: r.waterRange ?? 0, rank: r.rank ?? 0,
   };
 }
 
@@ -113,16 +119,18 @@ export const isWorkshop = (t: BuildingType): boolean => BUILDING_DEFS[t].input !
 export interface HouseNeeds {
   water: number; foodTypes: number; dinh: boolean; temple: boolean; school: boolean; clinic: boolean;
   entertainment: boolean; market: boolean; goods: Resource[]; desirability: number;
+  academy: boolean; puppet: boolean; shrine: boolean; // M5
 }
 export interface HouseLevel {
   name: string; tier: number; capacity: number; tax: number; fire: number;
+  prosperity: number; // M5: giá trị thịnh vượng của bậc
   desirability: Desirability | null;
   /** yêu cầu CỘNG DỒN để ở bậc này */
   needs: HouseNeeds;
 }
 
-interface RawNeeds { water?: number; foodTypes?: number; dinh?: boolean; temple?: boolean; school?: boolean; clinic?: boolean; entertainment?: boolean; market?: boolean; goods?: string[]; desirability?: number }
-const cumulative: HouseNeeds = { water: 0, foodTypes: 0, dinh: false, temple: false, school: false, clinic: false, entertainment: false, market: false, goods: [], desirability: -100 };
+interface RawNeeds { water?: number; foodTypes?: number; dinh?: boolean; temple?: boolean; school?: boolean; clinic?: boolean; entertainment?: boolean; market?: boolean; goods?: string[]; desirability?: number; academy?: boolean; puppet?: boolean; shrine?: boolean }
+const cumulative: HouseNeeds = { water: 0, foodTypes: 0, dinh: false, temple: false, school: false, clinic: false, entertainment: false, market: false, goods: [], desirability: -100, academy: false, puppet: false, shrine: false };
 export const HOUSE_LEVELS: HouseLevel[] = housesJson.levels.map((l) => {
   const n = l.needs as RawNeeds;
   if (n.water !== undefined) cumulative.water = n.water;
@@ -133,9 +141,12 @@ export const HOUSE_LEVELS: HouseLevel[] = housesJson.levels.map((l) => {
   if (n.clinic) cumulative.clinic = true;
   if (n.entertainment) cumulative.entertainment = true;
   if (n.market) cumulative.market = true;
+  if (n.academy) cumulative.academy = true;
+  if (n.puppet) cumulative.puppet = true;
+  if (n.shrine) cumulative.shrine = true;
   if (n.goods) cumulative.goods = [...cumulative.goods, ...n.goods.map(res)];
   if (n.desirability !== undefined) cumulative.desirability = n.desirability;
-  return { name: l.name, tier: l.tier, capacity: l.capacity, tax: l.tax, fire: l.fire, desirability: desir(l.desirability), needs: { ...cumulative, goods: [...cumulative.goods] } };
+  return { name: l.name, tier: l.tier, capacity: l.capacity, tax: l.tax, fire: l.fire, prosperity: (l as { prosperity?: number }).prosperity ?? 5, desirability: desir(l.desirability), needs: { ...cumulative, goods: [...cumulative.goods] } };
 });
 export const MAX_HOUSE_LEVEL: number = housesJson.maxLevel;
 export const EVOLVE_AFTER_DAYS: number = housesJson.evolveAfterDays;
