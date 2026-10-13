@@ -1,0 +1,93 @@
+{
+  "_note": "Triều đình (thiết kế phần 6) và bốn chỉ số (phần 7). Chỉnh ở đây, không sửa code.",
+  "favor": {
+    "_note": "Ân sủng: giữ công thức Julius. yearlyDecay trừ mỗi năm; chiếu chỉ trễ lần đầu phạt theo loại và gia hạn extensionMonths, trễ lần hai phạt thêm secondLateExtra rồi bỏ; cống nạp không nộp các năm liên tiếp; bổng lộc cao hơn phẩm hàm −chênh lệch/năm, thấp hơn +1; dismissAtOrBelow → bị cách chức sau dismissWarningDays.",
+    "start": 50,
+    "yearlyDecay": 2,
+    "extensionMonths": 24,
+    "secondLateExtra": -2,
+    "tributeMissed": [-3, -5, -8],
+    "salaryBelowBonus": 1,
+    "dismissAtOrBelow": 10,
+    "dismissWarningDays": 192,
+    "milestonePct": [25, 50, 75],
+    "milestoneBonus": 5,
+    "milestoneLatePenalty": -2
+  },
+  "edictPenalty": { "_note": "Ân sủng trừ khi trễ lần đầu theo loại", "goods": -3, "troops": -5, "corvee": -3, "money": -3, "ritual": -2, "dike": -3 },
+  "edictMessengerMonthMin": 2,
+  "edictMessengerMonthMax": 9,
+  "troops": { "_note": "binh dịch: vũ khí cần = đinh ÷ menPerWeaponLoad kiện; về sau 12–24 tháng, mất 30–70%", "menPerWeaponLoad": 10, "returnMonthsMin": 12, "returnMonthsMax": 24, "lossPctMin": 30, "lossPctMax": 70 },
+  "corvee": { "_note": "lao dịch: tỉ lệ nhân công khóa vào ngành lao dịch khi thi hành (người chơi chọn nhanh/chậm); lòng dân −1/kỳ khi vượt moodAbovePct", "pctOptions": [10, 20, 30], "moodAbovePct": 20, "moodPenalty": -1 },
+  "gifts": {
+    "_note": "tiến cống: Ân sủng lần đầu theo cỡ, giảm dần về 0 ở lần thứ tư trong 12 tháng (×2/3, ×1/3, ×0). Tiền lấy từ bổng lộc tích lũy (personalFunds); giá = max(min, % ngân khố).",
+    "favor": [3, 5, 10],
+    "costPctOfTreasury": [5, 10, 20],
+    "costMin": [100, 300, 800],
+    "windowMonths": 12
+  },
+  "ranks": {
+    "_note": "9 phẩm hàm, bổng lộc mỗi tháng theo bảng; thăng theo màn",
+    "names": ["Tri huyện", "Tri phủ", "Thông phán", "An phủ sứ", "Tuyên phủ sứ", "Hành khiển", "Thượng thư", "Tư đồ", "Thái úy"],
+    "salary": [0, 2, 5, 8, 12, 20, 30, 40, 60]
+  },
+  "tribute": { "_note": "cống nạp hằng năm (Julius): mức cố định theo dân ≤ các ngưỡng, hơn thì 25% lãi năm trước; không nộp khi ngân khố âm", "byPopulation": [[0, 0], [1000, 100], [2000, 200], [5000, 400]], "profitPct": 25 },
+  "exam": {
+    "_note": "khoa cử: 3 năm một lần vào examMonth nếu có trường học có người làm; số đỗ = dân nhà có thầy đồ ÷ perGraduate; mỗi người đỗ Ân sủng +1, Văn hiến +2; 1/4 trở về thành nhà quan lại bậc 9 ở nhà trống có độ hấp dẫn ≥ 55",
+    "everyYears": 3,
+    "examMonth": 3,
+    "perGraduate": 200,
+    "favorPerGraduate": 1,
+    "culturePerGraduate": 2,
+    "returnChanceIn": 4,
+    "mandarinHouseholdPop": 10
+  },
+  "worship": {
+    "_note": "4 đối tượng thờ (Julius gods): tâm trạng ±1/ngày tiến về mục tiêu = bao phủ đền (templeCapacity × số đền ÷ dân, %) + (12 − tháng từ lễ) + nhiều đền nhất +50 / ít nhất −25. Mỗi tháng tâm trạng < 50 tích sét (1, <35: 2, <20: 3), ≥ 50 bớt 1 sét; 20 sét quở nhỏ, 50 sét quở lớn (reset). ≥ 100 phù hộ rồi về 50.",
+    "deities": ["Thành hoàng làng", "Phật", "Thủy thần (Hà Bá)", "Tiên nông"],
+    "startMood": 50,
+    "minPopulation": 100,
+    "templeCapacity": 500,
+    "mostTemplesBonus": 50,
+    "leastTemplesPenalty": -25,
+    "festivalMonthsMax": 12,
+    "smallWrathBolts": 20,
+    "bigWrathBolts": 50,
+    "boltsBelow": [[20, 3], [35, 2], [50, 1]],
+    "blessing": { "sentiment": 25, "healthBonus": 10, "healthBonusMonths": 6 },
+    "wrath": { "thieves": 3, "riotHouses": 3, "healersOffDays": 16, "paddyFreezeSmallDays": 4, "paddyFreezeBigDays": 48, "dikeIntegrity": 10 },
+    "festival": { "_note": "giá = dân/div + base theo cỡ nhỏ/vừa/lớn", "div": [20, 10, 5], "base": [10, 20, 40] },
+    "tet": { "_note": "Tết Nguyên đán tháng Giêng: tự động trừ tiền cỡ vừa, +7 lòng dân", "sizeIndex": 1, "sentiment": 7 }
+  },
+  "ratings": {
+    "_note": "Văn hiến theo tháng; Thịnh vượng, Trị an theo năm (ngày 1 tháng Giêng).",
+    "culture": {
+      "_note": "bao phủ = sức chứa × số công trình ÷ dân (%); điểm = tối đa × bậc theo bao phủ ≥100/75/50/25/>0 (30 → 30/22/14/9/3). Cộng culturePerGraduate mỗi người đỗ, trần 100.",
+      "tiers": [[100, 1], [75, 0.7333], [50, 0.4667], [25, 0.3], [0, 0.1]],
+      "dinh": { "max": 30, "capacity": 400 },
+      "temple": { "max": 25, "capacity": 500 },
+      "school": { "max": 15, "capacity": 150 },
+      "academy": { "max": 20, "capacity": 250 },
+      "entertainment": { "max": 10, "capacity": 500 }
+    },
+    "prosperity": {
+      "_note": "mỗi năm cộng dồn; trần = trung bình giá trị thịnh vượng các bậc nhà (houses.json → prosperity)",
+      "unemploymentLow": [5, 1], "unemploymentHigh": [15, -1], "profit": 5, "loss": -1, "twoFoods": 1,
+      "tentShare": [30, -1], "mandarinShare": [10, 1], "tributeMissed": -1, "noFloodCropLoss": 1, "floodedHouses": -2, "tradeShips": [4, 1]
+    },
+    "peace": {
+      "_note": "mỗi năm: +2 nếu dưới 2 năm yên, +5 từ năm yên thứ 2; −1 mỗi công trình bị loạn dân đốt (tối đa 12, không tính lều, điếm canh); −1 có trộm; −5 có loạn dân; −3 có đoạn đê vỡ",
+      "calm": 2, "calmAfterYears": 2, "calmLong": 5, "destroyed": -1, "destroyedMax": 12, "thieves": -1, "riot": -5, "breach": -3
+    }
+  },
+  "health": {
+    "_note": "sức khỏe 0–100 = nhà khỏe (có thầy lang + lương thực) ÷ tổng; tiến ±2 mỗi tháng. Dịch khi < 40 và rand(64) ≤ 40 − health (+15 trong 2 tháng sau khi có giếng ngập): một nhà mất nửa dân.",
+    "start": 50,
+    "step": 2,
+    "plagueBelow": 40,
+    "plagueDie": 64,
+    "floodedWellBonus": 15,
+    "floodedWellMonths": 2,
+    "plagueLossPct": 50
+  }
+}
