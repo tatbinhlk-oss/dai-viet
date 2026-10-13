@@ -3,7 +3,7 @@
 // kéo dần về điểm nghỉ 60 nên một nguyên nhân xấu kéo dài làm lòng dân tụt tới mức cân bằng, không tụt mãi.
 // Tội phạm: mỗi tháng nhà bất mãn nhất sinh dân kêu oan (<50), trộm (<30) hoặc loạn dân (≤10).
 import { BuildingType, FigureType, type GameState, type MoodCause } from '../state';
-import { economy, flood } from '../buildings/defs';
+import { court, economy, flood } from '../buildings/defs';
 import { foodTypes } from '../buildings/house';
 import { roadAccess } from '../buildings/spawn';
 import { createFigure } from '../figures/figure';
@@ -30,7 +30,9 @@ export function updateSentiment(s: GameState): void {
   // M4: vỡ đê → −3 mỗi kỳ trong 3 tháng cho cả thành
   const breachC = s.flood.breachMoodPeriods > 0 ? flood.consequences.moodPenalty : 0;
   if (s.flood.breachMoodPeriods > 0) s.flood.breachMoodPeriods--;
-  const cityDelta = taxC + unC + tentC + breachC;
+  // M5: lao dịch theo chiếu chỉ quá 20% nhân công → −1 mỗi kỳ
+  const corveeC = s.labor.workforce > 0 && (s.court.corveeWorkers * 100) / s.labor.workforce > court.corvee.moodAbovePct ? court.corvee.moodPenalty : 0;
+  const cityDelta = taxC + unC + tentC + breachC + corveeC;
 
   let sum = 0, pop = 0, foodSum = 0, floodSum = 0, houses = 0;
   for (const b of s.buildings) {
@@ -56,7 +58,7 @@ export function updateSentiment(s: GameState): void {
   if (pop > 0) s.sentiment = Math.round(sum / pop);
 
   // nguyên nhân âm lớn nhất
-  const causes: [MoodCause, number][] = [['tax', taxC], ['unemployment', unC], ['tents', tentC], ['food', houses ? foodSum / houses : 0], ['flood', breachC + (houses ? floodSum / houses : 0)]];
+  const causes: [MoodCause, number][] = [['tax', taxC], ['unemployment', unC], ['tents', tentC], ['food', houses ? foodSum / houses : 0], ['flood', breachC + (houses ? floodSum / houses : 0)], ['corvee', corveeC]];
   let worst: MoodCause = 'none', worstV = 0;
   for (const [c, v] of causes) if (v < worstV) { worst = c; worstV = v; }
   s.lowMoodCause = worst;
@@ -77,9 +79,10 @@ export function generateCriminals(s: GameState): void {
   const f = createFigure(s, type, door, worst.id);
   if (!f) return;
   startRoam(f, 48);
+  if (type === FigureType.Thief) s.ratings.thievesThisYear++; else if (type === FigureType.Rioter) s.ratings.riotsThisYear++; // M5: Trị an
   s.events.push(type === FigureType.Rioter ? 'Loạn dân nổi lên!' : type === FigureType.Thief ? 'Có trộm trong thành' : 'Dân kêu oan trước nha môn');
 }
 
 export const MOOD_CAUSE_TEXT: Record<MoodCause, string> = {
-  none: '—', tax: 'thuế cao', unemployment: 'thất nghiệp', food: 'thiếu ăn', tents: 'quá nhiều lều', flood: 'lũ lụt',
+  none: '—', tax: 'thuế cao', unemployment: 'thất nghiệp', food: 'thiếu ăn', tents: 'quá nhiều lều', flood: 'lũ lụt', corvee: 'lao dịch',
 };

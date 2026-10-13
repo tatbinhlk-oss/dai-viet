@@ -5,6 +5,7 @@ import { HOUSE_LEVELS } from '../buildings/defs';
 import { setHouseLevel } from '../buildings/spawn';
 import { createFigure, removeFigure } from './figure';
 import { setWalkPath, step, StepResult } from './movement';
+import { deliverEdict } from '../city/court';
 
 export function updateImmigrant(s: GameState, f: Figure): void {
   const r = step(s, f);
@@ -42,5 +43,14 @@ export function spawnEmigrants(s: GameState, house: Building, count: number): vo
 export function updateEmigrant(s: GameState, f: Figure): void {
   const r = step(s, f);
   if (r === StepResult.Moving || r === StepResult.ArrivedTile) return;
+  removeFigure(s, f.id);
+}
+
+/** M5: sứ giả triều đình đi bộ từ cửa ngõ tới nha môn; tới nơi (hoặc bị chặn) thì giao chiếu chỉ (f.loads = id). */
+export function updateMessenger(s: GameState, f: Figure): void {
+  const r = step(s, f);
+  if (r === StepResult.Moving || r === StepResult.ArrivedTile) return;
+  const e = s.court.edicts.find((x) => x.id === f.loads);
+  if (e) deliverEdict(s, e);
   removeFigure(s, f.id);
 }

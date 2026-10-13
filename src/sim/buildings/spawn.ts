@@ -47,6 +47,7 @@ export function placeBuilding(s: GameState, type: BuildingType, x: number, y: nu
   if (!canPlaceBuilding(s.grid, type, x, y)) return 0;
   const def = BUILDING_DEFS[type];
   if (def.cost > 0 && s.treasury < def.cost) return 0; // công trình lao dịch (đê) không tốn quan, đắp được cả khi nợ
+  if (def.rank > s.court.rank) return 0; // M5: cần phẩm hàm
   s.treasury -= def.cost;
   s.thisYear.construction += def.cost;
   const id = s.buildings.length;

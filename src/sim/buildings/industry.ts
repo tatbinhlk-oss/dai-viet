@@ -2,7 +2,7 @@
 //   nguyên liệu: progress += số nhân công mỗi ngày, đủ 200 → 1 kiện; ruộng lúa nhân hệ số mùa vụ
 //   xưởng: chỉ chạy khi có ≥ 1 kiện nguyên liệu; đủ 400 → tiêu 1 kiện nguyên liệu, ra 1 kiện hàng
 //   không sản xuất tiếp khi xe bò chưa về
-import { BuildingType, FigureType, type Building, type GameState } from '../state';
+import { BuildingType, FigureType, HOUSE_TIER_MANDARIN, type Building, type GameState } from '../state';
 import { BUILDING_DEFS, economy, isRawProducer, isWorkshop, spawnDelay, UNITS_PER_LOAD } from './defs';
 import { roadAccess } from './spawn';
 import { createFigure, removeFigure } from '../figures/figure';
@@ -13,6 +13,17 @@ import { paddyYield } from '../flood/consequences';
 import { sendLevyGang } from '../figures/levyWorker';
 
 const PADDY_SEASON: number[] = economy.paddySeason.byMonth;
+
+/** M5: tư dinh / phủ đệ có dân thỉnh thoảng cho quan đi kiệu dạo 128 ô (chỉ để nhìn, +1 độ hấp dẫn tạm quanh đường). */
+function spawnMandarin(s: GameState, b: Building): void {
+  if (b.level < HOUSE_TIER_MANDARIN || b.population === 0 || b.figureId !== 0 || b.flooded) return;
+  const door = roadAccess(s.grid, b);
+  if (door < 0) return;
+  if (++b.spawnCounter <= economy.spawnDelays.mandarin) return;
+  b.spawnCounter = 0;
+  const f = createFigure(s, FigureType.Mandarin, door, b.id);
+  if (f) { b.figureId = f.id; startRoam(f, 128); }
+}
 
 export const pctWorkers = (b: Building): number => {
   const need = BUILDING_DEFS[b.type].workers;
@@ -25,7 +36,7 @@ export function updateProduction(s: GameState): void {
     const def = BUILDING_DEFS[b.type];
     if (!def || def.progressMax === 0 || b.figureId !== 0 || b.progress >= def.progressMax || b.flooded) continue;
     let gain = b.numWorkers;
-    if (b.type === BuildingType.Paddy) gain = Math.round(gain * PADDY_SEASON[s.time.month] * paddyYield(b));
+    if (b.type === BuildingType.Paddy) { if (s.worship.paddyFreezeDays > 0) continue; gain = Math.round(gain * PADDY_SEASON[s.time.month] * paddyYield(b)); } // M5: Tiên nông quở
     if (isWorkshop(b.type)) {
       if (b.store[def.input] < UNITS_PER_LOAD) continue; // hết nguyên liệu
       b.progress = Math.min(def.progressMax, b.progress + gain);
@@ -39,7 +50,8 @@ export function updateProduction(s: GameState): void {
 /** Mỗi ngày (tick 12): mỗi công trình xét sinh walker — một walker mỗi slot tại một thời điểm, như Julius. */
 export function generateFigures(s: GameState): void {
   for (const b of s.buildings) {
-    if (b.type === BuildingType.None || b.type === BuildingType.House || b.type === BuildingType.Ruins) continue;
+    if (b.type === BuildingType.House) { spawnMandarin(s, b); continue; }
+    if (b.type === BuildingType.None || b.type === BuildingType.Ruins) continue;
     const def = BUILDING_DEFS[b.type];
     // bộ đếm giảm dần
     if (b.housesCovered > 0) b.housesCovered--;
@@ -56,8 +68,8 @@ export function generateFigures(s: GameState): void {
 
     const pct = pctWorkers(b);
 
-    // walker đi dạo (đình, chùa, chợ, điếm canh…)
-    if (def.walker && b.figureId === 0) {
+    // walker đi dạo (đình, chùa, chợ, điếm canh…); M5: Phật quở → thầy lang nghỉ
+    if (def.walker && b.figureId === 0 && !(def.walker.figure === FigureType.Healer && s.worship.healersOffDays > 0)) {
       const delay = def.workers > 0 ? spawnDelay(def.walker.delays, pct) : def.walker.delays[0];
       if (delay >= 0 && ++b.spawnCounter > delay) {
         b.spawnCounter = 0;

@@ -2,7 +2,7 @@
 // khi còn ngập: không sản xuất, không sinh walker (industry.ts kiểm tra b.flooded).
 import { BuildingType, FOODS, isDike, type Building, type GameState } from '../state';
 import { gridOffset, T_FLOODED } from '../map/grid';
-import { BUILDING_DEFS, flood, HOUSE_LEVELS } from '../buildings/defs';
+import { BUILDING_DEFS, court, flood, HOUSE_LEVELS } from '../buildings/defs';
 import { removeBuilding, setHouseLevel } from '../buildings/spawn';
 import { spawnEmigrants } from '../figures/migrant';
 
@@ -33,6 +33,7 @@ function onFlooded(s: GameState, b: Building): void {
   switch (b.type) {
     case BuildingType.House: {
       // lều (bậc ≤ 1) bị xóa; nhà khác tụt 1 bậc ngay, 50% dân bỏ đi, lòng dân −3/kỳ trong 3 tháng
+      if (b.population > 0) s.ratings.floodedHousesThisYear++; // M5: Thịnh vượng −2
       if (b.level <= 1) {
         const pop = b.population;
         b.population = 0;
@@ -53,6 +54,7 @@ function onFlooded(s: GameState, b: Building): void {
     case BuildingType.Paddy:
       b.progress = 0;
       b.floodedThisSeason = true;
+      s.ratings.paddiesFloodedThisYear++; // M5: Thịnh vượng (mất mùa do lũ)
       return;
     case BuildingType.Granary:
       for (const r of FOODS) b.store[r] = Math.floor((b.store[r] * (100 - C.granaryLossPct)) / 100);
@@ -60,6 +62,7 @@ function onFlooded(s: GameState, b: Building): void {
     case BuildingType.Well:
     case BuildingType.BrickWell:
       b.pollutedDays = C.wellPollutedDays;
+      s.ratings.floodedWellMonths = court.health.floodedWellMonths; // M5: tăng xác suất dịch 2 tháng
       return;
     default:
       // xưởng, kho, chợ, nguyên liệu khác: mất toàn bộ hàng, tiến độ về 0; ngừng tới khi nước rút
