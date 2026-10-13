@@ -3,12 +3,17 @@ import { Application, Container, Graphics } from 'pixi.js';
 import { GRID_SIZE } from '../sim/map/grid';
 import type { Snapshot } from '../sim';
 import { ChunkLayer } from './chunks';
+import { FigureLayer } from './figures';
 import { HALF_H, HALF_W, TILE_H, tileToWorld, worldToTile, ZOOM_LEVELS } from './iso';
 
 export interface RenderApp {
   app: Application;
   onTileClick: (x: number, y: number, button: number) => void;
+  onTileHover: (x: number, y: number) => void;
+  /** kích thước khung đặt công trình hiện tại (1 = ô đơn) */
+  ghostSize: number;
   applySnapshot(snap: Snapshot): void;
+  tileBuilding(x: number, y: number): { type: number; level: number } | null;
   destroy(): void;
 }
 
@@ -25,14 +30,19 @@ export async function createRenderApp(canvas: HTMLCanvasElement): Promise<Render
   });
 
   const world = new Container();
+  world.sortableChildren = true;
   app.stage.addChild(world);
   const chunks = new ChunkLayer();
+  chunks.container.zIndex = 0;
   world.addChild(chunks.container);
+  const figures = new FigureLayer();
+  figures.container.zIndex = 1; // M2: walker luôn vẽ trên công trình; M4 gộp vào thứ tự x+y khi có sprite
+  figures.container.sortableChildren = true;
+  world.addChild(figures.container);
 
   const hover = new Graphics();
-  hover.zIndex = 1_000_000;
+  hover.zIndex = 2;
   world.addChild(hover);
-  world.sortableChildren = true;
 
   // Camera: bắt đầu nhìn vào giữa bản đồ
   let zoomIdx = 1;
@@ -45,11 +55,11 @@ export async function createRenderApp(canvas: HTMLCanvasElement): Promise<Render
   };
   applyCamera();
 
-  // Kéo bằng chuột phải / chuột giữa / Space + chuột trái
   let dragging = false;
   let spaceHeld = false;
   let lastX = 0, lastY = 0;
   let downX = 0, downY = 0;
+  let hoverX = -1, hoverY = -1;
   window.addEventListener('keydown', (e) => { if (e.code === 'Space') { spaceHeld = true; e.preventDefault(); } });
   window.addEventListener('keyup', (e) => { if (e.code === 'Space') spaceHeld = false; });
   canvas.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -66,9 +76,10 @@ export async function createRenderApp(canvas: HTMLCanvasElement): Promise<Render
       applyCamera();
     }
     const t = screenToTile(e.clientX, e.clientY);
-    drawHover(t.x, t.y);
+    if (t.x !== hoverX || t.y !== hoverY) { hoverX = t.x; hoverY = t.y; result.onTileHover(t.x, t.y); }
+    drawHover();
     // Kéo chuột trái khi không dời camera = đặt liên tục (vẽ đường)
-    if (!dragging && (e.buttons & 1) && !spaceHeld) result.onTileClick(t.x, t.y, 0);
+    if (!dragging && (e.buttons & 1) && !spaceHeld && result.ghostSize === 1) result.onTileClick(t.x, t.y, 0);
   });
   canvas.addEventListener('pointerup', (e) => {
     if (dragging) { dragging = false; return; }
@@ -81,7 +92,6 @@ export async function createRenderApp(canvas: HTMLCanvasElement): Promise<Render
     e.preventDefault();
     const next = Math.max(0, Math.min(ZOOM_LEVELS.length - 1, zoomIdx + (e.deltaY < 0 ? 1 : -1)));
     if (next === zoomIdx) return;
-    // Zoom quanh con trỏ
     const before = screenToWorld(e.clientX, e.clientY);
     zoomIdx = next;
     applyCamera();
@@ -100,22 +110,31 @@ export async function createRenderApp(canvas: HTMLCanvasElement): Promise<Render
     const { wx, wy } = screenToWorld(sx, sy);
     return worldToTile(wx, wy);
   }
-  function drawHover(x: number, y: number) {
+  function drawHover() {
     hover.clear();
-    if (x < 0 || y < 0 || x >= GRID_SIZE || y >= GRID_SIZE) return;
-    const { wx, wy } = tileToWorld(x, y);
-    hover.poly([wx, wy, wx + HALF_W, wy + HALF_H, wx, wy + TILE_H, wx - HALF_W, wy + HALF_H]).stroke({ color: 0xfff2a8, width: 2 });
+    const n = result.ghostSize;
+    if (hoverX < 0 || hoverY < 0 || hoverX + n > GRID_SIZE || hoverY + n > GRID_SIZE) return;
+    for (let dy = 0; dy < n; dy++) {
+      for (let dx = 0; dx < n; dx++) {
+        const { wx, wy } = tileToWorld(hoverX + dx, hoverY + dy);
+        hover.poly([wx, wy, wx + HALF_W, wy + HALF_H, wx, wy + TILE_H, wx - HALF_W, wy + HALF_H]).stroke({ color: 0xfff2a8, width: 2 });
+      }
+    }
   }
 
-  app.ticker.add(() => chunks.flush());
+  app.ticker.add(() => { chunks.flush(); figures.update(); });
 
   const result: RenderApp = {
     app,
     onTileClick: () => {},
+    onTileHover: () => {},
+    ghostSize: 1,
     applySnapshot(snap) {
-      if (snap.full) chunks.setFull(snap.full.terrain, snap.full.elevation);
-      if (snap.changed) chunks.applyChanges(snap.changed.offsets, snap.changed.terrain);
+      if (snap.full) chunks.setFull(snap.full.terrain, snap.full.elevation, snap.full.bType, snap.full.bLevel);
+      if (snap.changed) chunks.applyChanges(snap.changed.offsets, snap.changed.terrain, snap.changed.bType, snap.changed.bLevel);
+      figures.setSnapshot(snap.figures);
     },
+    tileBuilding: (x, y) => chunks.buildingAt(x, y),
     destroy() { app.destroy(); },
   };
   return result;
