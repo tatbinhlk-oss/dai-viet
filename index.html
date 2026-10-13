@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Đại Việt — M4</title>
+    <title>Đại Việt — M5</title>
     <style>
       :root { --ink: #e8dcc0; --muted: #a89c80; --bg: rgba(20, 18, 14, 0.92); --line: #7a6540; --btn: #3a2f1e; --on: #a67c2e; --bad: #e07050; }
       html, body { margin: 0; height: 100%; background: #111; overflow: hidden; font-family: system-ui, sans-serif; }
@@ -11,19 +11,21 @@
       #ui { color: var(--ink); font-size: 13px; user-select: none; }
       button { background: var(--btn); color: var(--ink); border: 1px solid var(--line); padding: 3px 9px; cursor: pointer; font: inherit; }
       button.active { background: var(--on); color: #111; }
+      button:disabled { opacity: 0.45; cursor: default; }
       button.open { border-color: var(--ink); }
-      .bar { position: absolute; left: 0; right: 0; background: var(--bg); display: flex; flex-direction: column; }
-      .bar.top { top: 0; flex-direction: row; gap: 8px; align-items: center; flex-wrap: wrap; padding: 5px 10px; }
+      .bars { position: absolute; top: 0; left: 0; right: 0; display: flex; flex-direction: column; }
+      .bar { background: var(--bg); display: flex; flex-direction: column; }
+      .bar.top .row { gap: 8px; align-items: center; padding: 3px 10px; }
       .bar.top .title { letter-spacing: 0.04em; }
-      .bar.build { top: 34px; border-top: 1px solid var(--line); }
-      .bar .row { display: flex; gap: 4px; flex-wrap: wrap; padding: 4px 10px; }
+      .bar.build { border-top: 1px solid var(--line); }
+      .bar .row { display: flex; gap: 4px; flex-wrap: wrap; padding: 4px 10px; align-items: center; }
       .bar .row.sub { border-top: 1px dashed var(--line); background: rgba(40, 32, 20, 0.95); }
       .sp { flex: 1; }
       .sep { width: 1px; height: 18px; background: var(--line); }
       .bad { color: var(--bad); }
       .muted { color: var(--muted); font-size: 12px; }
       .fps { color: var(--muted); }
-      .panel { position: absolute; top: 104px; width: 330px; max-height: calc(100% - 140px); overflow: auto; background: var(--bg);
+      .panel { position: absolute; top: 112px; width: 330px; max-height: calc(100% - 140px); overflow: auto; background: var(--bg);
                border: 1px solid var(--line); padding: 8px 12px; box-sizing: border-box; }
       .panel.info { right: 10px; }
       .panel.advisor { left: 10px; }
@@ -37,6 +39,7 @@
       .progress { height: 6px; background: #2a2418; border: 1px solid var(--line); margin: 6px 0; }
       .progress div { height: 100%; background: var(--on); }
       ul.events { margin: 6px 0; padding-left: 16px; color: var(--muted); }
+      .gameover { position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%); background: var(--bg); border: 2px solid var(--on); padding: 14px 20px; font-size: 15px; max-width: 420px; text-align: center; }
       .status { position: absolute; bottom: 0; left: 0; right: 0; padding: 4px 10px; color: #c8bda0; font-size: 12px; background: rgba(20, 18, 14, 0.85); pointer-events: none; }
       @media (max-width: 700px) { .panel { width: calc(100% - 20px); left: 10px; right: 10px; top: auto; bottom: 28px; max-height: 45%; } }
     </style>

@@ -4,6 +4,9 @@ import { MOOD_CAUSE_TEXT } from '../sim/city/sentiment';
 import { HOUSE_LEVELS, RESOURCES } from '../sim/buildings/defs';
 import { bridge, panel, ui } from './store';
 import { loads, num } from './format';
+import { YamenPanel } from './YamenPanel';
+
+const FEST_NAMES = ['Lễ nhỏ', 'Lễ vừa', 'Lễ lớn'];
 
 const neg = (n: number) => (n ? `−${num(n)}` : '0');
 
@@ -15,7 +18,7 @@ export function Advisors() {
   return (
     <div class="panel advisor">
       <div class="head">
-        <strong>{{ labor: 'Lao động', finance: 'Tài chính', mood: 'Dân tình', storage: 'Kho hàng', flood: 'Thủy lợi' }[p]}</strong>
+        <strong>{{ labor: 'Lao động', finance: 'Tài chính', mood: 'Dân tình', storage: 'Kho hàng', flood: 'Thủy lợi', court: 'Nha môn — triều đình', worship: 'Tín ngưỡng', ratings: 'Bốn chỉ số' }[p]}</strong>
         <button onClick={() => (panel.value = null)}>✕</button>
       </div>
       {p === 'labor' && (
@@ -101,6 +104,56 @@ export function Advisors() {
             </table>
           )}
           {c.events.length > 0 && <ul class="events">{[...c.events].reverse().map((e) => <li>{e}</li>)}</ul>}
+        </>
+      )}
+      {p === 'court' && <YamenPanel />}
+      {p === 'worship' && (
+        <>
+          <table class="mini">
+            <thead><tr><th>Thờ</th><th>Đền</th><th>Tâm trạng</th><th>Sét</th><th>Lễ</th></tr></thead>
+            <tbody>
+              {c.worship.gods.map((g) => (
+                <tr class={g.mood < 35 ? 'bad' : ''}>
+                  <td>{g.name}</td><td>{g.temples} ({g.coverage}%)</td><td>{g.mood} → {g.target}</td><td>{g.bolts}</td>
+                  <td>{g.monthsSinceFestival >= 12 ? '—' : `${g.monthsSinceFestival} tháng trước`}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p>
+            Mở lễ hội làng:{' '}
+            {c.worship.gods.map((g) => (
+              <span>
+                <em>{g.name.split(' ')[0]}</em>{' '}
+                {FEST_NAMES.map((n, i) => <button onClick={() => bridge.cmd({ type: 'holdFestival', deity: g.deity, size: i })} title={`${n} thờ ${g.name}: ${num(c.worship.festivalCosts[i])} quan`}>{['n', 'v', 'l'][i]}</button>)}{' '}
+              </span>
+            ))}
+          </p>
+          <p class="muted">Giá lễ nhỏ / vừa / lớn: {c.worship.festivalCosts.map(num).join(' / ')} quan. Tâm trạng tiến ±1/ngày về: bao phủ đền + (12 − tháng từ lễ) + nhiều đền nhất +50 / ít nhất −25. Dưới 50 tích sét: 20 quở nhỏ, 50 quở lớn; đủ 100 phù hộ.</p>
+          {c.worship.healersOffDays > 0 && <p class="bad">Thầy lang nghỉ còn {c.worship.healersOffDays} ngày</p>}
+          {c.worship.paddyFreezeDays > 0 && <p class="bad">Ruộng lúa lép còn {c.worship.paddyFreezeDays} ngày</p>}
+          {c.worship.healthBonusMonths > 0 && <p>Phật phù hộ sức khỏe còn {c.worship.healthBonusMonths} tháng</p>}
+        </>
+      )}
+      {p === 'ratings' && (
+        <>
+          <p>Màn: <em>{c.scenario.name}</em>{c.scenario.timeLimitYears > 0 && <> · hạn {c.scenario.timeLimitYears} năm</>}</p>
+          <table class="mini">
+            <thead><tr><th>Chỉ số</th><th>Hiện có</th><th>Mục tiêu</th></tr></thead>
+            <tbody>
+              {([['Dân số', c.scenario.current.population, c.scenario.goals.population], ['Văn hiến', c.ratings.culture, c.scenario.goals.culture], ['Thịnh vượng', c.ratings.prosperity, c.scenario.goals.prosperity], ['Trị an', c.ratings.peace, c.scenario.goals.peace], ['Ân sủng', c.court.favor, c.scenario.goals.favor]] as [string, number, number][]).map(([n, v, g]) => (
+                <tr class={g > 0 && v < g ? 'bad' : ''}><td>{n}</td><td>{num(v)}</td><td>{g > 0 ? num(g) : '—'}</td></tr>
+              ))}
+            </tbody>
+          </table>
+          <p>Sức khỏe {c.ratings.health}/100 · trần Thịnh vượng {c.ratings.prosperityCap} (theo bậc nhà) · {c.ratings.yearsCalm} năm yên</p>
+          <table class="mini">
+            <thead><tr><th>Văn hiến</th><th>Bao phủ</th><th>Điểm</th></tr></thead>
+            <tbody>
+              {c.ratings.cultureBreakdown.map((g) => <tr><td>{g.name}</td><td>{g.coverage}%</td><td>{g.points}/{g.max}</td></tr>)}
+            </tbody>
+          </table>
+          <p class="muted">Văn hiến theo tháng; Thịnh vượng và Trị an cộng dồn đầu năm (lãi +5, thất nghiệp, lương thực, lều, lũ; yên ổn +2/+5, trộm, loạn, vỡ đê).</p>
         </>
       )}
       {p === 'storage' && (

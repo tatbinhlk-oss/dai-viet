@@ -57,7 +57,8 @@ async function main() {
 
   const params = new URLSearchParams(location.search);
   const seed = Number(params.get('seed') ?? 20261013);
-  send({ type: 'init', seed, demo: params.has('demo') });
+  // ?scenario=sonNam chơi màn Sơn Nam trên bản đồ ngẫu nhiên; ?demo=1 là màn Sơn Nam với thị trấn mẫu; không có = chơi tự do
+  send({ type: 'init', seed, demo: params.has('demo'), scenario: params.get('scenario') ?? undefined });
   if (params.has('demo')) render.lookAt(40, 60);
   const look = params.get('look')?.split(',').map(Number); // ?look=7,70 đưa camera tới ô (x, y)
   if (look && look.length === 2 && look.every((v) => Number.isFinite(v))) render.lookAt(look[0], look[1]);

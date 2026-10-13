@@ -1,11 +1,12 @@
 // Vòng lặp mô phỏng trong Web Worker. Nhận Command, gửi Snapshot. Không biết gì về Pixi.
 import { applyCommand, buildingIdAt, createSim, takeSnapshot, tick, type Command, type GameState } from '../sim';
 import { TICKS_PER_DAY } from '../sim/state';
-import { buildTown, demoPriorities } from '../sim/scenario/demo';
+import { buildCourtTown, demoPriorities } from '../sim/scenario/demo';
+import { createScenario, SCENARIOS } from '../sim/scenario/loader';
 
 export type WorkerIn =
-  /** demo: bản đồ phẳng + thị trấn mẫu của test cổng M3 */
-  | { type: 'init'; seed: number; demo?: boolean }
+  /** demo: bản đồ phẳng + thị trấn mẫu của test cổng M3/M4/M5; scenario: khóa màn chơi (M5), không có = chơi tự do */
+  | { type: 'init'; seed: number; demo?: boolean; scenario?: string }
   | { type: 'cmd'; cmd: Command }
   /** chọn công trình tại ô để xem chi tiết; x < 0 = bỏ chọn */
   | { type: 'select'; x: number; y: number };
@@ -47,8 +48,9 @@ function loop(now: number): void {
 self.onmessage = (e: MessageEvent<WorkerIn>) => {
   const m = e.data;
   if (m.type === 'init') {
-    state = createSim(m.seed, { flat: !!m.demo });
-    if (m.demo) { state.treasury = 8000; buildTown(state); demoPriorities(state); }
+    const key = m.scenario && SCENARIOS[m.scenario] ? m.scenario : m.demo ? 'sonNam' : '';
+    state = key ? createScenario(key, m.seed, !!m.demo || undefined) : createSim(m.seed, { flat: !!m.demo });
+    if (m.demo) { buildCourtTown(state); demoPriorities(state); }
     sentFull = false;
     last = performance.now();
     post(true);

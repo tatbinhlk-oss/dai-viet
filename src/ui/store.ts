@@ -2,7 +2,7 @@
 import { signal } from '@preact/signals';
 import type { Command, Snapshot } from '../sim';
 
-export type Panel = 'labor' | 'finance' | 'mood' | 'storage' | 'flood' | null;
+export type Panel = 'labor' | 'finance' | 'mood' | 'storage' | 'flood' | 'court' | 'worship' | 'ratings' | null;
 
 /** Snapshot mới nhất, cập nhật ~4 lần/giây cho bảng biểu (render vẫn nhận mọi snapshot). */
 export const ui = signal<Snapshot | null>(null);

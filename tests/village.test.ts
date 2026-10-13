@@ -48,6 +48,10 @@ export function buildVillage(s: GameState): void {
   // → kịch bản làng có đê cũ cao 3 sẵn (cao trình 4: lũ lớn chỉ mòn 2 độ bền/ngày), 8 trạm giữ đê dọc đường chân đê để thợ cả giữ độ bền
   legacyDike(s, 7, 0, 159, 4);
   for (const y of DIKE_STATION_YS) dikeStation(s, 9, y);
+  // M5: đủ đền cho bốn tín ngưỡng, kẻo thần quở (Tiên nông làm ruộng lép, Thủy thần dâng lũ)
+  applyCommand(s, { type: 'build', kind: 'temple', x: 32, y: 77 });
+  applyCommand(s, { type: 'build', kind: 'shrine', x: 4, y: 81 });
+  applyCommand(s, { type: 'build', kind: 'altar', x: 21, y: 79 });
 }
 
 function count(s: GameState, type: BuildingType): number {
