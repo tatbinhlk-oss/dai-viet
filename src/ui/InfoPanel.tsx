@@ -14,9 +14,35 @@ export function InfoPanel() {
   return (
     <div class="panel info">
       <div class="head">
-        <strong>{b.name}</strong>
+        <strong>{b.name}{b.flooded ? ' — đang ngập' : ''}</strong>
         <button onClick={close}>✕</button>
       </div>
+      {b.dike && (
+        <>
+          <p>
+            Cao {b.dike.height}/{b.dike.target}
+            {b.dike.height > 0 && <> · độ bền <span class={b.dike.integrity < 60 ? 'bad' : ''}>{b.dike.integrity}%</span></>}
+            {b.dike.height < b.dike.target && <> · {b.dike.working ? 'phu đê đang đắp' : 'chờ phu đê'} {b.dike.workPct}%</>}
+          </p>
+          <p>
+            {b.dike.target < 4 && <button onClick={() => bridge.cmd({ type: 'build', kind: b.type === BuildingType.Sluice ? 'sluice' : 'dike', x: b.x, y: b.y })}>Tôn cao thêm</button>}{' '}
+            {b.dike.sluiceOpen !== null && (
+              <button class={b.dike.sluiceOpen ? 'active' : ''} onClick={() => bridge.cmd({ type: 'openSluice', buildingId: b.id, open: !b.dike!.sluiceOpen })}>
+                {b.dike.sluiceOpen ? 'Cống đang mở — đóng lại' : 'Mở cống cho nước vào'}
+              </button>
+            )}
+          </p>
+          {b.dike.height > 0 && b.dike.height < b.dike.target && <div class="progress"><div style={{ width: `${b.dike.workPct}%` }} /></div>}
+          <p class="muted">Nước lan khi cao độ ô + cao đê &lt; mực lũ. Thợ cả đi qua đặt lại độ bền 100.</p>
+        </>
+      )}
+      {b.paddy && (
+        <p>
+          Sản lượng {b.paddy.yieldPct}%
+          {b.paddy.silted ? ' · có phù sa' : b.paddy.dryYears >= 5 ? ` · bạc màu (${b.paddy.dryYears} năm không ngập)` : ` · ${b.paddy.dryYears} năm không ngập`}
+        </p>
+      )}
+      {b.pollutedDays > 0 && <p class="bad">Giếng nhiễm bẩn sau lũ, còn {b.pollutedDays} ngày</p>}
       {b.isHouse && (
         <>
           <p>Bậc {b.level} · {b.population}/{b.capacity} người · lòng dân {b.happiness}</p>
@@ -40,7 +66,7 @@ export function InfoPanel() {
           {!b.roadAccess ? ' · cần đường kề' : !b.laborAccess ? ' · người mộ phu chưa thấy nhà nào' : ''}
         </p>
       )}
-      {!b.isHouse && b.workersNeeded === 0 && !b.roadAccess && b.type !== BuildingType.Ruins && <p class="muted">Không cần người làm</p>}
+      {!b.isHouse && b.workersNeeded === 0 && !b.roadAccess && b.type !== BuildingType.Ruins && !b.dike && <p class="muted">Không cần người làm</p>}
       {b.progressMax > 0 && (
         <div class="progress"><div style={{ width: `${Math.min(100, (b.progress * 100) / b.progressMax)}%` }} /></div>
       )}
@@ -65,7 +91,7 @@ export function InfoPanel() {
           </tbody>
         </table>
       )}
-      {b.type !== BuildingType.Ruins && (
+      {b.type !== BuildingType.Ruins && !b.dike && (
         <p class="muted">Nguy cơ cháy {Math.min(100, b.fireRisk)}% · sập {Math.min(100, Math.round(b.damageRisk / 2))}%</p>
       )}
     </div>

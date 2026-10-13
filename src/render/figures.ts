@@ -25,10 +25,12 @@ const FIG_COLOR: Partial<Record<FigureType, number>> = {
   [FigureType.Protester]: 0xe0e040,
   [FigureType.Thief]: 0x402040,
   [FigureType.Rioter]: 0xff2010,
+  [FigureType.LevyWorker]: 0xc8a060,
+  [FigureType.Boat]: 0x8a6a3a,
 };
 // màu kiện hàng trên xe bò / quang gánh, theo Resource
 const RES_COLOR = [0, 0xf0f0d8, 0x80a8c0, 0x60b040, 0xd08080, 0xa06040, 0xc07040, 0xffffff, 0xf0f0f0, 0x6080c0, 0x4a8a30, 0x8a6a30, 0xf0e8c0, 0xe8c840, 0xb87040, 0xc89040, 0x707078, 0x9090a0, 0x8a5a2a];
-const isCarrier = (t: number) => t === FigureType.CartPusher || t === FigureType.Warehouseman;
+const isCarrier = (t: number) => t === FigureType.CartPusher || t === FigureType.Warehouseman || t === FigureType.Boat;
 
 export class FigureLayer {
   readonly container = new Container();
@@ -79,9 +81,16 @@ export class FigureLayer {
       g.clear();
       const t = this.types[i];
       const color = FIG_COLOR[t as FigureType] ?? 0xffffff;
-      if (isCarrier(t)) {
+      if (t === FigureType.Boat) {
+        // thuyền nan: thân dài nằm trên mặt nước, kiện hàng ở giữa
+        g.poly([-14, -4, -8, -8, 8, -8, 14, -4, 8, 0, -8, 0]).fill(color);
+        if (this.res[i]) g.rect(-4, -12, 8, 5).fill(RES_COLOR[this.res[i]] ?? 0xffffff);
+      } else if (isCarrier(t)) {
         g.rect(-7, -10, 14, 8).fill(color);
         if (this.res[i]) g.rect(-5, -14, 10, 5).fill(RES_COLOR[this.res[i]] ?? 0xffffff);
+      } else if (t === FigureType.LevyWorker) {
+        // phu đê: nhóm ba người
+        for (const dx of [-6, 0, 6]) g.circle(dx, -6, 3).fill(color).rect(dx - 2, -3, 4, 5).fill(0x3a2a1a);
       } else {
         g.circle(0, -6, 4).fill(color).rect(-2, -3, 4, 6).fill(0x2a2a2a);
         if (t === FigureType.MarketBuyer) g.rect(-7, -8, 3, 3).fill(0xd8c080).rect(4, -8, 3, 3).fill(0xd8c080);

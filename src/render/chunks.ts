@@ -1,8 +1,8 @@
 // Bản đồ chia chunk 16×16 ô. Mỗi chunk một Graphics, chỉ vẽ lại khi có ô trong chunk đổi.
 // Vẫn vẽ khối Graphics phẳng (placeholder); sau thay bằng sprite từ spritesheet, cùng điểm neo.
 import { Container, Graphics } from 'pixi.js';
-import { GRID_SIZE, T_BUILDING, T_FLOODPLAIN, T_ROAD, T_TREE, T_WATER } from '../sim/map/grid';
-import { BuildingType } from '../sim/state';
+import { GRID_SIZE, T_BUILDING, T_FLOODED, T_FLOODPLAIN, T_ROAD, T_SUNKEN, T_TREE, T_UNPROTECTED, T_WATER } from '../sim/map/grid';
+import { BuildingType, isDike } from '../sim/state';
 import { BUILDING_DEFS } from '../sim/buildings/defs';
 import { HALF_H, HALF_W, tileToWorld, TILE_H } from './iso';
 
@@ -15,6 +15,14 @@ const COLOR = {
   water: 0x3b6e9c,
   road: 0xb89a62,
   tree: 0x3f6a2a,
+  // M4
+  flooded: 0x4f82b0, // nước lũ phủ lên ô
+  sunken: 0x7a7448, // đất trũng (đào đất đắp đê, đê vỡ)
+  overlayUnprotected: 0x5aa0d8, // lớp phủ: bãi bồi lũ vừa sẽ ngập
+  overlayProtected: 0x6fcf7a, // lớp phủ: bãi bồi có đê che
+  dike: [0x8a7a52, 0x6e6040, 0xa89a6a] as [number, number, number],
+  dikePlanned: [0x5a5a50, 0x4a4a40, 0x707068] as [number, number, number],
+  sluiceGate: 0x3b6e9c,
 };
 
 // màu khối placeholder: [mặt trái, mặt phải, mái]. Nhà theo bậc 0..10; công trình theo loại.
@@ -67,6 +75,7 @@ const TYPE_COLORS: Partial<Record<BuildingType, [number, number, number]>> = {
   [BuildingType.Garden]: C(0x4a7a30, 0x3a6428, 0x5aa040),
   [BuildingType.LotusPond]: C(0x4a7a90, 0x3a6474, 0x70b0a0),
   [BuildingType.Ruins]: C(0x3a3430, 0x2a2420, 0x4a3a30),
+  [BuildingType.Dock]: C(0x7a5a3a, 0x5e4630, 0x9a7a4a),
 };
 const FLAT = new Set<BuildingType>([BuildingType.Paddy, BuildingType.VegGarden, BuildingType.CottonField, BuildingType.TeaHill, BuildingType.MulberryField, BuildingType.SaltPan, BuildingType.ClayPit, BuildingType.Garden, BuildingType.LotusPond, BuildingType.Ruins]);
 const HEIGHT_BY_SIZE = [0, 10, 18, 26];
@@ -88,6 +97,14 @@ export class ChunkLayer {
   private elevation: Uint8Array = new Uint8Array(GRID_SIZE * GRID_SIZE);
   private bType: Uint8Array = new Uint8Array(GRID_SIZE * GRID_SIZE);
   private bLevel: Uint8Array = new Uint8Array(GRID_SIZE * GRID_SIZE);
+  private overlay = false;
+
+  /** M4: bật/tắt lớp phủ vùng ngập — vẽ lại mọi chunk. */
+  setOverlay(on: boolean): void {
+    if (this.overlay === on) return;
+    this.overlay = on;
+    for (let i = 0; i < this.ground.length; i++) this.dirty.add(i);
+  }
 
   constructor() {
     this.container.sortableChildren = true;
@@ -163,10 +180,14 @@ export class ChunkLayer {
         if (t & T_WATER) fill = COLOR.water;
         else if (t & T_ROAD) fill = COLOR.road;
         else if (t & T_BUILDING) fill = 0x55503a;
+        else if (t & T_SUNKEN) fill = COLOR.sunken;
         else if (t & T_FLOODPLAIN) fill = COLOR.floodplain;
         else fill = COLOR.grass[this.elevation[i]] ?? COLOR.grass[0];
         diamond(g, wx, wy, fill);
         if (t & T_ROAD) g.stroke({ color: 0x8a7046, width: 1 });
+        // M4: nước lũ phủ mờ lên ô (kể cả đường, móng); lớp phủ vùng ngập khi bật
+        if (t & T_FLOODED) diamond(g, wx, wy, COLOR.flooded, 0.65);
+        else if (this.overlay && t & T_FLOODPLAIN && !(t & T_WATER)) diamond(g, wx, wy, t & T_UNPROTECTED ? COLOR.overlayUnprotected : COLOR.overlayProtected, 0.35);
         if (t & T_TREE) o.circle(wx, wy + HALF_H - 6, 7).fill(COLOR.tree);
         const bt = this.bType[i];
         if (bt) this.drawBuilding(o, x, y, bt, this.bLevel[i]);
@@ -176,6 +197,7 @@ export class ChunkLayer {
 
   /** Vẽ khối N×N với ô neo (x, y) = góc dưới móng. Điểm neo đúng như buildingAnchor() trong iso.ts. */
   private drawBuilding(o: Graphics, ax: number, ay: number, type: number, level: number): void {
+    if (isDike(type as BuildingType)) { this.drawDike(o, ax, ay, type, level); return; }
     const n = sizeOf(type, level);
     const h = typeHeight(type, n, level);
     const col = type === BuildingType.House ? HOUSE_COLORS[level] ?? HOUSE_COLORS[0] : TYPE_COLORS[type as BuildingType] ?? HOUSE_COLORS[0];
@@ -194,9 +216,31 @@ export class ChunkLayer {
     // mái
     o.poly([T.x, T.y - h, R.x, R.y - h, B.x, B.y - h, L.x, L.y - h]).fill(col[2]);
   }
+
+  /**
+   * M4: đoạn đê 1 ô. bLevel = mức cao (0 = mới vẽ, chờ đắp) + 16 nếu cống đang mở.
+   * Vẽ như khối thấp, cao theo mức; cống mở vẽ khe nước ở đỉnh; đường vắt qua thì đỉnh màu đường.
+   */
+  private drawDike(o: Graphics, ax: number, ay: number, type: number, level: number): void {
+    const h = level & 15, open = (level & 16) !== 0;
+    const hp = h === 0 ? 3 : 4 + h * 5;
+    const col = h === 0 ? COLOR.dikePlanned : COLOR.dike;
+    const c = tileToWorld(ax, ay);
+    const T = { x: c.wx, y: c.wy }, R = { x: c.wx + HALF_W, y: c.wy + HALF_H }, B = { x: c.wx, y: c.wy + TILE_H }, L = { x: c.wx - HALF_W, y: c.wy + HALF_H };
+    o.poly([L.x, L.y, L.x, L.y - hp, B.x, B.y - hp, B.x, B.y]).fill(col[0]);
+    o.poly([B.x, B.y, B.x, B.y - hp, R.x, R.y - hp, R.x, R.y]).fill(col[1]);
+    const i = ay * GRID_SIZE + ax;
+    const top = this.terrain[i] & T_ROAD ? COLOR.road : col[2];
+    o.poly([T.x, T.y - hp, R.x, R.y - hp, B.x, B.y - hp, L.x, L.y - hp]).fill(top);
+    if (type === BuildingType.Sluice) {
+      // cống: khe ở giữa đỉnh, xanh nước khi mở, tối khi đóng
+      o.poly([T.x, T.y - hp + 6, T.x + 10, T.y - hp + 11, T.x, T.y - hp + 16, T.x - 10, T.y - hp + 11]).fill(open ? COLOR.sluiceGate : 0x2a2418);
+    }
+    if (h === 0) o.poly([T.x, T.y - hp, R.x, R.y - hp, B.x, B.y - hp, L.x, L.y - hp]).stroke({ color: 0xd8c890, width: 1 });
+  }
 }
 
-function diamond(g: Graphics, wx: number, wy: number, color: number): void {
+function diamond(g: Graphics, wx: number, wy: number, color: number, alpha = 1): void {
   // Hình thoi với tâm trên tại (wx, wy): đỉnh trên wy, trái/phải wy+HALF_H, dưới wy+TILE_H
-  g.poly([wx, wy, wx + HALF_W, wy + HALF_H, wx, wy + TILE_H, wx - HALF_W, wy + HALF_H]).fill(color);
+  g.poly([wx, wy, wx + HALF_W, wy + HALF_H, wx, wy + TILE_H, wx - HALF_W, wy + HALF_H]).fill({ color, alpha });
 }

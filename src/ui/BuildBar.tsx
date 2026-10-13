@@ -1,7 +1,7 @@
 import { BUILDING_DEFS, BUILDING_KEYS } from '../sim/buildings/defs';
 import { BuildingType } from '../sim/state';
 import { GROUPS, TERRAIN_HINT } from './format';
-import { bridge, hoverText, openGroup, tool } from './store';
+import { bridge, hoverText, openGroup, overlay, tool } from './store';
 
 const byGroup = new Map<string, string[]>();
 for (const [key, t] of BUILDING_KEYS) {
@@ -21,6 +21,7 @@ function describe(key: string): string {
   const parts = [`${d.name} — ${d.cost} quan`, `${d.size}×${d.size}`];
   if (d.workers) parts.push(`${d.workers} người làm`);
   if (TERRAIN_HINT[d.terrain]) parts.push(TERRAIN_HINT[d.terrain]);
+  if (d.terrain === 'land') parts.push('phu đê từ đình làng tới đắp; đặt lại lên đoạn có sẵn để tôn cao');
   return parts.join(' · ');
 }
 
@@ -35,6 +36,8 @@ export function BuildBar() {
           <button class={g === id ? 'open' : ''} onClick={() => (openGroup.value = g === id ? null : id)}>{label}</button>
         ))}
         <button class={tool.value === 'raze' ? 'active' : ''} onClick={() => { pick('raze'); openGroup.value = null; }}>Phá</button>
+        <span class="sp" />
+        <button class={overlay.value ? 'active' : ''} title="Tô xanh bãi bồi lũ vừa sẽ ngập, tô lục bãi bồi đã có đê che" onClick={() => (overlay.value = !overlay.value)}>Vùng ngập</button>
       </div>
       {g && (
         <div class="row sub">
