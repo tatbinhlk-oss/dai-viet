@@ -47,7 +47,12 @@ export enum BuildingType {
   Garden = 33, // vườn cây
   LotusPond = 34, // ao sen
   Ruins = 35, // đống tro đang cháy
+  // --- M4: lũ đê ---
+  Dike = 36, // đoạn đê 1×1, cao 1–4, đắp bằng phu đê
+  Sluice = 37, // cống: đoạn đê có nút đóng/mở
+  Dock = 38, // bến thuyền kề sông — nút mạng đường thủy
 }
+export const isDike = (t: BuildingType): boolean => t === BuildingType.Dike || t === BuildingType.Sluice;
 
 export enum Resource {
   None = 0,
@@ -93,6 +98,9 @@ export enum FigureType {
   Protester = 17, // dân kêu oan
   Thief = 18, // trộm
   Rioter = 19, // loạn dân
+  // M4
+  LevyWorker = 20, // phu đê — nhóm dân đình làng đi đắp đê
+  Boat = 21, // thuyền nan chở hàng trên sông
 }
 
 export enum FigureMode {
@@ -142,10 +150,24 @@ export interface Building {
   damageRisk: number;
   burnDays: number; // Ruins: số ngày còn cháy
   // walker
-  figureId: number; // walker chính (roamer / xe bò / phu kho)
-  figureId2: number; // chợ: người gánh chợ
+  figureId: number; // walker chính (roamer / xe bò / phu kho); đê: phu đê đang đắp
+  figureId2: number; // chợ: người gánh chợ; đình: nhóm phu đê
   laborSeekerId: number;
   spawnCounter: number;
+  // --- M4: lũ ---
+  flooded: boolean; // có ô móng đang ngập (hậu quả áp một lần khi chuyển dry → ngập)
+  floodedThisSeason: boolean; // ruộng: ngập trong mùa lũ này → phù sa
+  silted: boolean; // ruộng: có phù sa (tiến độ × 1,5) tới hết mùa lũ sau
+  dryYears: number; // ruộng: số năm liền không ngập (bạc màu)
+  floodMoodPeriods: number; // nhà: số kỳ còn chịu −3 lòng dân sau ngập
+  pollutedDays: number; // giếng: số ngày còn nhiễm bẩn
+  // --- M4: đê ---
+  height: number; // đê/cống: mức cao hiện có 0–4 (0 = mới vẽ, chưa đắp)
+  targetHeight: number; // đê/cống: mức cao người chơi muốn
+  integrity: number; // đê/cống: độ bền 0–100
+  workDone: number; // đê/cống: công đã đắp cho mức kế (người-tick)
+  earthTaken: boolean; // đê/cống: đã lấy kiện đất cho mức đầu
+  sluiceOpen: boolean; // cống: đang mở (nước qua)
 }
 
 export interface Figure {
@@ -170,6 +192,8 @@ export interface Figure {
   /** người gánh chợ: đơn vị từng loại đang gánh (một chuyến lấy nhiều loại, tối đa 8 kiện) */
   cargo: number[];
   waitTicks: number;
+  /** thuyền nan: ô nước ở bến xuất phát để quay về */
+  boatHome: number;
 }
 
 export interface Time {
@@ -198,7 +222,27 @@ export interface Labor {
   allocated: number[];
 }
 
-export type MoodCause = 'none' | 'tax' | 'unemployment' | 'food' | 'tents';
+export type MoodCause = 'none' | 'tax' | 'unemployment' | 'food' | 'tents' | 'flood';
+
+/** Mùa lũ — thiết kế phần 5. */
+export interface FloodState {
+  /** mực lũ đỉnh năm nay 1–4; 0 = ngoài mùa */
+  peak: number;
+  /** đỉnh đã quay từ tháng 4 (ẩn, để nha môn dự báo); 0 = chưa quay */
+  nextPeak: number;
+  /** nha môn dự báo (0 = chưa báo) */
+  forecast: number;
+  /** mực nước hôm nay 0–4 */
+  level: number;
+  /** ngày thứ mấy trong mùa lũ; −1 = ngoài mùa */
+  dayInSeason: number;
+  /** số kỳ còn chịu −3 lòng dân toàn thành sau vỡ đê */
+  breachMoodPeriods: number;
+  breachesThisYear: number;
+  /** đê đổi (đắp, vỡ, mở cống) → tính lại vùng có đê che */
+  dikesChanged: boolean;
+  floodedTiles: number;
+}
 
 export interface GameState {
   seed: number;
@@ -224,6 +268,7 @@ export interface GameState {
   lastYear: Ledger;
   /** tích trữ toàn thành: không cho chợ/xưởng lấy ra */
   stockpile: boolean[];
+  flood: FloodState;
   /** sự kiện gần đây cho UI (cháy, sập, trộm…), tối đa 8 dòng */
   events: string[];
   dirty: Set<number>; // offset ô đã đổi kể từ snapshot trước
@@ -241,6 +286,8 @@ export function newBuilding(id: number, type: BuildingType, x: number, y: number
     progress: 0, numWorkers: 0, housesCovered: 0,
     fireRisk: 0, damageRisk: 0, burnDays: 0,
     figureId: 0, figureId2: 0, laborSeekerId: 0, spawnCounter: 0,
+    flooded: false, floodedThisSeason: false, silted: false, dryYears: 0, floodMoodPeriods: 0, pollutedDays: 0,
+    height: 0, targetHeight: 0, integrity: 0, workDone: 0, earthTaken: false, sluiceOpen: false,
   };
 }
 

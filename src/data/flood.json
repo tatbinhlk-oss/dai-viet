@@ -1,0 +1,55 @@
+{
+  "_note": "Số cân bằng lũ và đê (thiết kế phần 5). Tháng âm lịch 1..12. Chỉnh ở đây, không sửa code.",
+  "season": {
+    "_note": "Tháng 4 nha môn báo trước (đúng 70%); lũ từ ngày 1 tháng 6: lên 24 ngày, giữ đỉnh 16, rút 24 = hết tháng 9",
+    "forecastMonth": 4,
+    "startMonth": 6,
+    "riseDays": 24,
+    "holdDays": 16,
+    "recedeDays": 24,
+    "forecastAccuracy": 70
+  },
+  "peakChances": { "_note": "% cho mực lũ đỉnh 1 nhỏ, 2 vừa, 3 lớn, 4 đại hồng thủy", "byLevel": [45, 35, 15, 5] },
+  "levelNames": ["—", "nhỏ", "vừa", "lớn", "đại hồng thủy"],
+  "dike": {
+    "_note": "Mỗi đoạn 1 ô, cao 1–4. Mức đầu cần 1 kiện đất (đào ô bãi bồi gần nhất thành đất trũng) + 30 ngày-người; tôn cao thêm mỗi mức 20 ngày-người. Nước chạm đê: integrity −= (mực lũ − cao + 1) × 2 mỗi ngày; ngoài mùa −1 mỗi 4 ngày; thợ cả đi qua đặt lại 100.",
+    "maxHeight": 4,
+    "manDaysFirstLevel": 30,
+    "manDaysRaise": 20,
+    "earthSearchRadius": 8,
+    "integrityMax": 100,
+    "decayEveryDays": 4,
+    "touchDamagePerLevel": 2,
+    "gangSize": 20,
+    "levyRange": 80,
+    "levyNextRange": 30
+  },
+  "consequences": {
+    "_note": "Nhà ngập: tụt 1 bậc, 50% dân bỏ đi, lòng dân −3/kỳ trong 6 kỳ (3 tháng), lều bị xóa. Vựa mất 50% lương thực. Giếng nhiễm bẩn 32 ngày: cấp nước kém 1 bậc. Ruộng ngập: tiến độ về 0, nước rút được phù sa ×1,5 tới hết mùa lũ sau; không ngập 5 năm thì bạc màu −10% mỗi 5 năm, tối thiểu 50%.",
+    "houseLeavePct": 50,
+    "moodPenalty": -3,
+    "houseMoodPeriods": 6,
+    "breachMoodPeriods": 6,
+    "granaryLossPct": 50,
+    "wellPollutedDays": 32,
+    "siltMultiplier": 1.5,
+    "fallowPenaltyPct": 10,
+    "fallowYears": 5,
+    "fallowMinPct": 50
+  },
+  "desirability": {
+    "_note": "[giá trị, bước, Δ, tầm]. flooded: ô đang ngập. unprotected: ô bãi bồi chưa có đê che, mùa khô (chỉ tại ô). protected: ô bãi bồi có đê che, cách sông ≤ riverRange (nhà cạnh sông có đê). sunken: đất trũng.",
+    "flooded": [-15, 1, 5, 2],
+    "unprotected": -5,
+    "protected": 10,
+    "riverRange": 6,
+    "sunken": [-5, 1, 2, 2]
+  },
+  "boat": {
+    "_note": "Thuyền nan: hai công trình đều có bến trong dockRange ô và đường thủy < đường bộ × waterVsRoad thì hàng đi thuyền, ticksPerTile tick/ô.",
+    "dockRange": 3,
+    "ticksPerTile": 10,
+    "loads": 2,
+    "waterVsRoad": 0.5
+  }
+}
