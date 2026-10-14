@@ -79,7 +79,7 @@ export function generateFigures(s: GameState): void {
     }
 
     // xe bò: đủ một kiện → chở đi
-    if ((isRawProducer(b.type) || isWorkshop(b.type)) && b.figureId === 0 && b.progress >= def.progressMax) {
+    if ((isRawProducer(b.type) || isWorkshop(b.type)) && def.progressMax > 0 && b.figureId === 0 && b.progress >= def.progressMax) {
       const f = createFigure(s, FigureType.CartPusher, door, b.id);
       if (f) {
         f.resource = def.produces;

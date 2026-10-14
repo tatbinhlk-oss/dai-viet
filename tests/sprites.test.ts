@@ -39,7 +39,7 @@ describe('spritesheet', () => {
     for (const f of Object.values(ground.frames)) { expect(f.w).toBe(64); expect(f.anchor).toEqual([0.5, 1]); }
   });
   it('walker: mọi loại có 4 hướng × 4 khung; xe bò, phu kho, đoàn xe, thuyền có bản đầy; kiện hàng theo loại', () => {
-    const carriers = new Set(['cartPusher', 'warehouseman', 'convoy', 'boat']);
+    const carriers = new Set(['cartPusher', 'warehouseman', 'convoy', 'boat', 'caravan', 'tradeShip']);
     for (const name of Object.keys(FigureType)) {
       const v = FigureType[name as keyof typeof FigureType];
       if (typeof v !== 'number' || v === FigureType.None) continue;

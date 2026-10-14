@@ -1,6 +1,8 @@
 // Bộ phân phối: mỗi tick cập nhật mọi walker theo loại.
 import { FigureType, type GameState } from '../state';
 import { updateBoatFigure, updateCartPusher, updateWarehouseman } from './cartpusher';
+import { updateTrader } from './trader';
+import { updateEnemy, updateMilitia } from './enemy';
 import { updateMarketBuyer } from './market';
 import { updateEmigrant, updateImmigrant, updateMessenger } from './migrant';
 import { updateRoamer } from './service';
@@ -17,6 +19,9 @@ export function updateFigures(s: GameState): void {
       case FigureType.Immigrant: updateImmigrant(s, f); break;
       case FigureType.Emigrant: case FigureType.Convoy: case FigureType.Soldiers: updateEmigrant(s, f); break; // đi ra cửa ngõ rồi biến mất
       case FigureType.Messenger: updateMessenger(s, f); break;
+      case FigureType.Caravan: case FigureType.TradeShip: updateTrader(s, f); break;
+      case FigureType.Enemy: updateEnemy(s, f); break;
+      case FigureType.Militia: updateMilitia(s, f); break;
       case FigureType.LevyWorker: updateLevyWorker(s, f); break;
       case FigureType.Boat: updateBoatFigure(s, f); break;
       default: updateRoamer(s, f); break; // mọi loại đi dạo

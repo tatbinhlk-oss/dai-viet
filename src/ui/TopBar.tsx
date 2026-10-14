@@ -3,7 +3,7 @@ import { MONTHS, num } from './format';
 import { MOOD_CAUSE_TEXT } from '../sim/city/sentiment';
 import type { FloodStats } from '../sim';
 
-const PANELS: [Exclude<Panel, null>, string][] = [['labor', 'Lao động'], ['finance', 'Tài chính'], ['mood', 'Dân tình'], ['storage', 'Kho hàng'], ['flood', 'Thủy lợi'], ['court', 'Nha môn'], ['worship', 'Tín ngưỡng'], ['ratings', 'Chỉ số']];
+const PANELS: [Exclude<Panel, null>, string][] = [['labor', 'Lao động'], ['finance', 'Tài chính'], ['mood', 'Dân tình'], ['storage', 'Kho hàng'], ['flood', 'Thủy lợi'], ['court', 'Nha môn'], ['worship', 'Tín ngưỡng'], ['ratings', 'Chỉ số'], ['trade', 'Thương mại']];
 
 /** Dòng lũ trên thanh trên: chỉ hiện từ tháng 4 đến tháng 9. */
 function floodText(f: FloodStats): string {
@@ -46,6 +46,12 @@ export function TopBar() {
       {PANELS.map(([k, label]) => (
         <button class={panel.value === k ? 'active' : ''} onClick={() => (panel.value = panel.value === k ? null : k)}>{label}</button>
       ))}
+      <span class="sep" />
+      <button title="Lưu vào trình duyệt (tự lưu mỗi tháng ở khe riêng)" onClick={() => bridge.save()}>Lưu</button>
+      <button title="Nạp bản đã bấm Lưu" onClick={() => bridge.load('manual')}>Nạp</button>
+      <button title="Nạp bản tự lưu tháng gần nhất" onClick={() => bridge.load('auto')}>Nạp tự lưu</button>
+      <button title="Xuất file .dvsav để chia sẻ" onClick={() => bridge.exportFile()}>Xuất</button>
+      <label class="filebtn" title="Nhập file .dvsav">Nhập<input type="file" accept=".dvsav" onChange={(e) => { const f = (e.currentTarget as HTMLInputElement).files?.[0]; if (f) void bridge.importFile(f); (e.currentTarget as HTMLInputElement).value = ''; }} /></label>
       </div>
     </div>
   );

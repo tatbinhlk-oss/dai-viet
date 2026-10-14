@@ -80,6 +80,7 @@ export function updateYearlyRatings(s: GameState): void {
   if (!s.court.tributePaid) d += P.tributeMissed;
   if (rt.paddiesFloodedThisYear === 0) d += P.noFloodCropLoss;
   if (rt.floodedHousesThisYear > 0) d += P.floodedHouses;
+  if (s.trade.shipsThisYear >= P.tradeShips[0]) d += P.tradeShips[1]; // M6a: thuyền buôn cập bến ≥ 4 chuyến
   const cap = prosperityCap(s);
   rt.prosperity = Math.max(0, Math.min(cap, rt.prosperity + d));
   // --- Trị an ---

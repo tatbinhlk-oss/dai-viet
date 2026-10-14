@@ -25,7 +25,7 @@ Thêm `?seed=123` vào URL để đổi bản đồ. `?scenario=sonNam` chơi m�
 - [x] **M5 Triều đình** — Ân sủng, phẩm hàm và bổng lộc, tiến cống, cống nạp, chiếu chỉ 5 loại do sứ giả đem tới nha môn, lao dịch (ngành thứ 10), khoa cử, 4 tín ngưỡng với lễ hội và Tết, 4 chỉ số + sức khỏe, nhà quan lại bậc 9–10, màn chơi có mục tiêu và điều kiện thắng / cách chức; UI: bảng Nha môn, Tín ngưỡng, Chỉ số. Thiết kế: `docs/m5-thiet-ke.md`
 - [ ] **M6 Phát hành** — thiết kế: `docs/m6-thiet-ke.md`
   - [x] **M6-0** khung spritesheet: hình tạm có nhãn tên sinh bằng script, đóng gói `public/sheets`, render công trình / walker / đất nền bằng Sprite, nút "Hiện tên"
-  - [ ] **M6a** thương mại, giặc, lưu game
+  - [x] **M6a** thương mại (2 tuyến, hạn ngạch 15/25/40, lệnh mua bán, đoàn buôn và thuyền buôn), giặc giã (3 nguồn theo kịch bản, trại lính, thành đất / đá), lưu game (IndexedDB tự lưu mỗi tháng, xuất / nhập .dvsav)
   - [ ] **M6b** 3 màn chơi và chuỗi phẩm hàm
   - [ ] **M6c** hình vẽ, âm thanh, PWA, điện thoại, phát hành
 
@@ -39,29 +39,31 @@ src/data/     bảng cân bằng JSON — chỉnh số ở đây, không sửa c
   resources.json  19 loại hàng
   flood.json      M4: mùa lũ, xác suất đỉnh, đê (công đắp, độ bền), hậu quả ngập, độ hấp dẫn, thuyền nan
   court.json      M5: Ân sủng, phạt chiếu chỉ, binh dịch, lao dịch, tiến cống, phẩm hàm, cống nạp, khoa cử, tín ngưỡng, chỉ số, sức khỏe
-  scenarios/      M5: màn chơi (son-nam.json): phẩm hàm, vốn, mục tiêu, chiếu chỉ theo năm, sự kiện
+  trade.json      M6a: giá mua bán, hạn ngạch, hai tuyến buôn, số giặc giã (máu, đòn, thành)
+  scenarios/      M5: màn chơi (son-nam.json): phẩm hàm, vốn, mục tiêu, chiếu chỉ theo năm, sự kiện (M6a: tuyến buôn, giặc)
 src/sim/      mô phỏng — không import Pixi/DOM; tick.ts giữ lịch 50 việc/ngày (tick 26 = lũ)
   map/        grid, terrain, routing (BFS), desirability
   buildings/  defs (nạp JSON), spawn, house (bậc 1–8), industry (sản xuất, sinh walker), storage (vựa, kho, xưởng),
               dike (đoạn đê, cống: vẽ/tôn cao, đào đất, độ bền, vỡ)
   figures/    figure, movement, service (đi dạo, tuần đinh, thợ cả + kiểm tra đê, lại thu thuế, tội phạm),
               cartpusher (xe bò, phu kho; chọn thuyền khi đường thủy ngắn), market, migrant,
-              levyWorker (phu đê), boat (thuyền nan, bến)
+              levyWorker (phu đê), boat (thuyền nan, bến), trader (đoàn buôn, thuyền buôn), enemy (giặc, lính)
   city/       labor (+ lao dịch), sentiment (+ tội phạm, lũ, lao dịch), finance, risk (cháy/sập), population (di cư),
               court (Ân sủng, chiếu chỉ, sứ giả, cống nạp, bổng lộc, tiến cống, khoa cử, cách chức), worship (4 tín ngưỡng, lễ hội, Tết),
-              ratings (Văn hiến, Thịnh vượng, Trị an), health (sức khỏe, dịch)
+              ratings (Văn hiến, Thịnh vượng, Trị an), health (sức khỏe, dịch), trade (tuyến buôn, hạn ngạch, mua bán), war (giặc, lính)
   flood/      season (mùa lũ, dự báo, mực nước), floodFill (lan nước, vùng có đê che, khoảng cách tới sông),
               consequences (hậu quả ngập theo loại ô, phù sa, bạc màu)
   scenario/   demo.ts — thị trấn mẫu dùng cho test và ?demo=1; planDikeLine / legacyDike / dikeStation / buildCourtTown
               loader.ts (nạp màn), events.ts (mưa lớn, hà đê sứ, lệnh đắp đê), victory.ts (thắng / thua)
-src/worker/   vòng lặp sim trong Worker, gửi snapshot
+src/sim/save.ts  M6a: state ↔ JSON (TypedArray base64) ↔ gzip; worker lưu IndexedDB và xuất / nhập file
+src/worker/   vòng lặp sim trong Worker, gửi snapshot, tự lưu mỗi tháng
 src/render/   iso.ts (hằng số ô, chiếu, neo, zIndex), sheets.ts (nạp spritesheet), chunks.ts (đất nền theo chunk, công trình), figures.ts, palette.ts (màu khối dự phòng), app.ts
 assets/       PNG nguồn: buildings/, houses/, ground/, figures/ (hình tạm do scripts/gen-placeholders.ts sinh; thay hình thật = thả PNG cùng tên), fonts/
 public/sheets/ spritesheet đã đóng gói (scripts/pack-sprites.ts): <nhóm>.png + .json, mỗi frame có anchor (0.5, 1) và footprint
 scripts/      gen-placeholders.ts, pack-sprites.ts (chạy bằng tsx, vẽ bằng @napi-rs/canvas)
 src/ui/       Preact + signals: TopBar, BuildBar (khóa theo phẩm hàm), InfoPanel, Advisors (+ Thủy lợi, Nha môn, Tín ngưỡng, Chỉ số), YamenPanel
 src/main.ts   nối worker ↔ render ↔ ui
-tests/        vitest chạy sim headless (cổng M2: tests/village, M3: tests/city, M4: tests/flood, M5: tests/court; cơ chế: tests/m3, m4, m5)
+tests/        vitest chạy sim headless (cổng M2: tests/village, M3: tests/city, M4: tests/flood, M5: tests/court; cơ chế: tests/m3, m4, m5, m6a, sprites)
 ```
 
 Quy tắc cố định từ M1: kích thước ô chỉ ghi ở `render/iso.ts`; điểm neo sprite công trình là góc dưới hình thoi móng, anchor (0.5, 1), công trình N×N rộng đúng N×64 px; thứ tự vẽ `(x + y) × 8 + layer`; `roundPixels`, `scaleMode: nearest`, không mip-map, zoom 0,5× / 1× / 2×.
@@ -112,3 +114,10 @@ Giữ đúng thiết kế: Ân sủng −2/năm, chiếu chỉ trễ lần đầ
 - **"Hiện tên"**: nhãn Pixi chỉ vẽ lên frame có hình thật (hình tạm đã có nhãn trong PNG, không vẽ đè); mặc định bật khi sheet còn hình tạm, tắt khi đã thay hết. Nhãn, nút, ô chữ không bo góc.
 - Font nhãn tạm: DejaVu Sans Bold (`assets/fonts`, giấy phép Bitstream Vera cho phép phân phối). Sprite Caesar 3 không đưa vào repo; `assets/extracted/` nằm trong .gitignore.
 - `tests/sprites.test.ts` kiểm mọi loại công trình / bậc nhà / đê / walker có frame, anchor (0.5, 1), rộng N×64, footprint đúng.
+
+## Ghi chú M6a (chỗ khác hoặc rút gọn so với thiết kế)
+
+- **Thương mại**: hai tuyến trong `trade.json` — bộ lên miền núi (đoàn buôn tới kho, 8 kiện/chuyến, 48 ngày một chuyến; lái buôn mua muối, vải; bán quặng đồng, quặng sắt, gỗ) và sông ra biển (thuyền buôn tới bến cảng, 12 kiện, 64 ngày; mua lụa, gốm, trà; bán đồ đồng). Hương liệu, trâu, gỗ quý chưa có trong bảng hàng (không có nhà / xưởng dùng) — để M6b/M6c nếu cần. Mở tuyến tốn tiền một lần (400 / 800); hạn ngạch mỗi mặt hàng bắt đầu mức 15, đầu năm mua bán đủ 80% thì lên 25 rồi 40. Giá theo tỉ lệ Caesar 3 (lụa 215/160, gốm 180/140, gạo 28/22…). Lệnh Mua / Bán theo mặt hàng ở bảng Thương mại; lái buôn mua bán tại kho có người làm gần nhất (thuyền: kho gần bến cảng nhất theo đường bộ), hàng vào thẳng kho. Màn Sơn Nam mở được cả hai tuyến; chơi tự do cũng vậy.
+- **Giặc giã**: sự kiện kịch bản `invasion` (sea / south / north, số tên), báo trước 2 tháng. Giặc là walker người ngoài: tới công trình gần nhất (không qua thành), đứng 40 tick thì đốt (thành đống tro), mỗi tên phá tối đa 3 công trình rồi rút về mép; bị thành chặn thì phá thành (thành đất 3 đòn, thành đá 8 đòn, 80 tick một đòn). Trại lính là xưởng nhận vũ khí (xe bò chở tới như nguyên liệu): mỗi kiện một lính, tối đa 4; lính đứng ở cửa trại, giặc trong tầm 30 ô thì tới đánh, đứng cạnh nhau thì cứ 10 tick đổi đòn (lính 15, giặc 10, máu 100). Không có đội hình, tường thành không có cổng (chừa lỗ hổng). Trị an đếm công trình giặc đốt (không tính lều, điếm canh). Quân "cách chức" của M5 chưa dùng cơ chế này.
+- **Lưu game**: `src/sim/save.ts` chuyển state thành JSON (TypedArray mã hóa base64, Set `dirty` không lưu) rồi gzip bằng CompressionStream; worker lưu IndexedDB khe `auto` mỗi tháng game và khe `manual` khi bấm Lưu; Xuất / Nhập file `.dvsav` (gzip JSON). Sự kiện kịch bản chuyển vào state (`scenarioEvents`) để lưu được. `tests/m6a.test.ts`: lưu → nạp → chạy 1 năm cho kết quả y hệt.
+- **Gộp nhà 2×2 / 3×3**: chưa làm (để M6b).

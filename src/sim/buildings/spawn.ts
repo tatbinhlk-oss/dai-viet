@@ -1,5 +1,5 @@
 // Đặt và phá đường / công trình. Mọi thay đổi lưới phải đi qua đây để dirty được ghi nhận.
-import { BuildingType, isDike, type Building, type GameState, newBuilding } from '../state';
+import { BuildingType, isDike, isWall, type Building, type GameState, newBuilding } from '../state';
 import { gridOffset, hasFlag, inBounds, isBuildable, T_BUILDING, T_FLOODPLAIN, T_ROAD, T_TREE, T_WATER, type Grid } from '../map/grid';
 import { BUILDING_DEFS } from './defs';
 import { removeFigure } from '../figures/figure';
@@ -27,7 +27,7 @@ export function canPlaceBuilding(g: Grid, type: BuildingType, x: number, y: numb
     for (let dx = 0; dx < def.size; dx++) {
       const cx = x + dx, cy = y + dy;
       // đê: đặt được lên ô đường (đường vắt qua đê); các loại khác cần ô trống
-      if (def.terrain === 'land') { if (!inBounds(cx, cy) || (g.terrain[gridOffset(cx, cy)] & (T_WATER | T_BUILDING)) !== 0) return false; }
+      if (def.terrain === 'land') { if (!inBounds(cx, cy) || (g.terrain[gridOffset(cx, cy)] & (T_WATER | T_BUILDING)) !== 0) return false; if (isWall(type) && hasFlag(g, cx, cy, T_ROAD)) return false; } // M6a: thành không đặt lên đường
       else if (!isBuildable(g, cx, cy)) return false;
       const elev = g.elevation[gridOffset(cx, cy)];
       switch (def.terrain) {

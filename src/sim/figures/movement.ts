@@ -7,7 +7,8 @@ import { nextInt } from '../rng';
 import { flood } from '../buildings/defs';
 
 /** Số tick đi một ô: thuyền nan nhanh hơn người đi bộ (M4). */
-export const ticksPerTile = (f: Figure): number => (f.type === FigureType.Boat ? flood.boat.ticksPerTile : TICKS_PER_TILE);
+export const onWater = (f: Figure): boolean => f.type === FigureType.Boat || f.type === FigureType.TradeShip;
+export const ticksPerTile = (f: Figure): number => (onWater(f) ? flood.boat.ticksPerTile : TICKS_PER_TILE);
 
 const nb = new Int32Array(4);
 const cands = new Int32Array(4);
@@ -17,7 +18,7 @@ export const figureOffset = (f: Figure): number => gridOffset(f.x, f.y);
 /** Đặt path tới `to`; trả false nếu không tới được. Thuyền nan đi trên ô sông. */
 export function setWalkPath(s: GameState, f: Figure, to: number, onRoad: boolean): boolean {
   const from = figureOffset(f);
-  const path = findPath(s.grid, from, to, f.type === FigureType.Boat ? passWater : onRoad ? passRoad : passLandTo(to));
+  const path = findPath(s.grid, from, to, onWater(f) ? passWater : onRoad ? passRoad : passLandTo(to));
   if (path.length === 0 && from !== to) return false;
   f.path = path;
   f.pathIdx = 0;
@@ -56,7 +57,7 @@ export function step(s: GameState, f: Figure): StepResult {
     const next = f.path[f.pathIdx];
     // ô kế bị chặn (đường bị phá) → báo để hành vi tính lại
     const isLast = f.pathIdx === f.path.length - 1;
-    if (f.type === FigureType.Boat) { if (!isWater(g, next)) return StepResult.Blocked; }
+    if (onWater(f)) { if (!isWater(g, next)) return StepResult.Blocked; }
     else if (!isLast && !isRoad(g, next) && !isLandFree(g, next)) return StepResult.Blocked;
     f.pathIdx++;
     f.nx = offsetX(next); f.ny = offsetY(next);

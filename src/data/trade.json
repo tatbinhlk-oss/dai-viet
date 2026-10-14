@@ -1,0 +1,27 @@
+{
+  "_note": "Thương mại (thiết kế phần 4). Giá theo tỉ lệ bảng Caesar 3 (bán = thành bán cho lái buôn, mua = thành mua), chỉnh sau khi chơi thử. Hạn ngạch mỗi năm mỗi mặt hàng theo mức 0 → 15 → 25 → 40 như Julius: mở tuyến thì mức 1; năm trước mua bán đủ ≥ raisePct% hạn ngạch thì lên mức. Đoàn buôn / thuyền buôn đi từ mép bản đồ tới kho / bến cảng, mua bán tối đa loadsPerTrip kiện mỗi chuyến, cách nhau intervalDays ngày.",
+  "quotaLevels": [0, 15, 25, 40],
+  "raisePct": 80,
+  "prices": {
+    "_note": "[thành bán, thành mua] quan mỗi kiện",
+    "rice": [28, 22], "fish": [30, 24], "veg": [24, 18], "pork": [40, 32],
+    "clay": [20, 16], "pottery": [180, 140], "salt": [60, 48], "cotton": [40, 32], "cloth": [120, 95],
+    "teaLeaf": [50, 40], "tea": [150, 120], "cocoon": [60, 48], "silk": [215, 160],
+    "copperOre": [70, 55], "bronze": [200, 160], "ironOre": [70, 55], "weapons": [180, 140], "timber": [45, 36]
+  },
+  "routes": [
+    {
+      "key": "mountain", "name": "Tuyến bộ lên miền núi", "kind": "land", "openCost": 400, "intervalDays": 48, "loadsPerTrip": 8,
+      "sells": ["copperOre", "ironOre", "timber"], "buys": ["salt", "cloth"]
+    },
+    {
+      "key": "sea", "name": "Tuyến sông ra biển (Vân Đồn)", "kind": "sea", "openCost": 800, "intervalDays": 64, "loadsPerTrip": 12,
+      "sells": ["bronze"], "buys": ["silk", "pottery", "tea"]
+    }
+  ],
+  "war": {
+    "_note": "giặc giã (Julius invasion rút gọn): giặc đi bộ tới công trình gần nhất, đứng cạnh attackTicks tick thì đốt; mỗi tên phá tối đa raidBudget công trình rồi rút; thành (tường) chặn đường, giặc đứng cạnh wallTicks tick thì phá. Lính từ trại lính (mỗi lính tốn 1 kiện vũ khí, tối đa perBarracks), đánh giặc trong tầm engageRange; đòn mỗi hitEveryTicks tick.",
+    "enemyHp": 100, "enemyDamage": 10, "militiaHp": 100, "militiaDamage": 15, "hitEveryTicks": 10, "attackTicks": 40, "wallTicks": 80, "raidBudget": 3,
+    "perBarracks": 4, "engageRange": 30, "warningMonths": 2, "wallHp": { "earthWall": 3, "stoneWall": 8 }
+  }
+}

@@ -2,7 +2,7 @@
 import { createRng } from './rng';
 import { createGrid, GRID_SIZE, gridOffset, T_WATER } from './map/grid';
 import { generateTerrain, type TerrainOptions } from './map/terrain';
-import { BuildingType, emptyLedger, FigureType, isDike, LABOR_CATS, RES_COUNT, Resource, TICKS_PER_TILE, type Ledger, type MoodCause } from './state';
+import { BuildingType, emptyLedger, FigureType, isDike, isWall, LABOR_CATS, RES_COUNT, Resource, TICKS_PER_TILE, type Ledger, type MoodCause } from './state';
 import { newBuilding, type GameState } from './state';
 import { tick } from './tick';
 import { applyCommand, type Command } from './commands';
@@ -21,6 +21,8 @@ import { initWorship, coverage, DEITY_NAMES, festivalCost, moodTarget, templeCou
 import { cultureBreakdown, initRatings, prosperityCap } from './city/ratings';
 import { currentRatings } from './scenario/victory';
 import { court as courtCfg } from './buildings/defs';
+import { initTrade, PRICES, quotaOf, ROUTES, routeBuys, routeSells } from './city/trade';
+import { initWar, nextInvasion, SOURCE_TEXT, WAR } from './city/war';
 import type { Edict, EdictState, EdictType, Goals, GameOver } from './state';
 
 export { tick, applyCommand, GRID_SIZE };
@@ -46,7 +48,7 @@ export function createSim(seed: number, terrain: TerrainOptions = {}): GameState
     time: { tick: 0, day: 0, month: 0, year: 0, totalDays: 0 },
     grid,
     buildings: [newBuilding(0, BuildingType.None, 0, 0, 0)],
-    figures: [{ id: 0, type: FigureType.None, mode: 0, x: 0, y: 0, nx: 0, ny: 0, progress: 0, prevOffset: -1, path: new Int32Array(0), pathIdx: 0, buildingId: 0, destBuildingId: 0, roamLength: 0, maxRoamLength: 0, returning: false, resource: Resource.None, loads: 0, cargo: [], waitTicks: 0, boatHome: -1 }],
+    figures: [{ id: 0, type: FigureType.None, mode: 0, x: 0, y: 0, nx: 0, ny: 0, progress: 0, prevOffset: -1, path: new Int32Array(0), pathIdx: 0, buildingId: 0, destBuildingId: 0, roamLength: 0, maxRoamLength: 0, returning: false, resource: Resource.None, loads: 0, cargo: [], waitTicks: 0, boatHome: -1, hp: 0, timer: 0, route: -1 }],
     freeFigures: [],
     entryOffset: entry,
     speed: 1,
@@ -69,8 +71,11 @@ export function createSim(seed: number, terrain: TerrainOptions = {}): GameState
     court: initCourt(0, courtCfg.favor.start),
     worship: initWorship(),
     ratings: initRatings(),
-    scenario: { key: 'sandbox', name: 'Tự do', goals: { population: 0, culture: 0, prosperity: 0, peace: 0, favor: 0 }, timeLimitYears: 0, milestoneYears: [] },
+    scenario: { key: 'sandbox', name: 'Tự do', goals: { population: 0, culture: 0, prosperity: 0, peace: 0, favor: 0 }, timeLimitYears: 0, milestoneYears: [], routes: ROUTES.map((r) => r.key) },
+    scenarioEvents: [],
     gameOver: '',
+    trade: initTrade(),
+    war: initWar(),
     events: [],
     dirty: new Set(),
   };
@@ -109,6 +114,8 @@ export interface BuildingInfo {
   y: number;
   // M4
   flooded: boolean;
+  /** M6a: thành, lính, giặc */
+  hp: number | null;
   /** đê/cống */
   dike: { height: number; target: number; integrity: number; workPct: number; sluiceOpen: boolean | null; working: boolean } | null;
   /** ruộng lúa */
@@ -149,6 +156,7 @@ export function inspectBuilding(s: GameState, id: number): BuildingInfo | null {
     } : null,
     paddy: b.type === BuildingType.Paddy ? { silted: b.silted, dryYears: b.dryYears, yieldPct: Math.round(paddyYield(b) * 100) } : null,
     pollutedDays: b.pollutedDays,
+    hp: isWall(b.type) ? b.integrity : null,
   };
 }
 
@@ -184,7 +192,19 @@ export interface CityStats {
   court: CourtStats;
   worship: WorshipStats;
   scenario: { key: string; name: string; goals: Goals; current: Goals; timeLimitYears: number; gameOver: GameOver };
+  /** M6a */
+  trade: TradeStats;
+  war: WarStats;
 }
+export interface TradeStats {
+  routes: { index: number; key: string; name: string; kind: string; open: boolean; available: boolean; openCost: number; loadsPerTrip: number; traderOut: boolean; nextTripDays: number;
+    goods: { resource: Resource; name: string; citySells: boolean; quota: number; traded: number; tradedLastYear: number; price: number }[] }[];
+  orders: number[];
+  prices: [number, number][];
+  shipsThisYear: number;
+  caravansThisYear: number;
+}
+export interface WarStats { enemiesAlive: number; militia: number; killedThisYear: number; warning: string | null; wallHp: Record<string, number> }
 
 export interface RatingStats {
   culture: number; prosperity: number; prosperityCap: number; peace: number; health: number;
@@ -276,6 +296,26 @@ export function cityStats(s: GameState): CityStats {
     festivalCosts: [0, 1, 2].map((k) => festivalCost(s, k)),
     healersOffDays: s.worship.healersOffDays, paddyFreezeDays: s.worship.paddyFreezeDays, healthBonusMonths: s.worship.healthBonusMonths,
   };
+  const tradeStats: TradeStats = {
+    routes: ROUTES.map((def, i) => {
+      const rs = s.trade.routes[i];
+      const goods = [...routeBuys(i).map((r) => ({ r, citySells: true })), ...routeSells(i).map((r) => ({ r, citySells: false }))];
+      return {
+        index: i, key: def.key, name: def.name, kind: def.kind, open: rs.open, available: s.scenario.routes.includes(def.key), openCost: def.openCost, loadsPerTrip: def.loadsPerTrip,
+        traderOut: rs.traderId !== 0, nextTripDays: Math.max(0, rs.nextTripDay - s.time.totalDays),
+        goods: goods.map(({ r, citySells }) => ({ resource: r, name: RESOURCES[r].name, citySells, quota: quotaOf(rs, r), traded: rs.tradedThisYear[r], tradedLastYear: rs.tradedLastYear[r], price: citySells ? PRICES[r][0] : PRICES[r][1] })),
+      };
+    }),
+    orders: [...s.trade.orders], prices: PRICES, shipsThisYear: s.trade.shipsThisYear, caravansThisYear: s.trade.caravansThisYear,
+  };
+  const inv = nextInvasion(s);
+  let militia = 0;
+  for (const f of s.figures) if (f.type === FigureType.Militia) militia++;
+  const warStats: WarStats = {
+    enemiesAlive: s.war.enemiesAlive, militia, killedThisYear: s.war.killedThisYear,
+    warning: inv && inv.warned ? `${inv.size} tên ${SOURCE_TEXT[inv.source]} sẽ tới tháng ${inv.month} năm ${inv.year}` : null,
+    wallHp: WAR.wallHp,
+  };
   return {
     sentiment: s.sentiment, lowMoodCause: s.lowMoodCause, taxRate: s.taxRate,
     workforce: s.labor.workforce, employed: s.labor.employed, unemploymentPct: s.labor.unemploymentPct,
@@ -290,6 +330,8 @@ export function cityStats(s: GameState): CityStats {
     court: courtStats,
     worship: worshipStats,
     scenario: { key: s.scenario.key, name: s.scenario.name, goals: { ...s.scenario.goals }, current: currentRatings(s), timeLimitYears: s.scenario.timeLimitYears, gameOver: s.gameOver },
+    trade: tradeStats,
+    war: warStats,
   };
 }
 

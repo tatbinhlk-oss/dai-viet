@@ -75,12 +75,18 @@ export const TYPE_COLORS: Partial<Record<BuildingType, [number, number, number]>
   [BuildingType.Shrine]: C(0x9a5a4a, 0x7a4638, 0x3a6a8a),
   [BuildingType.Altar]: C(0xa08a5a, 0x806e48, 0xd8b870),
   [BuildingType.VanMieu]: C(0xd8c0a0, 0xb8a080, 0x8a2a2a),
+  [BuildingType.Port]: C(0x6a5a40, 0x4e4230, 0x9aa8b0),
+  [BuildingType.Barracks]: C(0x7a3a3a, 0x5e2e2e, 0x4a3a2a),
+  [BuildingType.EarthWall]: C(0x8a7a52, 0x6e6040, 0x9a8a62),
+  [BuildingType.StoneWall]: C(0x8a8a8a, 0x6a6a6a, 0xa0a0a0),
 };
 export const FLAT = new Set<BuildingType>([BuildingType.Paddy, BuildingType.VegGarden, BuildingType.CottonField, BuildingType.TeaHill, BuildingType.MulberryField, BuildingType.SaltPan, BuildingType.ClayPit, BuildingType.Garden, BuildingType.LotusPond, BuildingType.Ruins, BuildingType.Altar]);
 const HEIGHT_BY_SIZE = [0, 10, 18, 26];
 /** Chiều cao khối (px) theo loại, kích thước móng và bậc nhà. */
 export function typeHeight(t: BuildingType, size: number, level: number): number {
   if (t === BuildingType.House) return 10 + Math.min(level, 10) * 1.5;
+  if (t === BuildingType.EarthWall) return 14;
+  if (t === BuildingType.StoneWall) return 20;
   if (FLAT.has(t)) return t === BuildingType.Garden ? 6 : 2;
   if (t === BuildingType.Well || t === BuildingType.BrickWell) return 8;
   return HEIGHT_BY_SIZE[size] ?? 20;
@@ -95,5 +101,6 @@ export const FIG_COLOR: Record<number, number> = {
   1: 0xf0e0a0, 2: 0xe07050, 3: 0xd0a040, 4: 0x6a4a2a, 5: 0x80c0e0, 6: 0x8090a0, 7: 0xb0b0b0, 8: 0xe8a030, 9: 0x4a6aa0, 10: 0x5aa070,
   11: 0x60a0d0, 12: 0xd04080, 13: 0xc03020, 14: 0x3a5a9a, 15: 0x202020, 16: 0x8a6a4a, 17: 0xe0e040, 18: 0x402040, 19: 0xff2010,
   20: 0xc8a060, 21: 0x8a6a3a, 22: 0xf0c030, 23: 0x8a7a5a, 24: 0xa02020, 25: 0xd8d0c0, 26: 0x3050a0, 27: 0x30a0a0, 28: 0xe0a000,
+  29: 0xb08050, 30: 0x5a7a9a, 31: 0x301010, 32: 0xc02020,
 };
 export const RES_COLOR = [0, 0xf0f0d8, 0x80a8c0, 0x60b040, 0xd08080, 0xa06040, 0xc07040, 0xffffff, 0xf0f0f0, 0x6080c0, 0x4a8a30, 0x8a6a30, 0xf0e8c0, 0xe8c840, 0xb87040, 0xc89040, 0x707078, 0x9090a0, 0x8a5a2a];

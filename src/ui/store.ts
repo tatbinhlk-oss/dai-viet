@@ -2,7 +2,7 @@
 import { signal } from '@preact/signals';
 import type { Command, Snapshot } from '../sim';
 
-export type Panel = 'labor' | 'finance' | 'mood' | 'storage' | 'flood' | 'court' | 'worship' | 'ratings' | null;
+export type Panel = 'labor' | 'finance' | 'mood' | 'storage' | 'flood' | 'court' | 'worship' | 'ratings' | 'trade' | null;
 
 /** Snapshot mới nhất, cập nhật ~4 lần/giây cho bảng biểu (render vẫn nhận mọi snapshot). */
 export const ui = signal<Snapshot | null>(null);
@@ -20,4 +20,9 @@ export const showNames = signal(false);
 export const bridge = {
   cmd: (_c: Command) => {},
   select: (_x: number, _y: number) => {},
+  // M6a: lưu game
+  save: () => {},
+  load: (_slot: 'auto' | 'manual') => {},
+  exportFile: () => {},
+  importFile: async (_f: File) => {},
 };
