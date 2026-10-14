@@ -8,8 +8,19 @@ const POLICY_TEXT = ['Nhận', 'Không nhận', 'Đi lấy'];
 
 export function InfoPanel() {
   const b = ui.value?.selected;
-  if (!b) return null;
   const close = () => bridge.select(-1, -1);
+  const f = ui.value?.selectedFigure;
+  if (!b && f) {
+    // M6c: bấm vào walker → câu thoại theo trạng thái
+    return (
+      <div class="panel info">
+        <div class="head"><strong>{f.name}</strong><button onClick={close}>✕</button></div>
+        <p class="speech">“{f.text}”</p>
+        <p class="muted">Ô ({f.x}, {f.y})</p>
+      </div>
+    );
+  }
+  if (!b) return null;
   const svc = b.services;
   return (
     <div class="panel info">

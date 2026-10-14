@@ -1,13 +1,13 @@
 // Vòng lặp mô phỏng trong Web Worker. Nhận Command, gửi Snapshot. Không biết gì về Pixi.
-import { applyCommand, buildingIdAt, createSim, takeSnapshot, tick, type Command, type GameState } from '../sim';
+import { applyCommand, buildingIdAt, createSim, figureAt, takeSnapshot, tick, type Command, type GameState } from '../sim';
 import { TICKS_PER_DAY } from '../sim/state';
-import { buildCourtTown, demoPriorities } from '../sim/scenario/demo';
+import { buildCourtTown, buildStressTown, demoPriorities } from '../sim/scenario/demo';
 import { createScenario, SCENARIOS } from '../sim/scenario/loader';
 import { deserialize, serialize } from '../sim/save';
 
 export type WorkerIn =
   /** demo: bản đồ phẳng + thị trấn mẫu của test cổng M3/M4/M5; scenario: khóa màn chơi (M5), không có = chơi tự do */
-  | { type: 'init'; seed: number; demo?: boolean; scenario?: string; rank?: number }
+  | { type: 'init'; seed: number; demo?: boolean; scenario?: string; rank?: number; stress?: boolean }
   | { type: 'cmd'; cmd: Command }
   /** chọn công trình tại ô để xem chi tiết; x < 0 = bỏ chọn */
   | { type: 'select'; x: number; y: number }
@@ -65,6 +65,7 @@ async function loadFrom(slot: string): Promise<void> {
 async function restore(bytes: Uint8Array): Promise<void> {
   state = await deserialize(bytes);
   selectedId = 0;
+  selectedFigureId = 0;
   lastAutosaveMonth = state.time.year * 12 + state.time.month;
   post(true);
 }
@@ -76,11 +77,13 @@ let acc = 0;
 let last = 0;
 let sentFull = false;
 let selectedId = 0;
+let selectedFigureId = 0; // M6c: walker đang chọn (ưu tiên công trình nếu ô có công trình)
 
 function post(full: boolean): void {
   if (!state) return;
   if (selectedId && state.buildings[selectedId]?.type === 0) selectedId = 0;
-  const snap = takeSnapshot(state, full, selectedId);
+  if (selectedFigureId && state.figures[selectedFigureId]?.type === 0) selectedFigureId = 0;
+  const snap = takeSnapshot(state, full, selectedId, selectedFigureId);
   const transfer: ArrayBuffer[] = [];
   if (snap.full) transfer.push(snap.full.terrain.buffer as ArrayBuffer, snap.full.elevation.buffer as ArrayBuffer, snap.full.bType.buffer as ArrayBuffer, snap.full.bLevel.buffer as ArrayBuffer);
   if (snap.changed) transfer.push(snap.changed.offsets.buffer as ArrayBuffer, snap.changed.terrain.buffer as ArrayBuffer, snap.changed.bType.buffer as ArrayBuffer, snap.changed.bLevel.buffer as ArrayBuffer);
@@ -112,6 +115,7 @@ self.onmessage = (e: MessageEvent<WorkerIn>) => {
     const key = m.scenario && SCENARIOS[m.scenario] ? m.scenario : m.demo ? 'sonNam' : '';
     state = key ? createScenario(key, m.seed, !!m.demo || undefined, m.rank ?? 0) : createSim(m.seed, { flat: !!m.demo });
     if (m.demo) { buildCourtTown(state); demoPriorities(state); }
+    if (m.stress) { if (!m.demo) { buildCourtTown(state); demoPriorities(state); } buildStressTown(state); } // M6c: thử tải 1.500+ công trình, ~800 walker
     sentFull = false;
     last = performance.now();
     lastAutosaveMonth = 0;
@@ -120,6 +124,7 @@ self.onmessage = (e: MessageEvent<WorkerIn>) => {
     setInterval(() => loop(performance.now()), 1000 / 30);
   } else if (m.type === 'select' && state) {
     selectedId = m.x < 0 ? 0 : buildingIdAt(state, m.x, m.y);
+    selectedFigureId = m.x < 0 || selectedId ? 0 : (figureAt(state, m.x, m.y)?.id ?? 0);
     if (sentFull) post(false);
   } else if (m.type === 'cmd' && state) {
     applyCommand(state, m.cmd);

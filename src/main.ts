@@ -7,7 +7,9 @@ import { BuildingType, isDike } from './sim/state';
 import type { WorkerIn, WorkerOut } from './worker/sim.worker';
 import { App } from './ui/App';
 import { toolSize } from './ui/BuildBar';
-import { bridge, campaign, fps, hoverText, overlay, recordWin, showNames, tool, ui } from './ui/store';
+import { bridge, campaign, fps, hoverText, overlay, recordWin, showNames, soundOn, tool, ui } from './ui/store';
+import { Audio, soundForEvent } from './render/audio';
+import { registerSW } from 'virtual:pwa-register';
 
 const HINT = 'Chuột phải kéo để dời · lăn để zoom · chuột trái để đặt. Công trình cần đường kề; công trình có người làm cần nhà ở gần để người mộ phu tìm được nhân công. Lũ về tháng Sáu: vẽ đê (Đê điều) để đình làng cử phu đi đắp.';
 
@@ -17,7 +19,14 @@ async function main() {
 
   const worker = new Worker(new URL('./worker/sim.worker.ts', import.meta.url), { type: 'module' });
   const send = (m: WorkerIn) => worker.postMessage(m);
-  bridge.cmd = (c) => send({ type: 'cmd', cmd: c });
+  // M6c: service worker (PWA, chơi offline) và âm thanh
+  registerSW({ immediate: true });
+  const audio = new Audio(import.meta.env.BASE_URL);
+  soundOn.value = !audio.muted;
+  soundOn.subscribe((on) => audio.setMuted(!on));
+  let seenEvents = 0;
+
+  bridge.cmd = (c) => { send({ type: 'cmd', cmd: c }); if (c.type === 'build') audio.play('click'); else if (c.type === 'raze') audio.play('raze'); };
   bridge.select = (x, y) => send({ type: 'select', x, y });
   bridge.save = () => send({ type: 'save' });
   bridge.load = (slot) => send({ type: 'load', slot });
@@ -48,6 +57,11 @@ async function main() {
     if (e.data.type === 'snapshot') {
       latest = e.data.snap;
       if (latest.city.scenario.gameOver === 'won') recordWin(latest.city.scenario.key, latest.city.court.rank);
+      // sự kiện mới → tiếng (danh sách sự kiện bị cắt bớt theo tháng nên chỉ nhìn phần đuôi)
+      const ev = latest.city.events;
+      if (ev.length < seenEvents) seenEvents = ev.length; // vừa cắt bớt: bỏ qua, không phát lại
+      for (let i = seenEvents; i < ev.length; i++) { const k = soundForEvent(ev[i]); if (k) audio.play(k, 2000); }
+      seenEvents = ev.length;
       render.applySnapshot(latest);
     } else if (e.data.type === 'file') {
       const url = URL.createObjectURL(new Blob([e.data.bytes as BlobPart], { type: 'application/gzip' }));
@@ -75,8 +89,11 @@ async function main() {
   // Phẩm hàm mang theo chuỗi màn lấy từ localStorage (thắng màn thì ghi), ?rank=n ghi đè để thử.
   const scenario = params.get('scenario') ?? undefined;
   const rank = params.has('rank') ? Number(params.get('rank')) : campaign.value.rank;
-  send({ type: 'init', seed, demo: params.has('demo'), scenario, rank });
-  if (params.has('demo')) render.lookAt(40, 60);
+  // ?stress=1: thị trấn mẫu + dải phố thử tải (M6c, ~1.650 công trình, ~800 walker) trên bản đồ phẳng
+  const stress = params.has('stress');
+  send({ type: 'init', seed, demo: params.has('demo') || stress, scenario, rank, stress });
+  if (stress) render.lookAt(100, 90);
+  else if (params.has('demo')) render.lookAt(40, 60);
   else if (scenario && !params.has('look')) {
     // bản đồ thật: đưa camera tới giữa vùng đất cấp (hoặc cửa ngõ) khi có snapshot đầu
     const once = (e: MessageEvent<WorkerOut>) => { if (e.data.type === 'snapshot') { const [x, y] = e.data.snap.city.scenario.start; render.lookAt(x, y); worker.removeEventListener('message', once); } };

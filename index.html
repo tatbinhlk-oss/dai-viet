@@ -3,11 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Đại Việt — M5</title>
+    <title>Đại Việt</title>
+    <meta name="theme-color" content="#141210" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <link rel="apple-touch-icon" href="/icons/icon-192.png" />
     <style>
       :root { --ink: #e8dcc0; --muted: #a89c80; --bg: rgba(20, 18, 14, 0.92); --line: #7a6540; --btn: #3a2f1e; --on: #a67c2e; --bad: #e07050; }
       html, body { margin: 0; height: 100%; background: #111; overflow: hidden; font-family: system-ui, sans-serif; }
-      #game { position: absolute; inset: 0; }
+      #game { position: absolute; inset: 0; touch-action: none; }
       #ui { color: var(--ink); font-size: 13px; user-select: none; }
       button { background: var(--btn); color: var(--ink); border: 1px solid var(--line); padding: 3px 9px; cursor: pointer; font: inherit; }
       button.active { background: var(--on); color: #111; }
@@ -34,6 +37,7 @@
       .panel .head { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line); padding-bottom: 6px; margin-bottom: 6px; }
       .panel p { margin: 6px 0; }
       .panel em { font-style: normal; color: #f0d890; }
+      .panel .speech { font-style: italic; color: #f0e6c8; font-size: 14px; }
       table.mini { border-collapse: collapse; width: 100%; }
       table.mini td, table.mini th { padding: 2px 4px; text-align: left; border-bottom: 1px solid rgba(122, 101, 64, 0.35); }
       table.mini th { color: var(--muted); font-weight: normal; }
@@ -45,7 +49,16 @@
       .scenario select { background: var(--bg); color: var(--ink); border: 1px solid var(--line); font: inherit; padding: 1px 4px; max-width: 170px; }
       .gameover { position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%); background: var(--bg); border: 2px solid var(--on); padding: 14px 20px; font-size: 15px; max-width: 420px; text-align: center; }
       .status { position: absolute; bottom: 0; left: 0; right: 0; padding: 4px 10px; color: #c8bda0; font-size: 12px; background: rgba(20, 18, 14, 0.85); pointer-events: none; }
-      @media (max-width: 700px) { .panel { width: calc(100% - 20px); left: 10px; right: 10px; top: auto; bottom: 28px; max-height: 45%; } }
+      @media (max-width: 700px), (max-height: 520px) {
+        #ui { font-size: 12px; }
+        button, .filebtn { padding: 5px 8px; }
+        .bar .row { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding: 4px 8px; }
+        .bar .row::-webkit-scrollbar { display: none; }
+        .bar .row > * { flex: 0 0 auto; }
+        .bar.top .fps { display: none; }
+        .panel { width: calc(100% - 20px); left: 10px; right: 10px; top: auto; bottom: 28px; max-height: 45%; }
+        .gameover { max-width: calc(100% - 40px); }
+      }
     </style>
   </head>
   <body>

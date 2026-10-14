@@ -152,3 +152,28 @@ export function demoPriorities(s: GameState): void {
   applyCommand(s, { type: 'setLaborPriority', category: LaborCat.Food, priority: 2 });
   applyCommand(s, { type: 'setLaborPriority', category: LaborCat.Engineering, priority: 3 });
 }
+
+/**
+ * M6c: thị trấn thử tải cho mục tiêu hiệu năng (1.500 công trình, 800 walker) — xếp dải phố trên đất cao x ≥ 72 của bản đồ phẳng:
+ * hàng đường, hai hàng lều có dân sẵn, cứ ba ô một dịch vụ 1×1 có walker (điếm canh, trại thợ, giếng gạch, nhà thuốc).
+ * Dùng cho test hiệu năng và ?stress=1.
+ */
+export function buildStressTown(s: GameState, targetBuildings = 1500): void {
+  const saved = s.treasury;
+  s.treasury = 1e9;
+  const services = ['watchPost', 'builderPost', 'brickWell', 'clinic'];
+  let k = 0;
+  const count = () => s.buildings.filter((b) => b.type !== BuildingType.None).length;
+  for (let y0 = 72; y0 + 2 < 158 && count() < targetBuildings; y0 += 3) {
+    for (let x = 72; x <= 156; x++) applyCommand(s, { type: 'build', kind: 'road', x, y: y0 });
+    for (const y of [y0 + 1, y0 + 2]) {
+      for (let x = 72; x <= 156; x++) {
+        if (x % 3 === 0) applyCommand(s, { type: 'build', kind: services[k++ % services.length], x, y });
+        else seededHouse(s, x, y);
+      }
+    }
+  }
+  for (let y = 72; y < 158; y++) applyCommand(s, { type: 'build', kind: 'road', x: 71, y }); // nối các dải với trục sản xuất y=66
+  for (let y = 67; y <= 72; y++) applyCommand(s, { type: 'build', kind: 'road', x: 71, y });
+  s.treasury = saved;
+}
