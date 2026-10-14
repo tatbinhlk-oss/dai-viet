@@ -4,6 +4,7 @@ import { GRID_SIZE } from '../sim/map/grid';
 import type { Snapshot } from '../sim';
 import { ChunkLayer } from './chunks';
 import { FigureLayer } from './figures';
+import { loadSheets } from './sheets';
 import { HALF_H, HALF_W, TILE_H, tileToWorld, worldToTile, ZOOM_LEVELS } from './iso';
 
 export interface RenderApp {
@@ -18,6 +19,10 @@ export interface RenderApp {
   lookAt(x: number, y: number): void;
   /** M4: lớp phủ vùng ngập */
   setOverlay(on: boolean): void;
+  /** M6-0: nhãn tên Pixi đè lên công trình có hình thật */
+  setShowNames(on: boolean): void;
+  /** còn dùng hình tạm (nhãn đã vẽ trong PNG) */
+  readonly placeholderArt: boolean;
   destroy(): void;
 }
 
@@ -33,16 +38,15 @@ export async function createRenderApp(canvas: HTMLCanvasElement): Promise<Render
     autoDensity: true,
   });
 
+  const sheets = await loadSheets();
   const world = new Container();
   world.sortableChildren = true;
   app.stage.addChild(world);
-  const chunks = new ChunkLayer();
-  chunks.container.zIndex = 0;
-  world.addChild(chunks.container);
-  const figures = new FigureLayer();
-  figures.container.zIndex = 1; // M2: walker luôn vẽ trên công trình; M4 gộp vào thứ tự x+y khi có sprite
-  figures.container.sortableChildren = true;
-  world.addChild(figures.container);
+  const chunks = new ChunkLayer(sheets);
+  chunks.groundContainer.zIndex = 0;
+  chunks.objects.zIndex = 1; // công trình + walker sắp chung theo (x + y) × 8 + layer (M6-0)
+  world.addChild(chunks.groundContainer, chunks.objects);
+  const figures = new FigureLayer(sheets, chunks.objects);
 
   const hover = new Graphics();
   hover.zIndex = 2;
@@ -145,6 +149,8 @@ export async function createRenderApp(canvas: HTMLCanvasElement): Promise<Render
       applyCamera();
     },
     setOverlay(on) { chunks.setOverlay(on); },
+    setShowNames(on) { chunks.setShowNames(on); },
+    placeholderArt: sheets.buildings.placeholder,
     destroy() { app.destroy(); },
   };
   return result;

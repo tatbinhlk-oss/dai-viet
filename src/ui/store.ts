@@ -14,6 +14,8 @@ export const panel = signal<Panel>(null);
 export const hoverText = signal('');
 /** M4: lớp phủ vùng ngập (bãi bồi chưa có đê che tô xanh, có đê che tô lục) */
 export const overlay = signal(false);
+/** M6-0: nhãn tên Pixi đè lên công trình (mặc định bật khi còn hình tạm, tắt khi đã có hình thật) */
+export const showNames = signal(false);
 
 export const bridge = {
   cmd: (_c: Command) => {},

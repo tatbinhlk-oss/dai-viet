@@ -41,6 +41,8 @@ export interface WalkerDef { figure: FigureType; roam: number; delays: number[] 
 export interface BuildingDef {
   key: string;
   name: string;
+  /** M6-0: tên ngắn ghi lên hình tạm / nhãn */
+  short?: string;
   group: string;
   size: number;
   cost: number;
@@ -61,7 +63,7 @@ export interface BuildingDef {
 }
 
 interface RawBuilding {
-  name: string; group: string; size: number; cost: number; workers: number; labor?: string; terrain?: string;
+  name: string; short?: string; group: string; size: number; cost: number; workers: number; labor?: string; terrain?: string;
   produces?: string; input?: string; progressMax?: number; fire: number; damage: number;
   desirability?: number[]; walker?: { figure: string; roam: number; delays: string }; waterLevel?: number; waterRange?: number; rank?: number;
 }
@@ -94,7 +96,7 @@ function toDef(key: string, r: RawBuilding): BuildingDef {
     walker = { figure: f, roam: r.walker.roam, delays: d };
   }
   return {
-    key, name: r.name, group: r.group, size: r.size, cost: r.cost, workers: r.workers, labor,
+    key, name: r.name, short: r.short, group: r.group, size: r.size, cost: r.cost, workers: r.workers, labor,
     terrain: (r.terrain ?? 'any') as TerrainRule,
     produces: res(r.produces), input: res(r.input), progressMax: r.progressMax ?? 0,
     fire: r.fire, damage: r.damage, desirability: desir(r.desirability), walker,

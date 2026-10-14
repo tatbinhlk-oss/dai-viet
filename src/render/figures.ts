@@ -1,111 +1,98 @@
-// Walker: pool Graphics, vị trí nội suy giữa ô hiện tại và ô kế theo progress/15, làm mượt giữa hai snapshot.
-import { Container, Graphics } from 'pixi.js';
+// Walker: Sprite từ sheet figures (4 hướng × 4 khung đi bộ; xe bò / phu kho / thuyền có bản đầy với kiện hàng tô màu theo loại),
+// vị trí nội suy giữa ô hiện tại và ô kế theo progress/15, làm mượt giữa hai snapshot. zIndex = (x + y) × 8 + 3 chung với công trình.
+// Thiếu frame thì vẽ hình đơn giản bằng Graphics như trước.
+import { Container, Graphics, Sprite } from 'pixi.js';
 import { FIG_STRIDE } from '../sim';
 import { FigureType, TICKS_PER_TILE } from '../sim/state';
-import { HALF_H, tileToWorld } from './iso';
+import { HALF_H, LAYER_FIGURE, tileToWorld, zIndexOf } from './iso';
+import { FIG_COLOR, RES_COLOR } from './palette';
+import { frameOf, type Sheets } from './sheets';
 
-// màu áo theo loại walker (placeholder trước khi có sprite)
-const FIG_COLOR: Partial<Record<FigureType, number>> = {
-  [FigureType.DinhRoamer]: 0xf0e0a0,
-  [FigureType.MarketTrader]: 0xe07050,
-  [FigureType.MarketBuyer]: 0xd0a040,
-  [FigureType.CartPusher]: 0x6a4a2a,
-  [FigureType.Immigrant]: 0x80c0e0,
-  [FigureType.Emigrant]: 0x8090a0,
-  [FigureType.LaborSeeker]: 0xb0b0b0,
-  [FigureType.Monk]: 0xe8a030,
-  [FigureType.Teacher]: 0x4a6aa0,
-  [FigureType.Healer]: 0x5aa070,
-  [FigureType.WellKeeper]: 0x60a0d0,
-  [FigureType.Actor]: 0xd04080,
-  [FigureType.Watchman]: 0xc03020,
-  [FigureType.Builder]: 0x3a5a9a,
-  [FigureType.TaxCollector]: 0x202020,
-  [FigureType.Warehouseman]: 0x8a6a4a,
-  [FigureType.Protester]: 0xe0e040,
-  [FigureType.Thief]: 0x402040,
-  [FigureType.Rioter]: 0xff2010,
-  [FigureType.LevyWorker]: 0xc8a060,
-  [FigureType.Boat]: 0x8a6a3a,
-  [FigureType.Messenger]: 0xf0c030,
-  [FigureType.Convoy]: 0x8a7a5a,
-  [FigureType.Soldiers]: 0xa02020,
-  [FigureType.TempleKeeper]: 0xd8d0c0,
-  [FigureType.Academic]: 0x3050a0,
-  [FigureType.Puppeteer]: 0x30a0a0,
-  [FigureType.Mandarin]: 0xe0a000,
-};
-// màu kiện hàng trên xe bò / quang gánh, theo Resource
-const RES_COLOR = [0, 0xf0f0d8, 0x80a8c0, 0x60b040, 0xd08080, 0xa06040, 0xc07040, 0xffffff, 0xf0f0f0, 0x6080c0, 0x4a8a30, 0x8a6a30, 0xf0e8c0, 0xe8c840, 0xb87040, 0xc89040, 0x707078, 0x9090a0, 0x8a5a2a];
 const isCarrier = (t: number) => t === FigureType.CartPusher || t === FigureType.Warehouseman || t === FigureType.Boat || t === FigureType.Convoy;
+const DIRS = ['ne', 'se', 'sw', 'nw'];
+const FIG_KEYS: string[] = [];
+for (const name of Object.keys(FigureType)) { const v = FigureType[name as keyof typeof FigureType]; if (typeof v === 'number') FIG_KEYS[v] = name[0].toLowerCase() + name.slice(1); }
+const RES_KEYS = ['none', 'rice', 'fish', 'veg', 'pork', 'clay', 'pottery', 'salt', 'cotton', 'cloth', 'teaLeaf', 'tea', 'cocoon', 'silk', 'copperOre', 'bronze', 'ironOre', 'weapons', 'timber'];
+
+/** Hướng đi từ (x, y) tới (nx, ny): +x = đông nam, +y = tây nam, −x = tây bắc, −y = đông bắc. */
+function dirOf(dx: number, dy: number, prev: number): number {
+  if (dx > 0) return 1; if (dy > 0) return 2; if (dx < 0) return 3; if (dy < 0) return 0;
+  return prev;
+}
+
+interface Slot { node: Container; sprite: Sprite | null; cargo: Sprite | null; fallback: Graphics | null; key: string; dir: number }
 
 export class FigureLayer {
-  readonly container = new Container();
-  private pool: Graphics[] = [];
+  private pool: Slot[] = [];
   private target = new Float32Array(0); // [x, y] × n (pixel thế giới)
   private shown = new Float32Array(0);
-  private types = new Int16Array(0);
-  private res = new Int16Array(0);
+  private z = new Int32Array(0);
   private count = 0;
+
+  constructor(private readonly sheets: Sheets, private readonly objects: Container) {}
 
   setSnapshot(figs: Int16Array): void {
     const n = figs.length / FIG_STRIDE;
     if (this.target.length < n * 2) {
-      const t = new Float32Array(n * 2), s = new Float32Array(n * 2);
-      t.set(this.target); s.set(this.shown);
-      this.target = t; this.shown = s;
-      this.types = new Int16Array(n);
-      this.res = new Int16Array(n);
+      const t = new Float32Array(n * 2), s = new Float32Array(n * 2), z = new Int32Array(n);
+      t.set(this.target); s.set(this.shown); z.set(this.z);
+      this.target = t; this.shown = s; this.z = z;
+    }
+    while (this.pool.length < n) {
+      const node = new Container();
+      this.objects.addChild(node);
+      this.pool.push({ node, sprite: null, cargo: null, fallback: null, key: '', dir: 1 });
     }
     for (let i = 0; i < n; i++) {
       const k = i * FIG_STRIDE;
-      const a = tileToWorld(figs[k], figs[k + 1]);
-      const b = tileToWorld(figs[k + 2], figs[k + 3]);
-      const p = figs[k + 4] / TICKS_PER_TILE;
+      const x = figs[k], y = figs[k + 1], nx = figs[k + 2], ny = figs[k + 3], progress = figs[k + 4], type = figs[k + 5], res = figs[k + 6];
+      const a = tileToWorld(x, y), b = tileToWorld(nx, ny);
+      const p = progress / TICKS_PER_TILE;
       const wx = a.wx + (b.wx - a.wx) * p, wy = a.wy + (b.wy - a.wy) * p + HALF_H;
-      // figure mới xuất hiện (hoặc đổi slot xa) → không trượt từ vị trí cũ
-      if (i >= this.count || Math.hypot(this.shown[i * 2] - wx, this.shown[i * 2 + 1] - wy) > 96) {
-        this.shown[i * 2] = wx; this.shown[i * 2 + 1] = wy;
-      }
+      if (i >= this.count || Math.hypot(this.shown[i * 2] - wx, this.shown[i * 2 + 1] - wy) > 96) { this.shown[i * 2] = wx; this.shown[i * 2 + 1] = wy; }
       this.target[i * 2] = wx; this.target[i * 2 + 1] = wy;
-      this.types[i] = figs[k + 5];
-      this.res[i] = figs[k + 6];
+      this.z[i] = zIndexOf(x, y, LAYER_FIGURE);
+      const slot = this.pool[i];
+      slot.dir = dirOf(nx - x, ny - y, slot.dir);
+      const frame = Math.floor(p * 4) % 4;
+      const full = isCarrier(type) && res > 0;
+      const key = `${FIG_KEYS[type] ?? 'none'}${full ? '_full' : ''}_${DIRS[slot.dir]}_${frame}`;
+      const cargoKey = full ? `cargo_${RES_KEYS[res] ?? 'none'}` : '';
+      if (slot.key !== key + '|' + cargoKey) { slot.key = key + '|' + cargoKey; this.restyle(slot, type, key, cargoKey, res); }
     }
+    for (let i = 0; i < this.pool.length; i++) this.pool[i].node.visible = i < n;
     this.count = n;
-    while (this.pool.length < n) {
-      const g = new Graphics();
-      this.pool.push(g);
-      this.container.addChild(g);
+  }
+
+  private restyle(slot: Slot, type: number, key: string, cargoKey: string, res: number): void {
+    const tex = frameOf(this.sheets.figures, key);
+    if (tex) {
+      if (!slot.sprite) { slot.sprite = new Sprite(); slot.sprite.anchor.set(0.5, 1); slot.node.addChild(slot.sprite); }
+      slot.sprite.texture = tex;
+      slot.sprite.visible = true;
+      if (slot.fallback) slot.fallback.visible = false;
+      const ctex = cargoKey ? frameOf(this.sheets.figures, cargoKey) : null;
+      if (ctex) {
+        if (!slot.cargo) { slot.cargo = new Sprite(); slot.cargo.anchor.set(0.5, 1); slot.node.addChild(slot.cargo); }
+        slot.cargo.texture = ctex;
+        slot.cargo.position.set(0, type === FigureType.Boat ? -12 : -10);
+        slot.cargo.visible = true;
+      } else if (slot.cargo) slot.cargo.visible = false;
+      return;
     }
-    for (let i = 0; i < this.pool.length; i++) {
-      const g = this.pool[i];
-      g.visible = i < n;
-      if (i >= n) continue;
-      const key = this.types[i] * 64 + this.res[i]; // vẽ lại khi đổi loại hoặc đổi hàng đang chở
-      const gg = g as unknown as { _k?: number };
-      if (gg._k === key) continue;
-      gg._k = key;
-      g.clear();
-      const t = this.types[i];
-      const color = FIG_COLOR[t as FigureType] ?? 0xffffff;
-      if (t === FigureType.Boat) {
-        // thuyền nan: thân dài nằm trên mặt nước, kiện hàng ở giữa
-        g.poly([-14, -4, -8, -8, 8, -8, 14, -4, 8, 0, -8, 0]).fill(color);
-        if (this.res[i]) g.rect(-4, -12, 8, 5).fill(RES_COLOR[this.res[i]] ?? 0xffffff);
-      } else if (isCarrier(t)) {
-        g.rect(-7, -10, 14, 8).fill(color);
-        if (this.res[i]) g.rect(-5, -14, 10, 5).fill(RES_COLOR[this.res[i]] ?? 0xffffff);
-      } else if (t === FigureType.LevyWorker || t === FigureType.Soldiers) {
-        // phu đê: nhóm ba người
-        for (const dx of [-6, 0, 6]) g.circle(dx, -6, 3).fill(color).rect(dx - 2, -3, 4, 5).fill(0x3a2a1a);
-      } else if (t === FigureType.Mandarin) {
-        // kiệu: mái vàng, hai phu khiêng
-        g.rect(-9, -12, 18, 6).fill(color).rect(-6, -6, 12, 6).fill(0x8a2a2a);
-        g.circle(-11, -4, 3).fill(0xd0b090).circle(11, -4, 3).fill(0xd0b090);
-      } else {
-        g.circle(0, -6, 4).fill(color).rect(-2, -3, 4, 6).fill(0x2a2a2a);
-        if (t === FigureType.MarketBuyer) g.rect(-7, -8, 3, 3).fill(0xd8c080).rect(4, -8, 3, 3).fill(0xd8c080);
-      }
+    // dự phòng: hình đơn giản như placeholder cũ
+    if (!slot.fallback) { slot.fallback = new Graphics(); slot.node.addChild(slot.fallback); }
+    if (slot.sprite) slot.sprite.visible = false;
+    if (slot.cargo) slot.cargo.visible = false;
+    const g = slot.fallback;
+    g.visible = true;
+    g.clear();
+    const color = FIG_COLOR[type] ?? 0xffffff;
+    if (isCarrier(type)) {
+      g.rect(-7, -10, 14, 8).fill(color);
+      if (res) g.rect(-5, -14, 10, 5).fill(RES_COLOR[res] ?? 0xffffff);
+    } else {
+      g.circle(0, -6, 4).fill(color).rect(-2, -3, 4, 6).fill(0x2a2a2a);
     }
   }
 
@@ -114,9 +101,9 @@ export class FigureLayer {
     for (let i = 0; i < this.count; i++) {
       const sx = this.shown[i * 2] += (this.target[i * 2] - this.shown[i * 2]) * 0.5;
       const sy = this.shown[i * 2 + 1] += (this.target[i * 2 + 1] - this.shown[i * 2 + 1]) * 0.5;
-      const g = this.pool[i];
-      g.position.set(Math.round(sx), Math.round(sy));
-      g.zIndex = sy;
+      const node = this.pool[i].node;
+      node.position.set(Math.round(sx), Math.round(sy));
+      node.zIndex = this.z[i];
     }
   }
 }
