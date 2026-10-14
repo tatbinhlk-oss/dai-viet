@@ -42,6 +42,9 @@ export function resetCampaign(): void {
   try { localStorage.removeItem(CAMPAIGN_KEY); } catch { /* bỏ qua */ }
 }
 
+/** M6c: âm thanh bật / tắt (nút 🔊) */
+export const soundOn = signal(true);
+
 export const bridge = {
   cmd: (_c: Command) => {},
   select: (_x: number, _y: number) => {},

@@ -68,14 +68,62 @@ export async function createRenderApp(canvas: HTMLCanvasElement): Promise<Render
   let lastX = 0, lastY = 0;
   let downX = 0, downY = 0;
   let hoverX = -1, hoverY = -1;
+  // M6c: cảm ứng — một ngón kéo dời bản đồ, hai ngón chụm zoom, chạm (không kéo) để đặt / xem
+  const touches = new Map<number, { x: number; y: number }>();
+  let touchDownAt = 0, pinchBase = 0, pinchZoomIdx = 1, pinched = false;
+  const setZoom = (next: number, sx: number, sy: number) => {
+    next = Math.max(0, Math.min(ZOOM_LEVELS.length - 1, next));
+    if (next === zoomIdx) return;
+    const before = screenToWorld(sx, sy);
+    zoomIdx = next;
+    applyCamera();
+    const after = screenToWorld(sx, sy);
+    camera.x += before.wx - after.wx;
+    camera.y += before.wy - after.wy;
+    applyCamera();
+  };
+  const touchCenter = () => {
+    let x = 0, y = 0;
+    for (const p of touches.values()) { x += p.x; y += p.y; }
+    return { x: x / touches.size, y: y / touches.size };
+  };
+  const touchSpan = () => {
+    const [a, b] = [...touches.values()];
+    return Math.hypot(a.x - b.x, a.y - b.y);
+  };
   window.addEventListener('keydown', (e) => { if (e.code === 'Space') { spaceHeld = true; e.preventDefault(); } });
   window.addEventListener('keyup', (e) => { if (e.code === 'Space') spaceHeld = false; });
   canvas.addEventListener('contextmenu', (e) => e.preventDefault());
   canvas.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'touch') {
+      try { canvas.setPointerCapture(e.pointerId); } catch { /* sự kiện giả lập không có con trỏ thật */ }
+      touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (touches.size === 1) { downX = e.clientX; downY = e.clientY; touchDownAt = performance.now(); pinched = false; }
+      if (touches.size === 2) { pinchBase = touchSpan(); pinchZoomIdx = zoomIdx; pinched = true; }
+      const c = touchCenter(); lastX = c.x; lastY = c.y;
+      return;
+    }
     downX = lastX = e.clientX; downY = lastY = e.clientY;
     if (e.button === 1 || e.button === 2 || (e.button === 0 && spaceHeld)) { dragging = true; canvas.setPointerCapture(e.pointerId); }
   });
   canvas.addEventListener('pointermove', (e) => {
+    if (e.pointerType === 'touch') {
+      if (!touches.has(e.pointerId)) return;
+      touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      const c = touchCenter();
+      const z = ZOOM_LEVELS[zoomIdx];
+      camera.x -= (c.x - lastX) / z;
+      camera.y -= (c.y - lastY) / z;
+      lastX = c.x; lastY = c.y;
+      applyCamera();
+      if (touches.size >= 2 && pinchBase > 0) {
+        // mỗi lần khoảng cách hai ngón gấp √2 (hay chia √2) so với lúc bắt đầu chụm → đổi một mức zoom
+        const ratio = touchSpan() / pinchBase;
+        const steps = Math.round(Math.log(ratio) / Math.log(Math.SQRT2));
+        setZoom(pinchZoomIdx + steps, c.x, c.y);
+      }
+      return;
+    }
     if (dragging) {
       const z = ZOOM_LEVELS[zoomIdx];
       camera.x -= (e.clientX - lastX) / z;
@@ -89,24 +137,30 @@ export async function createRenderApp(canvas: HTMLCanvasElement): Promise<Render
     // Kéo chuột trái khi không dời camera = đặt liên tục (vẽ đường)
     if (!dragging && (e.buttons & 1) && !spaceHeld && result.ghostSize === 1) result.onTileClick(t.x, t.y, 0);
   });
+  const endTouch = (e: PointerEvent) => {
+    if (!touches.has(e.pointerId)) return;
+    touches.delete(e.pointerId);
+    // chạm nhanh, không kéo, không chụm → đặt / xem tại ô
+    if (touches.size === 0 && !pinched && e.type === 'pointerup' && performance.now() - touchDownAt < 500 && Math.hypot(e.clientX - downX, e.clientY - downY) < 10) {
+      const t = screenToTile(e.clientX, e.clientY);
+      hoverX = t.x; hoverY = t.y; result.onTileHover(t.x, t.y); drawHover();
+      result.onTileClick(t.x, t.y, 0);
+    }
+    if (touches.size > 0) { const c = touchCenter(); lastX = c.x; lastY = c.y; }
+    if (touches.size < 2) pinchBase = 0;
+  };
   canvas.addEventListener('pointerup', (e) => {
+    if (e.pointerType === 'touch') { endTouch(e); return; }
     if (dragging) { dragging = false; return; }
     if (e.button === 0 && Math.hypot(e.clientX - downX, e.clientY - downY) < 4) {
       const t = screenToTile(e.clientX, e.clientY);
       result.onTileClick(t.x, t.y, 0);
     }
   });
+  canvas.addEventListener('pointercancel', (e) => { if (e.pointerType === 'touch') endTouch(e); else dragging = false; });
   canvas.addEventListener('wheel', (e) => {
     e.preventDefault();
-    const next = Math.max(0, Math.min(ZOOM_LEVELS.length - 1, zoomIdx + (e.deltaY < 0 ? 1 : -1)));
-    if (next === zoomIdx) return;
-    const before = screenToWorld(e.clientX, e.clientY);
-    zoomIdx = next;
-    applyCamera();
-    const after = screenToWorld(e.clientX, e.clientY);
-    camera.x += before.wx - after.wx;
-    camera.y += before.wy - after.wy;
-    applyCamera();
+    setZoom(zoomIdx + (e.deltaY < 0 ? 1 : -1), e.clientX, e.clientY);
   }, { passive: false });
   window.addEventListener('resize', applyCamera);
 

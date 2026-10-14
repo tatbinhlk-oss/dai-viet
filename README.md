@@ -13,7 +13,10 @@ npm test         # sim chạy headless
 npm run build
 npm run assets   # M6-0: sinh hình tạm vào assets/ rồi đóng gói public/sheets/ (chỉ cần khi đổi bảng công trình hoặc thay hình)
 npm run maps     # M6b: sinh lại ba bản đồ màn chơi src/data/maps/*.json từ scripts/gen-maps.ts (chỉ cần khi sửa script)
+npm run icons    # M6c: sinh icon PWA tạm public/icons/ (thay bằng icon vẽ thật thì bỏ)
 ```
+
+Bản phát hành: **https://tatbinhlk-oss.github.io/dai-viet/** (GitHub Pages, tự dựng khi merge vào `main`). Là PWA: trình duyệt cho "Thêm vào màn hình chính" / cài như ứng dụng, chơi được offline sau lần mở đầu. Trên điện thoại: kéo một ngón dời bản đồ, chụm hai ngón zoom, chạm để đặt / xem. `?stress=1` mở thị trấn thử tải (~1.650 công trình, ~800 walker) để xem fps.
 
 Thêm `?seed=123` vào URL để đổi bản đồ ngẫu nhiên (chơi tự do). Hộp chọn màn ở thanh trên (hoặc `?scenario=langVenSong|tranLi|sonNam|thangLong`) mở một màn chơi (bản đồ thật, mục tiêu, chiếu chỉ, giặc); màn kế mở khi thắng màn trước, phẩm hàm mang theo chuỗi màn ghi trong trình duyệt (`?rank=n` ghi đè để thử). Không có `?scenario` thì chơi tự do (không có thắng / hết hạn, vẫn có triều đình). Thêm `?demo=1` để mở màn Sơn Nam với thị trấn mẫu của test cổng M3/M4/M5 (bản đồ phẳng, ~130 nhà, đủ 6 chuỗi xưởng, tuyến đê 160 đoạn với 8 trạm giữ đê) và xem nó tự chạy; bật nút **Vùng ngập** để thấy bãi bồi chưa có đê che (xanh) và đã có đê che (lục). `?look=7,70` đưa camera tới ô (x, y), ví dụ tới tuyến đê của thị trấn mẫu.
 
@@ -28,7 +31,7 @@ Thêm `?seed=123` vào URL để đổi bản đồ ngẫu nhiên (chơi tự do
   - [x] **M6-0** khung spritesheet: hình tạm có nhãn tên sinh bằng script, đóng gói `public/sheets`, render công trình / walker / đất nền bằng Sprite, nút "Hiện tên"
   - [x] **M6a** thương mại (2 tuyến, hạn ngạch 15/25/40, lệnh mua bán, đoàn buôn và thuyền buôn), giặc giã (3 nguồn theo kịch bản, trại lính, thành đất / đá), lưu game (IndexedDB tự lưu mỗi tháng, xuất / nhập .dvsav)
   - [x] **M6b** 3 màn chơi mới (Làng ven sông → Trấn lị → Thăng Long, cộng Sơn Nam thành chuỗi 4 màn) trên bản đồ nạp từ file, chuỗi phẩm hàm thăng theo màn, đất cấp theo phẩm hàm, Quốc Tử Giám, tính cách vua, lũ riêng từng màn
-  - [ ] **M6c** hình vẽ, âm thanh, PWA, điện thoại, phát hành
+  - [x] **M6c** PWA (manifest, service worker, offline), điều khiển cảm ứng, bố cục điện thoại, câu thoại walker, khung âm thanh (chưa có file), thị trấn thử tải; hình vẽ thật và âm thanh chờ nguồn (xem Ghi chú M6c)
 
 ## Cấu trúc
 
@@ -48,7 +51,7 @@ src/sim/      mô phỏng — không import Pixi/DOM; tick.ts giữ lịch 50 vi
   map/        grid, terrain (bản đồ ngẫu nhiên / phẳng), mapfile (M6b: nạp bản đồ từ file, đất cấp theo phẩm hàm), routing (BFS), desirability
   buildings/  defs (nạp JSON), spawn, house (bậc 1–8), industry (sản xuất, sinh walker), storage (vựa, kho, xưởng),
               dike (đoạn đê, cống: vẽ/tôn cao, đào đất, độ bền, vỡ)
-  figures/    figure, movement, service (đi dạo, tuần đinh, thợ cả + kiểm tra đê, lại thu thuế, tội phạm),
+  figures/    figure, movement, dialogue (M6c: câu thoại walker khi bấm), service (đi dạo, tuần đinh, thợ cả + kiểm tra đê, lại thu thuế, tội phạm),
               cartpusher (xe bò, phu kho; chọn thuyền khi đường thủy ngắn), market, migrant,
               levyWorker (phu đê), boat (thuyền nan, bến), trader (đoàn buôn, thuyền buôn), enemy (giặc, lính)
   city/       labor (+ lao dịch), sentiment (+ tội phạm, lũ, lao dịch), finance, risk (cháy/sập), population (di cư),
@@ -61,13 +64,15 @@ src/sim/      mô phỏng — không import Pixi/DOM; tick.ts giữ lịch 50 vi
               victory.ts (thắng / thua, phong phẩm hàm, cấp thêm đất)
 src/sim/save.ts  M6a: state ↔ JSON (TypedArray base64) ↔ gzip; worker lưu IndexedDB và xuất / nhập file
 src/worker/   vòng lặp sim trong Worker, gửi snapshot, tự lưu mỗi tháng
-src/render/   iso.ts (hằng số ô, chiếu, neo, zIndex), sheets.ts (nạp spritesheet), chunks.ts (đất nền theo chunk, công trình), figures.ts, palette.ts (màu khối dự phòng), app.ts
+src/render/   iso.ts (hằng số ô, chiếu, neo, zIndex), sheets.ts (nạp spritesheet), chunks.ts (đất nền theo chunk, công trình), figures.ts, palette.ts (màu khối dự phòng),
+              app.ts (camera, chuột + cảm ứng), audio.ts (M6c: khung âm thanh)
 assets/       PNG nguồn: buildings/, houses/, ground/, figures/ (hình tạm do scripts/gen-placeholders.ts sinh; thay hình thật = thả PNG cùng tên), fonts/
 public/sheets/ spritesheet đã đóng gói (scripts/pack-sprites.ts): <nhóm>.png + .json, mỗi frame có anchor (0.5, 1) và footprint
-scripts/      gen-placeholders.ts, pack-sprites.ts (chạy bằng tsx, vẽ bằng @napi-rs/canvas), gen-maps.ts (M6b: sinh ba bản đồ màn chơi)
+scripts/      gen-placeholders.ts, pack-sprites.ts (chạy bằng tsx, vẽ bằng @napi-rs/canvas), gen-maps.ts (M6b: sinh ba bản đồ màn chơi), gen-icons.ts (M6c: icon PWA)
+public/icons/ icon PWA; public/sounds/ (chưa có) — thả file âm thanh vào là phát (xem Ghi chú M6c)
 src/ui/       Preact + signals: TopBar (+ hộp chọn màn), BuildBar (khóa theo phẩm hàm), InfoPanel, Advisors (+ Thủy lợi, Nha môn, Tín ngưỡng, Chỉ số), YamenPanel
 src/main.ts   nối worker ↔ render ↔ ui
-tests/        vitest chạy sim headless (cổng M2: tests/village, M3: tests/city, M4: tests/flood, M5: tests/court, M6b: tests/m6b; cơ chế: tests/m3, m4, m5, m6a, sprites; helpers.ts = người chơi tự động)
+tests/        vitest chạy sim headless (cổng M2: tests/village, M3: tests/city, M4: tests/flood, M5: tests/court, M6b: tests/m6b; cơ chế: tests/m3, m4, m5, m6a, m6c, sprites; helpers.ts = người chơi tự động)
 ```
 
 Quy tắc cố định từ M1: kích thước ô chỉ ghi ở `render/iso.ts`; điểm neo sprite công trình là góc dưới hình thoi móng, anchor (0.5, 1), công trình N×N rộng đúng N×64 px; thứ tự vẽ `(x + y) × 8 + layer`; `roundPixels`, `scaleMode: nearest`, không mip-map, zoom 0,5× / 1× / 2×.
@@ -138,3 +143,13 @@ Giữ đúng thiết kế: Ân sủng −2/năm, chiếu chỉ trễ lần đầ
 - **Lưu game** lên phiên bản 2 (cửa sông, mép giặc, vua, đất cấp, màn kế); bản 1 vẫn nạp được (điền mặc định).
 - **Cổng M6b** (`tests/m6b.test.ts`): người chơi tự động thắng Làng ven sông ở năm 4 trên thị trấn mẫu (bản đồ phẳng, dựng sẵn không tính tiền vì vốn 6.000 không đủ đặt một lúc); màn trên bản đồ thật chạy được (dân tới, lũ về). Chưa có test tự chơi trên bản đồ thật (thị trấn mẫu gắn tọa độ bản đồ phẳng).
 - **Chưa làm**: gộp nhà 2×2 / 3×3, hương liệu / trâu / gỗ quý, cầu qua sông, cổng thành; "Vua" chưa đổi chiếu chỉ theo tính cách (chiếu chỉ vẫn theo file màn).
+
+## Ghi chú M6c (PWA, điện thoại, phát hành)
+
+- **Hình vẽ và âm thanh thật chưa có nguồn** (Bình quyết sau: thuê vẽ, mua asset có giấy phép, hay tự vẽ). Năm điểm kỹ thuật về hình giữ nguyên từ M1; thay hình = thả PNG vào `assets/` rồi `npm run assets:pack` (Ghi chú M6-0). Âm thanh: `src/render/audio.ts` phát file `public/sounds/<khóa>.ogg` (hoặc `.mp3`) nếu có, thiếu thì im lặng — khóa: `click` (đặt công trình), `raze`, `flood` (lũ về), `fire`, `invasion`, `win`, `lose`, `edict` (chiếu chỉ tới), `festival` (lễ hội, Tết), `ambient` (nền lặp). Tiếng theo sự kiện đoán từ dòng chữ sự kiện của sim (`soundForEvent`). Nút 🔊 / 🔇 ở thanh trên, nhớ trong `localStorage`; trình duyệt chỉ cho phát sau cử chỉ đầu tiên.
+- **PWA**: `vite-plugin-pwa` (manifest `Đại Việt`, `display: fullscreen`, `orientation: landscape`, icon tạm do `scripts/gen-icons.ts` vẽ), service worker workbox precache mọi file build + spritesheet (~1,1 MB), `registerType: autoUpdate` (có bản mới thì lần mở sau tự cập nhật). `base` theo `GITHUB_PAGES` nên start_url / scope là `/dai-viet/` trên Pages.
+- **Cảm ứng** (`render/app.ts`, pointer events với `pointerType === 'touch'`, canvas `touch-action: none`): một ngón kéo = dời bản đồ (không vẽ đường liên tục như kéo chuột trái); hai ngón = dời theo điểm giữa + chụm zoom (mỗi lần khoảng cách gấp √2 đổi một mức 0,5× / 1× / 2×); chạm nhanh (< 0,5 s, < 10 px) = đặt / xem tại ô. Chuột giữ nguyên.
+- **Bố cục hẹp** áp dụng khi rộng ≤ 700 px *hoặc cao ≤ 520 px* (điện thoại nằm ngang): các hàng nút cuộn ngang thay vì xuống dòng, ẩn fps, bảng nằm dưới. Đã kiểm bằng Chromium giả lập iPhone 13 (ảnh chụp, chạm, kéo, chụm); chưa kiểm trên máy thật.
+- **Câu thoại walker**: công cụ Xem bấm vào ô có walker (ô có công trình thì ưu tiên công trình) → thẻ tên + câu thoại theo trạng thái (`sim/figures/dialogue.ts`): xe bò / phu kho / thuyền nói đang chở gì tới đâu hay vì sao đứng chờ, dân đến / bỏ đi nói lý do, lái buôn nói tuyến, giặc, lính… Snapshot mang `selectedFigure`.
+- **Hiệu năng**: `tests/m6c.test.ts` dựng thị trấn thử tải (thị trấn mẫu + dải phố, 1.657 công trình, tới ~830 walker, 4.000 dân): sim ≈ 0,9 ms/tick trên máy test (ngân sách 50 ms ở 1×, 16 ms ở 3×). FPS vẽ phải xem trên máy thật (`?stress=1`); Chromium headless không GPU ở máy test chỉ 14–18 fps nên không kết luận được.
+- **Phát hành**: GitHub Pages như đã chốt; chưa có itch.io / tên miền riêng.

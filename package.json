@@ -11,7 +11,8 @@
     "assets:gen": "tsx scripts/gen-placeholders.ts",
     "assets:pack": "tsx scripts/pack-sprites.ts",
     "maps": "tsx scripts/gen-maps.ts",
-    "assets": "npm run assets:gen && npm run assets:pack"
+    "assets": "npm run assets:gen && npm run assets:pack",
+    "icons": "tsx scripts/gen-icons.ts"
   },
   "dependencies": {
     "@preact/signals": "^1.3.4",
@@ -23,6 +24,7 @@
     "tsx": "^4.19.2",
     "typescript": "^5.6.3",
     "vite": "^6.0.11",
+    "vite-plugin-pwa": "^0.21.1",
     "vitest": "^3.0.5"
   }
 }

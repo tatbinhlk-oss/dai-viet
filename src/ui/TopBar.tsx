@@ -1,4 +1,4 @@
-import { bridge, campaign, fps, panel, resetCampaign, ui, type Panel } from './store';
+import { bridge, campaign, fps, panel, resetCampaign, soundOn, ui, type Panel } from './store';
 import { SCENARIO_LIST } from '../sim/scenario/list';
 import { openScenario } from './App';
 import { MONTHS, num } from './format';
@@ -56,6 +56,7 @@ export function TopBar() {
       {s?.city.flood.watch && s.city.flood.dikesBuilt > 0 && (
         <span title="An toàn đê = độ bền trung bình các đoạn đê" class={s.city.flood.safety < 60 ? 'bad' : ''}>Đê {s.city.flood.safety}%</span>
       )}
+      <button class={soundOn.value ? '' : 'active'} title={soundOn.value ? 'Tắt tiếng' : 'Bật tiếng'} onClick={() => (soundOn.value = !soundOn.value)}>{soundOn.value ? '🔊' : '🔇'}</button>
       <span class="fps">{fps.value} fps</span>
       </div>
       <div class="row">

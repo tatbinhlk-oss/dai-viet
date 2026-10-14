@@ -24,6 +24,8 @@ import { currentRatings } from './scenario/victory';
 import { court as courtCfg } from './buildings/defs';
 import { initTrade, PRICES, quotaOf, ROUTES, routeBuys, routeSells } from './city/trade';
 import { initWar, nextInvasion, SOURCE_TEXT, WAR } from './city/war';
+import { figureDialogue, type FigureInfo } from './figures/dialogue';
+export { figureAt } from './figures/dialogue';
 import type { Edict, EdictState, EdictType, Goals, GameOver } from './state';
 
 export { tick, applyCommand, GRID_SIZE };
@@ -371,6 +373,8 @@ export interface Snapshot {
   housingCapacity: number;
   city: CityStats;
   selected: BuildingInfo | null;
+  /** M6c: walker đang chọn (câu thoại) */
+  selectedFigure: FigureInfo | null;
   /** M6b: ô cửa ngõ (camera đưa tới khi mở bản đồ thật) */
   entryOffset: number;
   full?: { terrain: Uint16Array; elevation: Uint8Array; bType: Uint8Array; bLevel: Uint8Array };
@@ -381,7 +385,7 @@ export interface Snapshot {
 
 export const FIG_STRIDE = 7;
 
-export function takeSnapshot(s: GameState, full: boolean, selectedId = 0): Snapshot {
+export function takeSnapshot(s: GameState, full: boolean, selectedId = 0, selectedFigureId = 0): Snapshot {
   let n = 0;
   for (const f of s.figures) if (f.type !== FigureType.None) n++;
   const figures = new Int16Array(n * FIG_STRIDE);
@@ -401,6 +405,7 @@ export function takeSnapshot(s: GameState, full: boolean, selectedId = 0): Snaps
     city: cityStats(s),
     entryOffset: s.entryOffset,
     selected: selectedId ? inspectBuilding(s, selectedId) : null,
+    selectedFigure: selectedFigureId && s.figures[selectedFigureId]?.type !== FigureType.None ? figureDialogue(s, s.figures[selectedFigureId]) : null,
     figures,
   };
   const g = s.grid;
