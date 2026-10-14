@@ -19,6 +19,10 @@ async function main() {
   const send = (m: WorkerIn) => worker.postMessage(m);
   bridge.cmd = (c) => send({ type: 'cmd', cmd: c });
   bridge.select = (x, y) => send({ type: 'select', x, y });
+  bridge.save = () => send({ type: 'save' });
+  bridge.load = (slot) => send({ type: 'load', slot });
+  bridge.exportFile = () => send({ type: 'export' });
+  bridge.importFile = async (file) => send({ type: 'import', bytes: new Uint8Array(await file.arrayBuffer()) });
 
   render.onTileClick = (x, y) => {
     const t = tool.value;
@@ -44,6 +48,13 @@ async function main() {
     if (e.data.type === 'snapshot') {
       latest = e.data.snap;
       render.applySnapshot(latest);
+    } else if (e.data.type === 'file') {
+      const url = URL.createObjectURL(new Blob([e.data.bytes as BlobPart], { type: 'application/gzip' }));
+      const a = Object.assign(document.createElement('a'), { href: url, download: e.data.name });
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } else if (e.data.type === 'notice') {
+      hoverText.value = e.data.text;
     }
   };
   setInterval(() => { if (latest) ui.value = latest; }, 250);

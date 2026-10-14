@@ -15,7 +15,7 @@ export function createFigure(s: GameState, type: FigureType, offset: number, bui
     x, y, nx: x, ny: y, progress: 0, prevOffset: -1,
     path: new Int32Array(0), pathIdx: 0,
     buildingId, destBuildingId: 0,
-    roamLength: 0, maxRoamLength: 0, returning: false, resource: Resource.None, loads: 0, cargo: [], waitTicks: 0, boatHome: -1,
+    roamLength: 0, maxRoamLength: 0, returning: false, resource: Resource.None, loads: 0, cargo: [], waitTicks: 0, boatHome: -1, hp: 0, timer: 0, route: -1,
   };
   s.figures[id] = f;
   return f;

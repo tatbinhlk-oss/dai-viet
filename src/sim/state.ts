@@ -57,7 +57,13 @@ export enum BuildingType {
   Shrine = 41, // miếu Hà Bá ven sông — ông từ, Thủy thần
   Altar = 42, // đàn tế Tiên nông ngoài đồng — ông từ
   VanMieu = 43, // Văn Miếu — đền lớn, cần phẩm hàm 5
+  // --- M6a: thương mại, giặc ---
+  Port = 44, // bến cảng kề sông — thuyền buôn cập bến
+  Barracks = 45, // trại lính: vũ khí → lính
+  EarthWall = 46, // thành đất 1×1, chặn giặc
+  StoneWall = 47, // thành đá 1×1, cần phẩm hàm 4
 }
+export const isWall = (t: BuildingType): boolean => t === BuildingType.EarthWall || t === BuildingType.StoneWall;
 export const isDike = (t: BuildingType): boolean => t === BuildingType.Dike || t === BuildingType.Sluice;
 /** Bậc nhà quan lại thấp nhất (Tư dinh). */
 export const HOUSE_TIER_MANDARIN = 9;
@@ -117,6 +123,11 @@ export enum FigureType {
   Academic = 26, // thầy giáo — trường học
   Puppeteer = 27, // phường rối nước
   Mandarin = 28, // quan đi kiệu từ tư dinh / phủ đệ
+  // M6a
+  Caravan = 29, // đoàn buôn ngựa thồ (tuyến bộ) — người ngoài, từ mép bản đồ tới kho
+  TradeShip = 30, // thuyền buôn (tuyến sông) — từ mép sông tới bến cảng
+  Enemy = 31, // giặc — từ mép bản đồ tới công trình gần nhất
+  Militia = 32, // lính từ trại lính
 }
 
 export enum FigureMode {
@@ -214,6 +225,10 @@ export interface Figure {
   waitTicks: number;
   /** thuyền nan: ô nước ở bến xuất phát để quay về */
   boatHome: number;
+  /** M6a: máu (giặc, lính); tiến độ công / mua bán; tuyến buôn (chỉ số trong trade.routes) */
+  hp: number;
+  timer: number;
+  route: number;
 }
 
 export interface Time {
@@ -233,6 +248,8 @@ export interface Ledger {
   tribute: number; // M5: cống nạp
   salary: number; // M5: bổng lộc
   festivals: number; // M5: lễ hội, Tết
+  exports: number; // M6a: tiền bán hàng cho lái buôn
+  imports: number; // M6a: tiền mua hàng
 }
 
 export interface Labor {
@@ -343,9 +360,45 @@ export interface ScenarioState {
   goals: Goals;
   timeLimitYears: number;
   milestoneYears: number[];
+  /** M6a: tuyến buôn mở được trong màn (khóa trong trade.json); chơi tự do: tất cả */
+  routes: string[];
 }
 
 export type GameOver = '' | 'won' | 'dismissed' | 'timeout';
+
+// ---------- M6a: thương mại, giặc ----------
+
+/** Lệnh mua / bán của thành theo mặt hàng (như bảng thương mại Caesar 3). */
+export type TradeOrder = 0 | 1 | 2; // 0 không, 1 mua, 2 bán
+export interface RouteState {
+  open: boolean;
+  /** mức hạn ngạch 0..3 theo mặt hàng (chỉ số trong quotaLevels) */
+  quotaLevel: number[];
+  /** kiện đã mua / bán năm nay theo mặt hàng */
+  tradedThisYear: number[];
+  tradedLastYear: number[];
+  nextTripDay: number;
+  /** figure id lái buôn đang trên bản đồ (0 = không) */
+  traderId: number;
+}
+export interface TradeState {
+  routes: RouteState[];
+  orders: TradeOrder[]; // theo Resource
+  shipsThisYear: number;
+  caravansThisYear: number;
+}
+
+export type InvasionSource = 'sea' | 'south' | 'north';
+export interface Invasion { year: number; month: number; source: InvasionSource; size: number; warned: boolean; done: boolean }
+export interface WarState {
+  invasions: Invasion[];
+  enemiesAlive: number;
+  killedThisYear: number;
+  burnedByEnemies: number;
+}
+
+/** Sự kiện kịch bản (M5) — nằm trong state để lưu game được. */
+export interface ScenarioEvent { year: number; month: number; kind: 'rain' | 'inspector'; done: boolean }
 
 /** Mùa lũ — thiết kế phần 5. */
 export interface FloodState {
@@ -397,7 +450,11 @@ export interface GameState {
   worship: WorshipState;
   ratings: Ratings;
   scenario: ScenarioState;
+  scenarioEvents: ScenarioEvent[];
   gameOver: GameOver;
+  // M6a
+  trade: TradeState;
+  war: WarState;
   /** sự kiện gần đây cho UI (cháy, sập, trộm…), tối đa 8 dòng */
   events: string[];
   dirty: Set<number>; // offset ô đã đổi kể từ snapshot trước
@@ -420,4 +477,4 @@ export function newBuilding(id: number, type: BuildingType, x: number, y: number
   };
 }
 
-export const emptyLedger = (): Ledger => ({ taxes: 0, wages: 0, construction: 0, stolen: 0, tribute: 0, salary: 0, festivals: 0 });
+export const emptyLedger = (): Ledger => ({ taxes: 0, wages: 0, construction: 0, stolen: 0, tribute: 0, salary: 0, festivals: 0, exports: 0, imports: 0 });

@@ -18,7 +18,7 @@ export function Advisors() {
   return (
     <div class="panel advisor">
       <div class="head">
-        <strong>{{ labor: 'Lao động', finance: 'Tài chính', mood: 'Dân tình', storage: 'Kho hàng', flood: 'Thủy lợi', court: 'Nha môn — triều đình', worship: 'Tín ngưỡng', ratings: 'Bốn chỉ số' }[p]}</strong>
+        <strong>{{ labor: 'Lao động', finance: 'Tài chính', mood: 'Dân tình', storage: 'Kho hàng', flood: 'Thủy lợi', court: 'Nha môn — triều đình', worship: 'Tín ngưỡng', ratings: 'Bốn chỉ số', trade: 'Thương mại' }[p]}</strong>
         <button onClick={() => (panel.value = null)}>✕</button>
       </div>
       {p === 'labor' && (
@@ -58,6 +58,11 @@ export function Advisors() {
               <tr><td>Lương</td><td>{neg(c.thisYear.wages)}</td><td>{neg(c.lastYear.wages)}</td></tr>
               <tr><td>Xây dựng</td><td>{neg(c.thisYear.construction)}</td><td>{neg(c.lastYear.construction)}</td></tr>
               <tr><td>Mất trộm</td><td>{neg(c.thisYear.stolen)}</td><td>{neg(c.lastYear.stolen)}</td></tr>
+              <tr><td>Cống nạp</td><td>{neg(c.thisYear.tribute)}</td><td>{neg(c.lastYear.tribute)}</td></tr>
+              <tr><td>Bổng lộc</td><td>{neg(c.thisYear.salary)}</td><td>{neg(c.lastYear.salary)}</td></tr>
+              <tr><td>Lễ hội, Tết</td><td>{neg(c.thisYear.festivals)}</td><td>{neg(c.lastYear.festivals)}</td></tr>
+              <tr><td>Bán cho lái buôn</td><td>{num(c.thisYear.exports)}</td><td>{num(c.lastYear.exports)}</td></tr>
+              <tr><td>Mua của lái buôn</td><td>{neg(c.thisYear.imports)}</td><td>{neg(c.lastYear.imports)}</td></tr>
             </tbody>
           </table>
         </>
@@ -154,6 +159,43 @@ export function Advisors() {
             </tbody>
           </table>
           <p class="muted">Văn hiến theo tháng; Thịnh vượng và Trị an cộng dồn đầu năm (lãi +5, thất nghiệp, lương thực, lều, lũ; yên ổn +2/+5, trộm, loạn, vỡ đê).</p>
+        </>
+      )}
+      {p === 'trade' && (
+        <>
+          {c.trade.routes.map((r) => (
+            <div>
+              <p>
+                <strong>{r.name}</strong> ({r.kind === 'sea' ? 'thuyền buôn, cần bến cảng' : 'đoàn buôn ngựa thồ, tới kho'}, {r.loadsPerTrip} kiện/chuyến)
+                {!r.available && <span class="muted"> · màn này không có</span>}
+                {r.available && !r.open && <> <button onClick={() => bridge.cmd({ type: 'openRoute', route: r.index })}>Mở tuyến ({num(r.openCost)} quan)</button></>}
+                {r.open && <span class="muted"> · {r.traderOut ? 'lái buôn đang tới' : `chuyến sau ${r.nextTripDays} ngày`}</span>}
+              </p>
+              <table class="mini">
+                <thead><tr><th>Hàng</th><th>Lái buôn</th><th>Giá</th><th>Năm nay / hạn ngạch</th><th>Lệnh</th></tr></thead>
+                <tbody>
+                  {r.goods.map((g) => (
+                    <tr>
+                      <td>{g.name}</td><td>{g.citySells ? 'mua của ta' : 'bán cho ta'}</td><td>{g.price}</td><td>{g.traded}/{g.quota}</td>
+                      <td>
+                        {[0, 1, 2].filter((o) => o === 0 || (o === 2) === g.citySells).map((o) => (
+                          <button class={c.trade.orders[g.resource] === o ? 'active' : ''} onClick={() => bridge.cmd({ type: 'setTradeOrder', resource: g.resource, order: o as 0 | 1 | 2 })}>{['Không', 'Mua', 'Bán'][o]}</button>
+                        ))}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ))}
+          <p>Năm nay: {c.trade.shipsThisYear} thuyền cập bến (≥ 4 thì Thịnh vượng +1), {c.trade.caravansThisYear} đoàn buôn · bán {num(c.thisYear.exports)} · mua {num(c.thisYear.imports)} quan</p>
+          <p class="muted">Hạn ngạch mỗi mặt hàng 15 → 25 → 40 kiện/năm: năm trước mua bán đủ 80% thì lên mức. Lái buôn chỉ mua hàng đang có lệnh Bán trong kho, chỉ bán hàng có lệnh Mua (kho còn chỗ, ngân khố đủ).</p>
+          <p>
+            Giặc giã: {c.war.warning ? <span class="bad">{c.war.warning}</span> : 'chưa có tin'}
+            {c.war.enemiesAlive > 0 && <span class="bad"> · {c.war.enemiesAlive} tên giặc đang trong lộ!</span>}
+            {' '}· {c.war.militia} lính · năm nay hạ {c.war.killedThisYear} tên
+          </p>
+          <p class="muted">Trại lính nhận vũ khí từ lò rèn (xe bò chở tới), mỗi kiện một lính, tối đa 4 lính mỗi trại. Thành đất chịu {c.war.wallHp.earthWall} đòn, thành đá {c.war.wallHp.stoneWall} đòn; giặc không qua được thành, phải phá.</p>
         </>
       )}
       {p === 'storage' && (

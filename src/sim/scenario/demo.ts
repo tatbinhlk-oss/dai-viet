@@ -138,6 +138,10 @@ export function seededHouse(s: GameState, x: number, y: number): void {
 export function buildCourtTown(s: GameState): void {
   buildTown(s);
   for (const [kind, x, y] of [['academy', 60, 57], ['puppetStage', 60, 54]] as [string, number, number][]) applyCommand(s, { type: 'build', kind, x, y });
+  // M6a: bến cảng ven sông (thuyền buôn), trại lính cạnh trục x=59 (vũ khí từ lò rèn)
+  for (let y = 85; y <= 88; y++) applyCommand(s, { type: 'build', kind: 'road', x: 6, y });
+  applyCommand(s, { type: 'build', kind: 'port', x: 4, y: 86 });
+  applyCommand(s, { type: 'build', kind: 'barracks', x: 60, y: 60 });
   seededHouse(s, 96, 67); seededHouse(s, 97, 67);
   applyCommand(s, { type: 'build', kind: 'well', x: 96, y: 68 });
 }

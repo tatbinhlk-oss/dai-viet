@@ -5,7 +5,8 @@ import { describe, expect, it } from 'vitest';
 import { applyCommand, tick } from '../src/sim';
 import { createScenario } from '../src/sim/scenario/loader';
 import { buildCourtTown, demoPriorities, planDikeLine } from '../src/sim/scenario/demo';
-import { DAYS_PER_MONTH, MONTHS_PER_YEAR, TICKS_PER_DAY, type GameState } from '../src/sim/state';
+import { DAYS_PER_MONTH, MONTHS_PER_YEAR, Resource, TICKS_PER_DAY, type GameState } from '../src/sim/state';
+import { ROUTES } from '../src/sim/city/trade';
 import { goalsMet } from '../src/sim/scenario/victory';
 import { festivalCost } from '../src/sim/city/worship';
 import { giftCost } from '../src/sim/city/court';
@@ -27,6 +28,9 @@ export function autoPlayer(s: GameState): void {
     if (g.mood < 45 && g.monthsSinceFestival >= 3 && s.treasury > festivalCost(s, 0) + 300) applyCommand(s, { type: 'holdFestival', deity: d, size: 0 });
   });
   if (s.court.personalFunds >= giftCost(s, 1) && s.court.giftsInWindow.length < 2 && s.court.favor < s.scenario.goals.favor) applyCommand(s, { type: 'sendGift', size: 1 });
+  // M6a: mở tuyến buôn khi đủ tiền, bán hàng xưởng dư (lụa, trà, vải)
+  s.trade.routes.forEach((r, i) => { if (!r.open && s.time.year >= 1 + i && s.treasury > ROUTES[i].openCost + 500) applyCommand(s, { type: 'openRoute', route: i }); });
+  for (const r of [Resource.Silk, Resource.Tea, Resource.Cloth]) if (s.trade.orders[r] !== 2) applyCommand(s, { type: 'setTradeOrder', resource: r, order: 2 });
 }
 
 describe('cổng M5: màn Sơn Nam', () => {
@@ -43,7 +47,7 @@ describe('cổng M5: màn Sơn Nam', () => {
         if (s.gameOver) break;
       }
       const g = s.scenario.goals, r = s.ratings, c = s.court;
-      console.log(`năm ${y}: dân ${s.population}/${g.population} · văn hiến ${r.culture}/${g.culture} · thịnh vượng ${r.prosperity}/${g.prosperity} (trần ${prosperityCap(s)}) · trị an ${r.peace}/${g.peace} · ân sủng ${c.favor}/${g.favor} · sức khỏe ${r.health} · ngân khố ${s.treasury} · bổng lộc ${c.personalFunds} · chiếu chỉ ${c.edicts.map((e) => `${e.type}:${e.state}`).join(',')} · thần ${s.worship.gods.map((x) => x.mood).join('/')} · ${s.gameOver || ''}`);
+      console.log(`năm ${y}: dân ${s.population}/${g.population} · văn hiến ${r.culture}/${g.culture} · thịnh vượng ${r.prosperity}/${g.prosperity} (trần ${prosperityCap(s)}) · trị an ${r.peace}/${g.peace} · ân sủng ${c.favor}/${g.favor} · sức khỏe ${r.health} · ngân khố ${s.treasury} · bổng lộc ${c.personalFunds} · chiếu chỉ ${c.edicts.map((e) => `${e.type}:${e.state}`).join(',')} · thần ${s.worship.gods.map((x) => x.mood).join('/')} · buôn bán ${s.lastYear.exports}/${s.lastYear.imports} thuyền ${s.trade.shipsThisYear} · ${s.gameOver || ''}`);
       if (s.gameOver) { wonYear = y; break; }
     }
     console.log('ms', Math.round(performance.now() - t0), '· sự kiện:', s.events.join(' | '));

@@ -43,6 +43,7 @@ export function InfoPanel() {
         </p>
       )}
       {b.pollutedDays > 0 && <p class="bad">Giếng nhiễm bẩn sau lũ, còn {b.pollutedDays} ngày</p>}
+      {b.hp !== null && <p>Độ bền: chịu thêm {b.hp} đòn giặc</p>}
       {b.isHouse && (
         <>
           <p>Bậc {b.level} · {b.population}/{b.capacity} người · lòng dân {b.happiness}</p>

@@ -129,7 +129,7 @@ for (let h = 0; h <= 4; h++) {
 
 // ---------- walker: 4 hướng × 4 khung, neo (0.5, 1) = chân ----------
 const DIRS = ['ne', 'se', 'sw', 'nw'] as const;
-const CARRIERS = new Set([FigureType.CartPusher, FigureType.Warehouseman, FigureType.Convoy, FigureType.Boat]);
+const CARRIERS = new Set([FigureType.CartPusher, FigureType.Warehouseman, FigureType.Convoy, FigureType.Boat, FigureType.Caravan, FigureType.TradeShip]);
 function figure(type: FigureType, dir: string, frame: number, full: boolean): ReturnType<typeof createCanvas> {
   const color = hex(FIG_COLOR[type] ?? 0xffffff);
   const W = 32, H = 32;
@@ -139,7 +139,7 @@ function figure(type: FigureType, dir: string, frame: number, full: boolean): Re
   g.translate(W / 2, H);
   if (flip) g.scale(-1, 1);
   const step = [0, 2, 0, -2][frame]; // chân đung đưa
-  if (type === FigureType.Boat) {
+  if (type === FigureType.Boat || type === FigureType.TradeShip) {
     poly(g, [-14, -4, -8, -8, 8, -8, 14, -4, 8, 0, -8, 0], color);
     if (full) poly(g, [-4, -12, 4, -12, 4, -7, -4, -7], '#c8b090');
     g.fillStyle = '#d0b090'; g.fillRect(-2 + step, -14, 3, 6);
@@ -148,6 +148,11 @@ function figure(type: FigureType, dir: string, frame: number, full: boolean): Re
     g.fillStyle = '#2a2a2a'; g.beginPath(); g.arc(-4, -2, 2, 0, Math.PI * 2); g.arc(4, -2, 2, 0, Math.PI * 2); g.fill();
     g.fillStyle = '#d0b090'; g.fillRect(9, -12, 3, 3); g.fillStyle = '#3a2a1a'; g.fillRect(9 + step / 2, -9, 3, 8); // người đẩy
     if (full) poly(g, [-5, -15, 5, -15, 5, -10, -5, -10], '#e8dcc0');
+  } else if (type === FigureType.Enemy || type === FigureType.Militia) {
+    g.fillStyle = color; g.beginPath(); g.arc(0, -11, 4, 0, Math.PI * 2); g.fill();
+    g.fillStyle = type === FigureType.Enemy ? '#402020' : '#802020'; g.fillRect(-3, -8, 6, 7); // áo giáp
+    g.fillStyle = '#d0d0d0'; g.fillRect(5, -16, 2, 12); // giáo
+    g.fillStyle = '#3a2a1a'; g.fillRect(-3, -1, 2, 1 + Math.abs(step) / 2); g.fillRect(1, -1 - Math.abs(step) / 2, 2, 1 + Math.abs(step) / 2);
   } else if (type === FigureType.LevyWorker || type === FigureType.Soldiers) {
     for (const dx of [-8, 0, 8]) { g.fillStyle = color; g.beginPath(); g.arc(dx, -9, 3, 0, Math.PI * 2); g.fill(); g.fillStyle = '#3a2a1a'; g.fillRect(dx - 2 + (dx === 0 ? step : -step) / 2, -6, 4, 6); }
   } else if (type === FigureType.Mandarin) {

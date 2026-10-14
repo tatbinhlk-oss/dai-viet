@@ -8,7 +8,7 @@ import { HALF_H, LAYER_FIGURE, tileToWorld, zIndexOf } from './iso';
 import { FIG_COLOR, RES_COLOR } from './palette';
 import { frameOf, type Sheets } from './sheets';
 
-const isCarrier = (t: number) => t === FigureType.CartPusher || t === FigureType.Warehouseman || t === FigureType.Boat || t === FigureType.Convoy;
+const isCarrier = (t: number) => t === FigureType.CartPusher || t === FigureType.Warehouseman || t === FigureType.Boat || t === FigureType.Convoy || t === FigureType.Caravan || t === FigureType.TradeShip;
 const DIRS = ['ne', 'se', 'sw', 'nw'];
 const FIG_KEYS: string[] = [];
 for (const name of Object.keys(FigureType)) { const v = FigureType[name as keyof typeof FigureType]; if (typeof v === 'number') FIG_KEYS[v] = name[0].toLowerCase() + name.slice(1); }
@@ -75,7 +75,7 @@ export class FigureLayer {
       if (ctex) {
         if (!slot.cargo) { slot.cargo = new Sprite(); slot.cargo.anchor.set(0.5, 1); slot.node.addChild(slot.cargo); }
         slot.cargo.texture = ctex;
-        slot.cargo.position.set(0, type === FigureType.Boat ? -12 : -10);
+        slot.cargo.position.set(0, type === FigureType.Boat || type === FigureType.TradeShip ? -12 : -10);
         slot.cargo.visible = true;
       } else if (slot.cargo) slot.cargo.visible = false;
       return;

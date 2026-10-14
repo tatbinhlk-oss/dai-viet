@@ -1,7 +1,10 @@
 // Lệnh từ UI vào sim. Đây là đường DUY NHẤT để thay đổi state từ ngoài, nên replay/undo làm được.
-import { BuildingType, isDike, LABOR_CATS, LaborCat, StorePolicy, type GameState, type Resource } from './state';
+import { BuildingType, isDike, isWall, LABOR_CATS, LaborCat, StorePolicy, type GameState, type Resource, type TradeOrder } from './state';
 import { dispatchEdict, sendGift, setSalary } from './city/court';
 import { holdFestival } from './city/worship';
+import { openRoute, ROUTES, setTradeOrder } from './city/trade';
+const ROUTE_KEY = (i: number): string => ROUTES[i]?.key ?? '';
+import { WAR } from './city/war';
 import { placeBuilding, placeRoad, raze } from './buildings/spawn';
 import { BUILDING_KEYS } from './buildings/defs';
 import { planDike, setSluice } from './buildings/dike';
@@ -23,7 +26,10 @@ export type Command =
   | { type: 'sendGift'; size: number }
   | { type: 'dispatchEdict'; id: number; option?: number }
   | { type: 'setSalary'; level: number }
-  | { type: 'holdFestival'; deity: number; size: number };
+  | { type: 'holdFestival'; deity: number; size: number }
+  /** M6a: mở tuyến buôn (chỉ số trong trade.json), lệnh mua / bán theo mặt hàng (0 không, 1 mua, 2 bán) */
+  | { type: 'openRoute'; route: number }
+  | { type: 'setTradeOrder'; resource: Resource; order: TradeOrder };
 
 export function applyCommand(s: GameState, c: Command): void {
   switch (c.type) {
@@ -32,7 +38,10 @@ export function applyCommand(s: GameState, c: Command): void {
       const t = BUILDING_KEYS.get(c.kind);
       if (t === undefined || t === BuildingType.None || t === BuildingType.Ruins) break;
       if (isDike(t)) planDike(s, t, c.x, c.y); // vẽ đoạn mới hoặc tôn cao đoạn có sẵn
-      else placeBuilding(s, t, c.x, c.y);
+      else {
+        const id = placeBuilding(s, t, c.x, c.y);
+        if (id && isWall(t)) s.buildings[id].integrity = (WAR.wallHp as Record<string, number>)[c.kind] ?? 3; // M6a: độ bền thành = số đòn giặc phá
+      }
       break;
     }
     case 'raze':
@@ -69,5 +78,7 @@ export function applyCommand(s: GameState, c: Command): void {
     case 'dispatchEdict': { const why = dispatchEdict(s, c.id, c.option ?? 0); if (why) s.events.push(`Chưa thi hành được: ${why}`); break; }
     case 'setSalary': setSalary(s, c.level); break;
     case 'holdFestival': { const why = holdFestival(s, c.deity, c.size); if (why) s.events.push(`Không mở lễ được: ${why}`); break; }
+    case 'openRoute': { if (!s.scenario.routes.includes((s.trade.routes[c.route] && ROUTE_KEY(c.route)) ?? '')) { s.events.push('Màn này không có tuyến buôn đó'); break; } const why = openRoute(s, c.route); if (why) s.events.push(`Không mở tuyến được: ${why}`); break; }
+    case 'setTradeOrder': setTradeOrder(s, c.resource, c.order); break;
   }
 }

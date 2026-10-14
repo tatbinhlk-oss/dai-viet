@@ -66,7 +66,7 @@ describe('Ân sủng và chiếu chỉ', () => {
     expect(s.court.tributeMissedYears).toBe(1);
     s.population = 3000; s.lastYear.taxes = 4000;
     expect(tributeFor(s)).toBe(400);
-    s.population = 6000; s.lastYear = { taxes: 10000, wages: 2000, construction: 0, stolen: 0, tribute: 0, salary: 0, festivals: 0 };
+    s.population = 6000; s.lastYear = { taxes: 10000, wages: 2000, construction: 0, stolen: 0, tribute: 0, salary: 0, festivals: 0, exports: 0, imports: 0 };
     expect(tributeFor(s)).toBe(2000); // 25% lãi
   });
 

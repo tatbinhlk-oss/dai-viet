@@ -17,6 +17,8 @@ import { updateCulture, updateYearlyRatings } from './city/ratings';
 import { updateHealth } from './city/health';
 import { updateScenarioEvents } from './scenario/events';
 import { checkVictory } from './scenario/victory';
+import { updateTrade, yearlyTrade } from './city/trade';
+import { updateWar } from './city/war';
 
 const MAX_EVENTS = 8;
 
@@ -27,7 +29,7 @@ export function tick(s: GameState): void {
   const { day } = s.time;
   switch (s.time.tick) {
     case 0:
-      if (day === 0) { updateFinance(s); consumeGoods(s); if (s.time.month === 0 && s.time.totalDays > 0) updateYearlyRatings(s); } // theo tháng; đầu năm: Thịnh vượng, Trị an (M5)
+      if (day === 0) { updateFinance(s); consumeGoods(s); if (s.time.month === 0 && s.time.totalDays > 0) { updateYearlyRatings(s); yearlyTrade(s); } } // theo tháng; đầu năm: Thịnh vượng, Trị an (M5), hạn ngạch buôn (M6a)
       if (day === 0 || day === 8) consumeFood(s);
       break;
     case 1: evolveHouses(s); break;
@@ -41,6 +43,7 @@ export function tick(s: GameState): void {
     case 25: updateLabor(s); break;
     case 26: updateFlood(s); break; // M4: mùa lũ, flood-fill, đê
     case 27: updateScenarioEvents(s); updateCourt(s); updateWorshipDaily(s); if (day === 0) { updateWorshipMonthly(s); updateHealth(s); } break; // M5: triều đình, tín ngưỡng, sức khỏe
+    case 28: updateTrade(s); updateWar(s); break; // M6a: lái buôn, giặc, lính
     case 43: updateRisks(s); break;
     case 49:
       if (day === 0) updateCulture(s); // M5: Văn hiến theo tháng
