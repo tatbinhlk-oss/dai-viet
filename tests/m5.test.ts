@@ -35,7 +35,7 @@ describe('dữ liệu', () => {
     expect(HOUSE_LEVELS[10].prosperity).toBe(100);
     expect(court.ranks.names).toHaveLength(9);
     for (const t of [BuildingType.Academy, BuildingType.PuppetStage, BuildingType.Shrine, BuildingType.Altar, BuildingType.VanMieu]) expect(BUILDING_DEFS[t].name).toBeTruthy();
-    expect(BUILDING_DEFS[BuildingType.VanMieu].rank).toBe(5);
+    expect(BUILDING_DEFS[BuildingType.VanMieu].rank).toBe(4); // M6b: hạ 5 → 4 để mở ở màn Thăng Long
     expect(SCENARIOS.sonNam.goals.population).toBe(1000);
   });
   it('Văn Miếu cần phẩm hàm 5', () => {

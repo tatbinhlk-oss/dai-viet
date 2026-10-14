@@ -1,11 +1,13 @@
 {
-  "_note": "Màn mẫu M5: trấn thủ lộ Sơn Nam trên bản đồ phẳng với thị trấn mẫu. Năm 1..N: chiếu chỉ và sự kiện; mục tiêu = dân + ngưỡng 4 chỉ số. Trị an và Thịnh vượng khởi đầu 0 và cộng theo năm (yên ổn +2/+2/+5…, lãi +5…) nên ngưỡng màn đầu thấp. routes: tuyến buôn mở được (trade.json). Sự kiện invasion: giặc (sea / south / north), amount = số tên.",
+  "_note": "Màn mẫu M5: trấn thủ lộ Sơn Nam trên bản đồ phẳng với thị trấn mẫu. Năm 1..N: chiếu chỉ và sự kiện; mục tiêu = dân + ngưỡng 4 chỉ số. Trị an và Thịnh vượng khởi đầu 0 và cộng theo năm (yên ổn +2/+2/+5…, lãi +5…) nên ngưỡng màn đầu thấp. routes: tuyến buôn mở được (trade.json). Sự kiện invasion: giặc (sea / south / north), amount = số tên. M6b: màn 3 trong chuỗi (sau Trấn lị), vua trọng Nho, thắng → Tuyên phủ sứ rồi sang Thăng Long.",
   "key": "sonNam",
   "name": "Lộ Sơn Nam",
+  "order": 3,
   "map": "flat",
   "rank": 3,
   "favor": 50,
   "treasury": 10000,
+  "king": "confucian",
   "goals": {
     "population": 1000,
     "culture": 30,
@@ -19,6 +21,7 @@
     4,
     6
   ],
+  "promoteTo": 4,
   "edicts": [
     {
       "year": 1,

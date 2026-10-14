@@ -2,7 +2,7 @@
 // RNG có seed nằm trong state nên nạp lại chạy tiếp y hệt. Set `dirty` không lưu: nạp xong gửi trọn lưới.
 import type { GameState } from './state';
 
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2; // 2 (M6b): cửa sông, mép giặc, màn kế / vua / lũ riêng / đất cấp trong scenario
 const TYPED: Record<string, new (b: ArrayBuffer) => ArrayBufferView> = { Uint8Array, Uint16Array, Uint32Array, Int8Array, Int16Array, Int32Array, Float32Array };
 
 function b64(bytes: Uint8Array): string {
@@ -41,8 +41,13 @@ export function fromJson(json: string): GameState {
     }
     return v;
   }) as { version: number; state: GameState };
-  if (parsed.version !== SAVE_VERSION) throw new Error(`Bản lưu phiên bản ${parsed.version}, cần ${SAVE_VERSION}`);
+  if (parsed.version > SAVE_VERSION || parsed.version < 1) throw new Error(`Bản lưu phiên bản ${parsed.version}, cần ${SAVE_VERSION}`);
   const s = parsed.state;
+  if (parsed.version < 2) {
+    s.riverMouthOffset = -1;
+    s.enemyEntry = { sea: -1, south: -1, north: -1 };
+    Object.assign(s.scenario, { king: '', peakChances: null, promoteTo: 0, next: '', map: '', land: [] });
+  }
   s.dirty = new Set();
   return s;
 }

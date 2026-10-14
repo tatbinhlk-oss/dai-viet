@@ -1,0 +1,174 @@
+{
+  "_note": "Màn 4 (M6b) — Thăng Long: sông Hồng rộng, Hồ Tây, sông Tô Lịch; lũ lớn hơn (35/35/20/10), vua trọng Nho (Quốc Tử Giám, Văn Miếu mở ở phẩm hàm 4), quân phương Bắc từ bắc, Chiêm từ nam, cướp biển theo cửa sông. Thắng → Hành khiển (hết chuỗi).",
+  "key": "thangLong",
+  "name": "Thăng Long",
+  "order": 4,
+  "map": "thang-long",
+  "description": "Kinh đô bên sông Hồng. Đắp đê lớn, dựng Quốc Tử Giám và Văn Miếu, giữ thành trước quân phương Bắc và Chiêm Thành.",
+  "rank": 4,
+  "favor": 50,
+  "treasury": 15000,
+  "king": "confucian",
+  "flood": {
+    "peakChances": [
+      35,
+      35,
+      20,
+      10
+    ]
+  },
+  "goals": {
+    "population": 3000,
+    "culture": 50,
+    "prosperity": 30,
+    "peace": 30,
+    "favor": 65
+  },
+  "timeLimitYears": 15,
+  "milestoneYears": [
+    4,
+    8,
+    12
+  ],
+  "promoteTo": 5,
+  "edicts": [
+    {
+      "year": 1,
+      "type": "money",
+      "amount": 600,
+      "deadlineMonths": 12,
+      "reward": 5
+    },
+    {
+      "year": 2,
+      "type": "goods",
+      "resource": "silk",
+      "amount": 6,
+      "deadlineMonths": 18,
+      "reward": 8
+    },
+    {
+      "year": 2,
+      "type": "dike",
+      "amount": 150,
+      "height": 2,
+      "deadlineMonths": 24,
+      "reward": 10
+    },
+    {
+      "year": 3,
+      "type": "ritual",
+      "building": "quocTuGiam",
+      "amount": 1,
+      "deadlineMonths": 36,
+      "reward": 10
+    },
+    {
+      "year": 4,
+      "type": "troops",
+      "amount": 50,
+      "deadlineMonths": 12,
+      "reward": 8
+    },
+    {
+      "year": 5,
+      "type": "goods",
+      "resource": "pottery",
+      "amount": 8,
+      "deadlineMonths": 18,
+      "reward": 6
+    },
+    {
+      "year": 6,
+      "type": "corvee",
+      "amount": 3000,
+      "deadlineMonths": 24,
+      "reward": 6
+    },
+    {
+      "year": 7,
+      "type": "dike",
+      "amount": 200,
+      "height": 3,
+      "deadlineMonths": 36,
+      "reward": 12
+    },
+    {
+      "year": 8,
+      "type": "ritual",
+      "building": "vanMieu",
+      "amount": 1,
+      "deadlineMonths": 36,
+      "reward": 10
+    },
+    {
+      "year": 9,
+      "type": "troops",
+      "amount": 60,
+      "deadlineMonths": 12,
+      "reward": 10
+    },
+    {
+      "year": 10,
+      "type": "goods",
+      "resource": "silk",
+      "amount": 10,
+      "deadlineMonths": 18,
+      "reward": 10
+    }
+  ],
+  "events": [
+    {
+      "year": 3,
+      "kind": "rain"
+    },
+    {
+      "year": 4,
+      "month": 3,
+      "kind": "invasion",
+      "source": "north",
+      "amount": 8
+    },
+    {
+      "year": 5,
+      "kind": "inspector"
+    },
+    {
+      "year": 6,
+      "month": 5,
+      "kind": "invasion",
+      "source": "sea",
+      "amount": 8
+    },
+    {
+      "year": 7,
+      "kind": "rain"
+    },
+    {
+      "year": 9,
+      "month": 2,
+      "kind": "invasion",
+      "source": "north",
+      "amount": 14
+    },
+    {
+      "year": 10,
+      "kind": "inspector"
+    },
+    {
+      "year": 11,
+      "kind": "rain"
+    },
+    {
+      "year": 12,
+      "month": 4,
+      "kind": "invasion",
+      "source": "south",
+      "amount": 12
+    }
+  ],
+  "routes": [
+    "mountain",
+    "sea"
+  ]
+}

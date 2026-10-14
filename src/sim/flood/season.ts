@@ -17,7 +17,7 @@ const FORECAST_MONTH = S.forecastMonth - 1;
 export function rollPeak(s: GameState): number {
   const r = nextInt(s.rng, 100);
   let acc = 0;
-  const ch = flood.peakChances.byLevel;
+  const ch = s.scenario.peakChances ?? flood.peakChances.byLevel; // M6b: màn có thể đặt lũ nhỏ hơn
   for (let i = 0; i < ch.length; i++) { acc += ch[i]; if (r < acc) return i + 1; }
   return ch.length;
 }

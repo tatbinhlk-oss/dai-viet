@@ -1,8 +1,8 @@
 // Triều đình — thiết kế phần 6. Ân sủng theo công thức Julius (favor), chiếu chỉ (request) do sứ giả đem tới nha môn,
 // cống nạp hằng năm (tribute), phẩm hàm và bổng lộc (rank/salary), tiến cống (gift), khoa cử (thay hippodrome),
 // ≤ 10 Ân sủng thì bị cách chức sau 192 ngày.
-import { BuildingType, DAYS_PER_MONTH, FigureType, HOUSE_TIER_MANDARIN, isDike, Resource, type Building, type CourtState, type Edict, type EdictType, type GameState } from '../state';
-import { BUILDING_DEFS, court, HOUSE_LEVELS, RESOURCES, UNITS_PER_LOAD } from '../buildings/defs';
+import { BuildingType, DAYS_PER_MONTH, FigureType, HOUSE_TIER_MANDARIN, isDike, Resource, type Building, type CourtState, type Edict, type EdictType, type GameState, type KingKind } from '../state';
+import { BUILDING_DEFS, BUILDING_KEYS, court, HOUSE_LEVELS, RESOURCES, UNITS_PER_LOAD } from '../buildings/defs';
 import { roadAccess, setHouseLevel } from '../buildings/spawn';
 import { anchorOffset } from '../buildings/spawn';
 import { takeable } from '../buildings/storage';
@@ -28,6 +28,30 @@ export function initCourt(rank: number, favor: number): CourtState {
 
 export function addFavor(s: GameState, delta: number): void {
   s.court.favor = Math.max(0, Math.min(100, s.court.favor + delta));
+}
+
+// ---------- M6b: tính cách vua ----------
+export interface KingDef { name: string; text: string; edictBonus: Partial<Record<EdictType, number>>; graduateBonus: number; yearly: { building: string; perPop: number; minPop: number; bonus: number; penalty: number } }
+const KINGS = court.king as unknown as Record<string, KingDef | string>;
+export function kingDef(kind: KingKind): KingDef | null {
+  if (!kind) return null;
+  const k = KINGS[kind];
+  if (!k || typeof k === 'string') throw new Error(`court.json: không có tính cách vua "${kind}"`);
+  return k;
+}
+export const KING_KINDS: KingKind[] = ['buddhist', 'confucian', 'martial'];
+for (const k of KING_KINDS) { const d = kingDef(k)!; if (!BUILDING_KEYS.has(d.yearly.building)) throw new Error(`court.json: vua ${k} cần công trình "${d.yearly.building}" không có`); }
+
+/** Đầu năm: vua xét công trình mình trọng (chùa / trường / trại lính) có đủ theo dân không. */
+export function kingYearly(s: GameState): void {
+  const k = kingDef(s.scenario.king);
+  if (!k || s.population < k.yearly.minPop) return;
+  const type = BUILDING_KEYS.get(k.yearly.building)!;
+  const have = s.buildings.filter((b) => b.type === type && (b.numWorkers > 0 || BUILDING_DEFS[type].workers === 0)).length;
+  const need = Math.ceil(s.population / k.yearly.perPop);
+  const name = BUILDING_DEFS[type].name.toLowerCase();
+  if (have >= need) { addFavor(s, k.yearly.bonus); s.events.push(`Vua ${k.name} hài lòng: đủ ${name} (Ân sủng +${k.yearly.bonus})`); }
+  else { addFavor(s, k.yearly.penalty); s.events.push(`Vua ${k.name} phật ý: cần ${need} ${name} có người làm, mới có ${have} (Ân sủng ${k.yearly.penalty})`); }
 }
 
 /** Mô tả ngắn chiếu chỉ cho sự kiện / UI. */
@@ -75,6 +99,8 @@ function spawnMessenger(s: GameState, e: Edict): void {
 }
 
 export function completeEdict(s: GameState, e: Edict): void {
+  const bonus = kingDef(s.scenario.king)?.edictBonus[e.type] ?? 0; // M6b: vua trọng loại chiếu chỉ này
+  if (bonus) { addFavor(s, bonus); s.events.push(`Vua ${kingDef(s.scenario.king)!.name} khen: Ân sủng +${bonus}`); }
   e.state = 'done';
   addFavor(s, e.reward);
   s.events.push(`Hoàn thành chiếu chỉ: ${e.title} (Ân sủng +${e.reward})`);
@@ -230,6 +256,7 @@ function yearly(s: GameState): void {
   const diff = C.salaryLevel - C.rank;
   if (diff > 0) addFavor(s, -diff);
   else if (diff < 0) addFavor(s, F.salaryBelowBonus);
+  kingYearly(s);
   C.tributeDue = tributeFor(s);
   if (C.tributeDue === 0) { C.tributePaid = true; C.tributeMissedYears = 0; return; }
   if (s.treasury < 0) {
@@ -302,12 +329,13 @@ function exam(s: GameState): void {
   if (s.time.year === 0 || s.time.year % X.everyYears !== 0 || C.lastExamYear === s.time.year) return;
   if (s.time.month !== X.examMonth - 1 || s.time.day !== 0) return;
   C.lastExamYear = s.time.year;
-  if (!s.buildings.some((b) => b.type === BuildingType.Academy && b.numWorkers > 0)) { s.events.push('Không mở được khoa thi: chưa có trường học'); return; }
+  if (!s.buildings.some((b) => (b.type === BuildingType.Academy || b.type === BuildingType.QuocTuGiam) && b.numWorkers > 0)) { s.events.push('Không mở được khoa thi: chưa có trường học'); return; }
   let students = 0;
   for (const b of s.buildings) if (b.type === BuildingType.House && (b.school > 0 || b.academy > 0)) students += b.population;
   const n = Math.floor(students / X.perGraduate);
   C.graduates += n;
-  addFavor(s, n * X.favorPerGraduate);
+  const perGrad = X.favorPerGraduate + (kingDef(s.scenario.king)?.graduateBonus ?? 0); // M6b: vua trọng Nho
+  addFavor(s, n * perGrad);
   let returned = 0;
   for (let i = 0; i < n; i++) {
     if (nextInt(s.rng, X.returnChanceIn) !== 0) continue;
@@ -318,7 +346,7 @@ function exam(s: GameState): void {
     home.happiness = s.sentiment;
     returned++;
   }
-  s.events.push(n ? `Khoa thi: ${n} người đỗ (Ân sủng +${n * X.favorPerGraduate})${returned ? `, ${returned} vị về làm quan` : ''}` : 'Khoa thi: không ai đỗ');
+  s.events.push(n ? `Khoa thi: ${n} người đỗ (Ân sủng +${n * perGrad})${returned ? `, ${returned} vị về làm quan` : ''}` : 'Khoa thi: không ai đỗ');
 }
 
 /** Mỗi ngày (tick 27, sau lũ). */

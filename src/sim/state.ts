@@ -62,6 +62,8 @@ export enum BuildingType {
   Barracks = 45, // trại lính: vũ khí → lính
   EarthWall = 46, // thành đất 1×1, chặn giặc
   StoneWall = 47, // thành đá 1×1, cần phẩm hàm 4
+  // --- M6b ---
+  QuocTuGiam = 48, // Quốc Tử Giám 3×3, cần phẩm hàm cao — thầy giáo / thủ thư đi dạo phủ academy, tính Văn hiến như trường học
 }
 export const isWall = (t: BuildingType): boolean => t === BuildingType.EarthWall || t === BuildingType.StoneWall;
 export const isDike = (t: BuildingType): boolean => t === BuildingType.Dike || t === BuildingType.Sluice;
@@ -362,7 +364,20 @@ export interface ScenarioState {
   milestoneYears: number[];
   /** M6a: tuyến buôn mở được trong màn (khóa trong trade.json); chơi tự do: tất cả */
   routes: string[];
+  /** M6b: tính cách vua (court.json → king); '' = không */
+  king: KingKind;
+  /** M6b: xác suất mực lũ đỉnh 1–4 riêng của màn (ghi đè flood.json); null = mặc định */
+  peakChances: number[] | null;
+  /** M6b: phẩm hàm được phong khi thắng (≥ rank + 1) và màn kế trong chuỗi */
+  promoteTo: number;
+  next: string;
+  /** M6b: tên bản đồ nạp từ file (src/data/maps), '' = sinh ngẫu nhiên / phẳng; đất cấp theo phẩm hàm của bản đồ đó */
+  map: string;
+  land: { rank: number; rect: [number, number, number, number] }[];
 }
+
+/** M6b: tính cách vua — sùng Phật, trọng Nho, hiếu chiến (thiết kế phần 6). */
+export type KingKind = '' | 'buddhist' | 'confucian' | 'martial';
 
 export type GameOver = '' | 'won' | 'dismissed' | 'timeout';
 
@@ -429,6 +444,10 @@ export interface GameState {
   figures: Figure[]; // index 0 giữ trống
   freeFigures: number[];
   entryOffset: number; // ô dân nhập cư xuất hiện / dân bỏ đi rời bản đồ
+  /** M6b: ô sông ở mép bản đồ nơi thuyền buôn / cướp biển vào (−1 = tự tìm ô nước ở mép) */
+  riverMouthOffset: number;
+  /** M6b: ô đất ở mép bản đồ nơi giặc từng nguồn vào (−1 = tự tìm theo hướng) */
+  enemyEntry: Record<InvasionSource, number>;
   speed: number; // 0 = dừng, 1..3
   treasury: number;
   population: number;

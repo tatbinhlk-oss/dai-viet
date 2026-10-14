@@ -17,6 +17,31 @@ export const overlay = signal(false);
 /** M6-0: nhãn tên Pixi đè lên công trình (mặc định bật khi còn hình tạm, tắt khi đã có hình thật) */
 export const showNames = signal(false);
 
+/** M6b: tiến độ chuỗi màn (localStorage): phẩm hàm mang sang màn kế và các màn đã thắng. */
+export interface Campaign { rank: number; won: string[] }
+const CAMPAIGN_KEY = 'dai-viet.campaign';
+function loadCampaign(): Campaign {
+  try {
+    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(CAMPAIGN_KEY) : null;
+    if (raw) { const c = JSON.parse(raw) as Partial<Campaign>; return { rank: Number(c.rank) || 0, won: Array.isArray(c.won) ? c.won.filter((k) => typeof k === 'string') : [] }; }
+  } catch { /* localStorage bị chặn: coi như chưa chơi */ }
+  return { rank: 0, won: [] };
+}
+export const campaign = signal<Campaign>(loadCampaign());
+/** Ghi thắng màn: phẩm hàm mới (từ snapshot) và khóa màn; gọi nhiều lần cũng chỉ ghi một. */
+export function recordWin(key: string, rank: number): void {
+  const c = campaign.value;
+  if (c.won.includes(key) && c.rank >= rank) return;
+  const next = { rank: Math.max(c.rank, rank), won: c.won.includes(key) ? c.won : [...c.won, key] };
+  campaign.value = next;
+  try { localStorage.setItem(CAMPAIGN_KEY, JSON.stringify(next)); } catch { /* bỏ qua */ }
+}
+/** Xóa tiến độ chuỗi màn (nút trong hộp chọn màn). */
+export function resetCampaign(): void {
+  campaign.value = { rank: 0, won: [] };
+  try { localStorage.removeItem(CAMPAIGN_KEY); } catch { /* bỏ qua */ }
+}
+
 export const bridge = {
   cmd: (_c: Command) => {},
   select: (_x: number, _y: number) => {},

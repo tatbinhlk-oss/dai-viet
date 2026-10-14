@@ -1,4 +1,6 @@
-import { bridge, fps, panel, ui, type Panel } from './store';
+import { bridge, campaign, fps, panel, resetCampaign, ui, type Panel } from './store';
+import { SCENARIO_LIST } from '../sim/scenario/list';
+import { openScenario } from './App';
 import { MONTHS, num } from './format';
 import { MOOD_CAUSE_TEXT } from '../sim/city/sentiment';
 import type { FloodStats } from '../sim';
@@ -12,6 +14,25 @@ function floodText(f: FloodStats): string {
   return 'Mùa lũ sắp tới';
 }
 
+/** M6b: hộp chọn màn — chuỗi màn mở dần (màn kế mở khi thắng màn trước), màn lẻ và chơi tự do luôn mở. */
+function ScenarioPicker() {
+  const s = ui.value;
+  const won = campaign.value.won;
+  const unlocked = (d: (typeof SCENARIO_LIST)[number]) => d.order === undefined || d.order <= 1 || SCENARIO_LIST.some((p) => p.order === d.order! - 1 && won.includes(p.key));
+  const cur = s?.city.scenario.key ?? '';
+  return (
+    <span class="scenario" title="Chọn màn chơi (nạp lại trang). Phẩm hàm mang theo chuỗi màn ghi trong trình duyệt.">
+      <select value={cur === 'sandbox' ? '' : cur} onChange={(e) => { const k = (e.currentTarget as HTMLSelectElement).value; if (k !== (cur === 'sandbox' ? '' : cur)) openScenario(k); }}>
+        <option value="">Chơi tự do</option>
+        {SCENARIO_LIST.map((d) => (
+          <option value={d.key} disabled={!unlocked(d)}>{d.order ? `${d.order}. ` : ''}{d.name}{won.includes(d.key) ? ' ✓' : unlocked(d) ? '' : ' (khóa)'}</option>
+        ))}
+      </select>
+      {won.length > 0 && <button title="Xóa tiến độ chuỗi màn" onClick={() => { if (confirm('Xóa tiến độ chuỗi màn (phẩm hàm, màn đã thắng)?')) resetCampaign(); }}>⟲</button>}
+    </span>
+  );
+}
+
 export function TopBar() {
   const s = ui.value;
   const t = s?.time;
@@ -19,6 +40,7 @@ export function TopBar() {
     <div class="bar top">
       <div class="row">
       <strong class="title">Đại Việt</strong>
+      <ScenarioPicker />
       <span>{t ? `Ngày ${t.day + 1} tháng ${MONTHS[t.month]} · năm ${t.year + 1}` : '—'}</span>
       <span class="sep" />
       <span title="Ngân khố">{s ? `${num(s.treasury)} quan` : '—'}</span>

@@ -38,6 +38,7 @@ export function openRoute(s: GameState, i: number): string | null {
   const def = ROUTES[i], rs = s.trade.routes[i];
   if (!def || !rs) return 'tuyến không có';
   if (rs.open) return 'tuyến đã mở';
+  if (!s.scenario.routes.includes(def.key)) return 'màn này không mở được tuyến ấy'; // M6b: màn khóa tuyến
   if (s.treasury < def.openCost) return `cần ${def.openCost} quan để mở tuyến`;
   s.treasury -= def.openCost;
   s.thisYear.construction += def.openCost;
@@ -86,6 +87,7 @@ export function nearestWarehouse(s: GameState, from: number, onRoad: boolean): {
 
 /** Ô sông ở mép bản đồ (nơi thuyền buôn vào / ra); −1 nếu sông không chạm mép. */
 export function riverEdgeTile(s: GameState): number {
+  if (s.riverMouthOffset >= 0) return s.riverMouthOffset; // M6b: cửa sông ghi trong file bản đồ
   const g = s.grid;
   for (const y of [0, GRID_SIZE - 1]) for (let x = 0; x < GRID_SIZE; x++) if (g.terrain[gridOffset(x, y)] & T_WATER) return gridOffset(x, y);
   for (const x of [0, GRID_SIZE - 1]) for (let y = 0; y < GRID_SIZE; y++) if (g.terrain[gridOffset(x, y)] & T_WATER) return gridOffset(x, y);

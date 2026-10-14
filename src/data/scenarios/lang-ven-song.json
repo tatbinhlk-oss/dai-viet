@@ -1,0 +1,91 @@
+{
+  "_note": "Màn 1 (M6b) — làng ven sông: dạy dần, chưa có giặc, lũ nhỏ (peakChances 70/30/0/0), vua sùng Phật, chỉ có tuyến buôn miền núi. Đất cấp: ô vuông giữa bản đồ (file maps/lang-ven-song.json). Thắng → Tri phủ, sang màn Trấn lị.",
+  "key": "langVenSong",
+  "name": "Làng ven sông",
+  "order": 1,
+  "map": "lang-ven-song",
+  "description": "Một làng nhỏ bên sông. Dựng đình, giếng, chợ và ruộng; đắp đoạn đê đầu tiên. Chưa có giặc, lũ chỉ nhỏ và vừa.",
+  "rank": 0,
+  "favor": 50,
+  "treasury": 6000,
+  "king": "buddhist",
+  "flood": {
+    "peakChances": [
+      70,
+      30,
+      0,
+      0
+    ]
+  },
+  "goals": {
+    "population": 500,
+    "culture": 15,
+    "prosperity": 8,
+    "peace": 8,
+    "favor": 50
+  },
+  "timeLimitYears": 10,
+  "milestoneYears": [
+    3,
+    5,
+    7
+  ],
+  "promoteTo": 1,
+  "edicts": [
+    {
+      "year": 1,
+      "type": "goods",
+      "resource": "rice",
+      "amount": 4,
+      "deadlineMonths": 18,
+      "reward": 5
+    },
+    {
+      "year": 2,
+      "type": "money",
+      "amount": 200,
+      "deadlineMonths": 12,
+      "reward": 4
+    },
+    {
+      "year": 3,
+      "type": "ritual",
+      "building": "temple",
+      "amount": 1,
+      "deadlineMonths": 24,
+      "reward": 6
+    },
+    {
+      "year": 4,
+      "type": "dike",
+      "amount": 40,
+      "height": 1,
+      "deadlineMonths": 24,
+      "reward": 8
+    },
+    {
+      "year": 5,
+      "type": "goods",
+      "resource": "pottery",
+      "amount": 4,
+      "deadlineMonths": 18,
+      "reward": 6
+    },
+    {
+      "year": 6,
+      "type": "corvee",
+      "amount": 1000,
+      "deadlineMonths": 24,
+      "reward": 5
+    }
+  ],
+  "events": [
+    {
+      "year": 5,
+      "kind": "inspector"
+    }
+  ],
+  "routes": [
+    "mountain"
+  ]
+}

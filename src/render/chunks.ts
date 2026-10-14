@@ -2,7 +2,7 @@
 // công trình là Sprite từ sheet buildings đặt tại điểm neo (góc dưới hình thoi móng), zIndex = (x + y) × 8 + layer.
 // Thiếu frame thì vẽ khối màu bằng Graphics như trước (không crash). Nhãn tên Pixi bật/tắt bằng nút "Hiện tên".
 import { Container, Graphics, Particle, ParticleContainer, Sprite, Text, type Texture } from 'pixi.js';
-import { GRID_SIZE, T_BUILDING, T_FLOODED, T_FLOODPLAIN, T_ROAD, T_SUNKEN, T_TREE, T_UNPROTECTED, T_WATER } from '../sim/map/grid';
+import { GRID_SIZE, T_BUILDING, T_FLOODED, T_FLOODPLAIN, T_RESERVED, T_ROAD, T_SUNKEN, T_TREE, T_UNPROTECTED, T_WATER } from '../sim/map/grid';
 import { BuildingType, isDike } from '../sim/state';
 import { BUILDING_DEFS, HOUSE_LEVELS } from '../sim/buildings/defs';
 import { HALF_H, HALF_W, LAYER_BUILDING, tileToWorld, TILE_H, zIndexOf } from './iso';
@@ -155,6 +155,7 @@ export class ChunkLayer {
         if (t & T_FLOODED) add('flooded', wx, wy);
         else if (this.overlay && t & T_FLOODPLAIN && !(t & T_WATER)) add(t & T_UNPROTECTED ? 'overlay_unprotected' : 'overlay_protected', wx, wy);
         if (t & T_TREE) add('tree', wx, wy);
+        if (t & T_RESERVED) add('reserved', wx, wy); // M6b: đất chưa cấp phủ tối
         if (dike) add(dikeFrame(bt as BuildingType, this.bLevel[i], (t & T_ROAD) !== 0), wx, wy);
       }
     }

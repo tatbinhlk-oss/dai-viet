@@ -7,7 +7,7 @@ import { deserialize, serialize } from '../sim/save';
 
 export type WorkerIn =
   /** demo: bản đồ phẳng + thị trấn mẫu của test cổng M3/M4/M5; scenario: khóa màn chơi (M5), không có = chơi tự do */
-  | { type: 'init'; seed: number; demo?: boolean; scenario?: string }
+  | { type: 'init'; seed: number; demo?: boolean; scenario?: string; rank?: number }
   | { type: 'cmd'; cmd: Command }
   /** chọn công trình tại ô để xem chi tiết; x < 0 = bỏ chọn */
   | { type: 'select'; x: number; y: number }
@@ -110,7 +110,7 @@ self.onmessage = (e: MessageEvent<WorkerIn>) => {
   const m = e.data;
   if (m.type === 'init') {
     const key = m.scenario && SCENARIOS[m.scenario] ? m.scenario : m.demo ? 'sonNam' : '';
-    state = key ? createScenario(key, m.seed, !!m.demo || undefined) : createSim(m.seed, { flat: !!m.demo });
+    state = key ? createScenario(key, m.seed, !!m.demo || undefined, m.rank ?? 0) : createSim(m.seed, { flat: !!m.demo });
     if (m.demo) { buildCourtTown(state); demoPriorities(state); }
     sentFull = false;
     last = performance.now();

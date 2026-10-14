@@ -12,9 +12,10 @@ npm run dev      # http://localhost:5173
 npm test         # sim chạy headless
 npm run build
 npm run assets   # M6-0: sinh hình tạm vào assets/ rồi đóng gói public/sheets/ (chỉ cần khi đổi bảng công trình hoặc thay hình)
+npm run maps     # M6b: sinh lại ba bản đồ màn chơi src/data/maps/*.json từ scripts/gen-maps.ts (chỉ cần khi sửa script)
 ```
 
-Thêm `?seed=123` vào URL để đổi bản đồ. `?scenario=sonNam` chơi màn Sơn Nam (mục tiêu, chiếu chỉ) trên bản đồ ngẫu nhiên; không có thì chơi tự do (không có thắng / hết hạn, vẫn có triều đình). Thêm `?demo=1` để mở màn Sơn Nam với thị trấn mẫu của test cổng M3/M4/M5 (bản đồ phẳng, ~130 nhà, đủ 6 chuỗi xưởng, tuyến đê 160 đoạn với 8 trạm giữ đê) và xem nó tự chạy; bật nút **Vùng ngập** để thấy bãi bồi chưa có đê che (xanh) và đã có đê che (lục). `?look=7,70` đưa camera tới ô (x, y), ví dụ tới tuyến đê của thị trấn mẫu.
+Thêm `?seed=123` vào URL để đổi bản đồ ngẫu nhiên (chơi tự do). Hộp chọn màn ở thanh trên (hoặc `?scenario=langVenSong|tranLi|sonNam|thangLong`) mở một màn chơi (bản đồ thật, mục tiêu, chiếu chỉ, giặc); màn kế mở khi thắng màn trước, phẩm hàm mang theo chuỗi màn ghi trong trình duyệt (`?rank=n` ghi đè để thử). Không có `?scenario` thì chơi tự do (không có thắng / hết hạn, vẫn có triều đình). Thêm `?demo=1` để mở màn Sơn Nam với thị trấn mẫu của test cổng M3/M4/M5 (bản đồ phẳng, ~130 nhà, đủ 6 chuỗi xưởng, tuyến đê 160 đoạn với 8 trạm giữ đê) và xem nó tự chạy; bật nút **Vùng ngập** để thấy bãi bồi chưa có đê che (xanh) và đã có đê che (lục). `?look=7,70` đưa camera tới ô (x, y), ví dụ tới tuyến đê của thị trấn mẫu.
 
 ## Cột mốc
 
@@ -26,7 +27,7 @@ Thêm `?seed=123` vào URL để đổi bản đồ. `?scenario=sonNam` chơi m�
 - [ ] **M6 Phát hành** — thiết kế: `docs/m6-thiet-ke.md`
   - [x] **M6-0** khung spritesheet: hình tạm có nhãn tên sinh bằng script, đóng gói `public/sheets`, render công trình / walker / đất nền bằng Sprite, nút "Hiện tên"
   - [x] **M6a** thương mại (2 tuyến, hạn ngạch 15/25/40, lệnh mua bán, đoàn buôn và thuyền buôn), giặc giã (3 nguồn theo kịch bản, trại lính, thành đất / đá), lưu game (IndexedDB tự lưu mỗi tháng, xuất / nhập .dvsav)
-  - [ ] **M6b** 3 màn chơi và chuỗi phẩm hàm
+  - [x] **M6b** 3 màn chơi mới (Làng ven sông → Trấn lị → Thăng Long, cộng Sơn Nam thành chuỗi 4 màn) trên bản đồ nạp từ file, chuỗi phẩm hàm thăng theo màn, đất cấp theo phẩm hàm, Quốc Tử Giám, tính cách vua, lũ riêng từng màn
   - [ ] **M6c** hình vẽ, âm thanh, PWA, điện thoại, phát hành
 
 ## Cấu trúc
@@ -40,9 +41,11 @@ src/data/     bảng cân bằng JSON — chỉnh số ở đây, không sửa c
   flood.json      M4: mùa lũ, xác suất đỉnh, đê (công đắp, độ bền), hậu quả ngập, độ hấp dẫn, thuyền nan
   court.json      M5: Ân sủng, phạt chiếu chỉ, binh dịch, lao dịch, tiến cống, phẩm hàm, cống nạp, khoa cử, tín ngưỡng, chỉ số, sức khỏe
   trade.json      M6a: giá mua bán, hạn ngạch, hai tuyến buôn, số giặc giã (máu, đòn, thành)
-  scenarios/      M5: màn chơi (son-nam.json): phẩm hàm, vốn, mục tiêu, chiếu chỉ theo năm, sự kiện (M6a: tuyến buôn, giặc)
+  scenarios/      màn chơi, mỗi màn một file (nạp bằng import.meta.glob): bản đồ, phẩm hàm, vốn, mục tiêu, chiếu chỉ theo năm, sự kiện,
+                  tuyến buôn, giặc; M6b: order (thứ tự chuỗi), king (vua), flood.peakChances, promoteTo — lang-ven-song, tran-li, son-nam, thang-long
+  maps/           M6b: bản đồ thật (160 dòng × 160 ký tự: ~ nước, 0–4 cao độ, t/T cây) + cửa ngõ, cửa sông, mép giặc, đất cấp theo phẩm hàm
 src/sim/      mô phỏng — không import Pixi/DOM; tick.ts giữ lịch 50 việc/ngày (tick 26 = lũ)
-  map/        grid, terrain, routing (BFS), desirability
+  map/        grid, terrain (bản đồ ngẫu nhiên / phẳng), mapfile (M6b: nạp bản đồ từ file, đất cấp theo phẩm hàm), routing (BFS), desirability
   buildings/  defs (nạp JSON), spawn, house (bậc 1–8), industry (sản xuất, sinh walker), storage (vựa, kho, xưởng),
               dike (đoạn đê, cống: vẽ/tôn cao, đào đất, độ bền, vỡ)
   figures/    figure, movement, service (đi dạo, tuần đinh, thợ cả + kiểm tra đê, lại thu thuế, tội phạm),
@@ -54,16 +57,17 @@ src/sim/      mô phỏng — không import Pixi/DOM; tick.ts giữ lịch 50 vi
   flood/      season (mùa lũ, dự báo, mực nước), floodFill (lan nước, vùng có đê che, khoảng cách tới sông),
               consequences (hậu quả ngập theo loại ô, phù sa, bạc màu)
   scenario/   demo.ts — thị trấn mẫu dùng cho test và ?demo=1; planDikeLine / legacyDike / dikeStation / buildCourtTown
-              loader.ts (nạp màn), events.ts (mưa lớn, hà đê sứ, lệnh đắp đê), victory.ts (thắng / thua)
+              list.ts (danh sách màn từ mọi file, không kéo sim — UI dùng), loader.ts (nạp màn + bản đồ), events.ts (mưa lớn, hà đê sứ, lệnh đắp đê),
+              victory.ts (thắng / thua, phong phẩm hàm, cấp thêm đất)
 src/sim/save.ts  M6a: state ↔ JSON (TypedArray base64) ↔ gzip; worker lưu IndexedDB và xuất / nhập file
 src/worker/   vòng lặp sim trong Worker, gửi snapshot, tự lưu mỗi tháng
 src/render/   iso.ts (hằng số ô, chiếu, neo, zIndex), sheets.ts (nạp spritesheet), chunks.ts (đất nền theo chunk, công trình), figures.ts, palette.ts (màu khối dự phòng), app.ts
 assets/       PNG nguồn: buildings/, houses/, ground/, figures/ (hình tạm do scripts/gen-placeholders.ts sinh; thay hình thật = thả PNG cùng tên), fonts/
 public/sheets/ spritesheet đã đóng gói (scripts/pack-sprites.ts): <nhóm>.png + .json, mỗi frame có anchor (0.5, 1) và footprint
-scripts/      gen-placeholders.ts, pack-sprites.ts (chạy bằng tsx, vẽ bằng @napi-rs/canvas)
-src/ui/       Preact + signals: TopBar, BuildBar (khóa theo phẩm hàm), InfoPanel, Advisors (+ Thủy lợi, Nha môn, Tín ngưỡng, Chỉ số), YamenPanel
+scripts/      gen-placeholders.ts, pack-sprites.ts (chạy bằng tsx, vẽ bằng @napi-rs/canvas), gen-maps.ts (M6b: sinh ba bản đồ màn chơi)
+src/ui/       Preact + signals: TopBar (+ hộp chọn màn), BuildBar (khóa theo phẩm hàm), InfoPanel, Advisors (+ Thủy lợi, Nha môn, Tín ngưỡng, Chỉ số), YamenPanel
 src/main.ts   nối worker ↔ render ↔ ui
-tests/        vitest chạy sim headless (cổng M2: tests/village, M3: tests/city, M4: tests/flood, M5: tests/court; cơ chế: tests/m3, m4, m5, m6a, sprites)
+tests/        vitest chạy sim headless (cổng M2: tests/village, M3: tests/city, M4: tests/flood, M5: tests/court, M6b: tests/m6b; cơ chế: tests/m3, m4, m5, m6a, sprites; helpers.ts = người chơi tự động)
 ```
 
 Quy tắc cố định từ M1: kích thước ô chỉ ghi ở `render/iso.ts`; điểm neo sprite công trình là góc dưới hình thoi móng, anchor (0.5, 1), công trình N×N rộng đúng N×64 px; thứ tự vẽ `(x + y) × 8 + layer`; `roundPixels`, `scaleMode: nearest`, không mip-map, zoom 0,5× / 1× / 2×.
@@ -97,7 +101,7 @@ Giữ đúng thiết kế: Ân sủng −2/năm, chiếu chỉ trễ lần đầ
 
 - **Bao phủ đền** (mục tiêu tâm trạng thần) tính như religion coverage của Julius: số đền có người làm × 500 ÷ dân, không tính ông từ đi tới đâu — miếu ven sông không bao giờ đi tới khu dân cư được. Thần không để ý thành dưới 100 dân (tâm trạng giữ 50).
 - **Sét giận**: mỗi tháng tâm trạng < 50 cộng 1 sét (< 35: 2, < 20: 3), ≥ 50 bớt 1; 20 quở nhỏ (một lần mỗi lần vượt), 50 quở lớn rồi về 0; ≥ 100 phù hộ rồi về 50. Tết không đặt lại bộ đếm lễ của thần nào.
-- **Miếu Hà Bá, đàn tế Tiên nông** không cần người làm (như giếng), vẫn cử ông từ. Văn Miếu cần phẩm hàm Tuyên phủ sứ (5), tính là "đền" cho nhà bậc 10 và Văn hiến. Chưa có Quốc Tử Giám, đền thờ thành hoàng riêng (đình giữ vai này).
+- **Miếu Hà Bá, đàn tế Tiên nông** không cần người làm (như giếng), vẫn cử ông từ. Văn Miếu cần phẩm hàm bậc 5 (M6b hạ xuống bậc 4 Tuyên phủ sứ), tính là "đền" cho nhà bậc 10 và Văn hiến. Chưa có Quốc Tử Giám, đền thờ thành hoàng riêng (đình giữ vai này).
 - **Nhà bậc 9–10** vẫn 1×1 (chưa gộp nhà) với sức chứa 40/90; bậc 10 cần "đền" (ông từ của miếu / Văn Miếu đi qua) thay cho "2 chùa + 1 đền". Quan đi kiệu +1 độ hấp dẫn 8 ngày quanh đường đi.
 - **Binh dịch**: 1 kiện vũ khí cho 10 đinh; lính về theo dòng dân nhập cư (cộng vào hạn ngạch di cư). **Thuế vật** rút từ vựa / kho rồi 4 xe đi ra cửa ngõ (chỉ để nhìn). **Nghi lễ** và **đắp đê** tự hoàn thành khi đủ công trình / đoạn đê. **Lao dịch** chưa dùng phu đê của đình (M4), chỉ khóa nhân công và cộng ngày-người.
 - **Trị an**: −1 mỗi công trình bị loạn dân đốt (đếm khi loạn dân châm lửa), không tính cháy / sập tự nhiên. Trị an và Thịnh vượng khởi đầu 0 như Caesar 3 nên ngưỡng màn đầu thấp (15/15).
@@ -121,3 +125,16 @@ Giữ đúng thiết kế: Ân sủng −2/năm, chiếu chỉ trễ lần đầ
 - **Giặc giã**: sự kiện kịch bản `invasion` (sea / south / north, số tên), báo trước 2 tháng. Giặc là walker người ngoài: tới công trình gần nhất (không qua thành), đứng 40 tick thì đốt (thành đống tro), mỗi tên phá tối đa 3 công trình rồi rút về mép; bị thành chặn thì phá thành (thành đất 3 đòn, thành đá 8 đòn, 80 tick một đòn). Trại lính là xưởng nhận vũ khí (xe bò chở tới như nguyên liệu): mỗi kiện một lính, tối đa 4; lính đứng ở cửa trại, giặc trong tầm 30 ô thì tới đánh, đứng cạnh nhau thì cứ 10 tick đổi đòn (lính 15, giặc 10, máu 100). Không có đội hình, tường thành không có cổng (chừa lỗ hổng). Trị an đếm công trình giặc đốt (không tính lều, điếm canh). Quân "cách chức" của M5 chưa dùng cơ chế này.
 - **Lưu game**: `src/sim/save.ts` chuyển state thành JSON (TypedArray mã hóa base64, Set `dirty` không lưu) rồi gzip bằng CompressionStream; worker lưu IndexedDB khe `auto` mỗi tháng game và khe `manual` khi bấm Lưu; Xuất / Nhập file `.dvsav` (gzip JSON). Sự kiện kịch bản chuyển vào state (`scenarioEvents`) để lưu được. `tests/m6a.test.ts`: lưu → nạp → chạy 1 năm cho kết quả y hệt.
 - **Gộp nhà 2×2 / 3×3**: chưa làm (để M6b).
+
+## Ghi chú M6b (chỗ khác hoặc rút gọn so với thiết kế)
+
+- **Chuỗi màn** gồm 4 màn (tài liệu ghi 3, cộng màn Sơn Nam có sẵn): 1. Làng ven sông (Tri huyện, vốn 6.000, dân 500, vua sùng Phật, không giặc, lũ chỉ nhỏ / vừa, chỉ tuyến buôn miền núi) → 2. Trấn lị (Tri phủ, 8.000, dân 1.500, vua hiếu chiến, giặc Chiêm và cướp biển) → 3. Lộ Sơn Nam (An phủ sứ, như M5, vua trọng Nho) → 4. Thăng Long (Tuyên phủ sứ, 15.000, dân 3.000, vua trọng Nho, lũ lớn hơn 35/35/20/10, quân Bắc / Chiêm / cướp biển). Thắng màn → phong phẩm hàm ghi trong màn (`promoteTo`, ít nhất +1), màn kế mở; thắng Thăng Long → Hành khiển (bậc 5), ba bậc Thượng thư / Tư đồ / Thái úy để dành cho màn sau. Tiến độ chuỗi (phẩm hàm, màn đã thắng) ghi `localStorage`, nút ⟲ cạnh hộp chọn màn để xóa. Màn ghi thêm file vào `src/data/scenarios/` là có (nạp bằng `import.meta.glob`, `order` xếp vào chuỗi).
+- **Bản đồ thật**: `src/data/maps/*.json` do `scripts/gen-maps.ts` sinh (sông, hồ, gò đồi đặt tay; cao độ nền theo khoảng cách tới sông + nhiễu tất định), sửa tay file cũng được. File ghi cao độ từng ô, cửa ngõ (dân, đoàn buôn), cửa sông (thuyền buôn, cướp biển), mép giặc từng nguồn, và `land` = đất cấp theo phẩm hàm; bãi bồi suy ra khi nạp (đất cao ≤ 1 nối sông). Chưa có cầu: sông chia bản đồ, phải xây cùng bờ với cửa ngõ. Ô 160×160 vẫn cố định.
+- **Đất cấp theo phẩm hàm** ("phẩm hàm cao được cấp nhiều đất hơn"): cờ `T_RESERVED` — không xây được (đường cũng không), vẽ phủ tối, walker vẫn đi qua; lên phẩm hàm (thắng màn, chơi tiếp trên cùng bản đồ) thì mở thêm. Làng ven sông cấp ô vuông 79×83 giữa bản đồ, Trấn lị 77×89, Thăng Long cả bản đồ.
+- **Phẩm hàm mở công trình** nay kiểm cả trong sim (lệnh xây bị bỏ qua), không chỉ ở nút: Quốc Tử Giám và Văn Miếu cần bậc 4 (Tuyên phủ sứ — hạ từ 5 để mở ở Thăng Long), thành đá bậc 3 (hạ từ 4 để mở từ Sơn Nam). Màn chỉ mở được tuyến buôn ghi trong kịch bản (kiểm trong sim).
+- **Quốc Tử Giám** 3×3, 600 quan, 20 người làm, thầy giáo đi dạo tầm 80 phủ `academy` như trường học; tính Văn hiến cùng nhóm trường học (chung sức chứa / điểm), mở được khoa thi. Chưa có thủ thư riêng.
+- **Tính cách vua** (`court.json` → `king`): sùng Phật (mỗi năm +2 Ân sủng nếu đủ 1 chùa có người làm / 500 dân, thiếu −2; chiếu chỉ lễ nghi +2), trọng Nho (1 trường học / 1.000 dân; mỗi người đỗ +1 Ân sủng; lễ nghi +1), hiếu chiến (1 trại lính có người làm / 1.000 dân; binh dịch +3). Vua không để ý khi dân dưới ngưỡng (100 / 300 / 300). Thiết kế chỉ nêu ba tính cách, số là tự đặt.
+- **Lũ riêng từng màn**: `flood.peakChances` trong file màn ghi đè `flood.json` (màn đầu không có lũ lớn / đại hồng thủy).
+- **Lưu game** lên phiên bản 2 (cửa sông, mép giặc, vua, đất cấp, màn kế); bản 1 vẫn nạp được (điền mặc định).
+- **Cổng M6b** (`tests/m6b.test.ts`): người chơi tự động thắng Làng ven sông ở năm 4 trên thị trấn mẫu (bản đồ phẳng, dựng sẵn không tính tiền vì vốn 6.000 không đủ đặt một lúc); màn trên bản đồ thật chạy được (dân tới, lũ về). Chưa có test tự chơi trên bản đồ thật (thị trấn mẫu gắn tọa độ bản đồ phẳng).
+- **Chưa làm**: gộp nhà 2×2 / 3×3, hương liệu / trâu / gỗ quý, cầu qua sông, cổng thành; "Vua" chưa đổi chiếu chỉ theo tính cách (chiếu chỉ vẫn theo file màn).
