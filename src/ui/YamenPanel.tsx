@@ -17,6 +17,7 @@ export function YamenPanel() {
         {c.dismissalDays >= 0 && <span class="bad"> · bị thay sau {c.dismissalDays} ngày!</span>}
       </p>
       <p>Phẩm hàm: <em>{c.rankName}</em> · bổng lộc tích lũy {num(c.personalFunds)} quan</p>
+      {sc.king && <p>{sc.kingText}</p>}
       <p>
         Bổng lộc tự đặt:{' '}
         <button onClick={() => bridge.cmd({ type: 'setSalary', level: c.salaryLevel - 1 })}>−</button>

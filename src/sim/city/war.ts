@@ -22,6 +22,7 @@ export function scheduleInvasion(s: GameState, year: number, month: number, sour
 
 /** Ô đất ở mép bản đồ nơi giặc vào: cửa sông = đất cạnh ô sông chạm mép; nam = mép dưới; bắc = mép trên (gần giữa). */
 export function invasionEntry(s: GameState, source: InvasionSource): number {
+  if (s.enemyEntry[source] >= 0) return s.enemyEntry[source]; // M6b: mép giặc vào ghi trong file bản đồ
   const g = s.grid;
   const landAt = (x: number, y: number) => x >= 0 && y >= 0 && x < GRID_SIZE && y < GRID_SIZE && isLand(g, gridOffset(x, y));
   if (source === 'sea') {

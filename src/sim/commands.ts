@@ -6,7 +6,7 @@ import { openRoute, ROUTES, setTradeOrder } from './city/trade';
 const ROUTE_KEY = (i: number): string => ROUTES[i]?.key ?? '';
 import { WAR } from './city/war';
 import { placeBuilding, placeRoad, raze } from './buildings/spawn';
-import { BUILDING_KEYS } from './buildings/defs';
+import { BUILDING_DEFS, BUILDING_KEYS } from './buildings/defs';
 import { planDike, setSluice } from './buildings/dike';
 
 /** 'road' hoặc khóa công trình trong buildings.json (house, paddy, kiln, warehouse…). */
@@ -37,6 +37,7 @@ export function applyCommand(s: GameState, c: Command): void {
       if (c.kind === 'road') { placeRoad(s, c.x, c.y); break; }
       const t = BUILDING_KEYS.get(c.kind);
       if (t === undefined || t === BuildingType.None || t === BuildingType.Ruins) break;
+      if (BUILDING_DEFS[t].rank > s.court.rank) break; // M6b: công trình cần phẩm hàm cao hơn (Quốc Tử Giám, Văn Miếu, thành đá)
       if (isDike(t)) planDike(s, t, c.x, c.y); // vẽ đoạn mới hoặc tôn cao đoạn có sẵn
       else {
         const id = placeBuilding(s, t, c.x, c.y);

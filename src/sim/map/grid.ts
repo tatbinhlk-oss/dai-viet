@@ -11,6 +11,7 @@ export const T_TREE = 1 << 4;
 export const T_FLOODED = 1 << 5; // M4: đang ngập (tính lại mỗi ngày trong mùa lũ)
 export const T_SUNKEN = 1 << 6; // M4: đất trũng — chỗ đào đất đắp đê hoặc đoạn đê đã vỡ
 export const T_UNPROTECTED = 1 << 7; // M4: ô bãi bồi chưa có đê che (lũ vừa sẽ ngập), để vẽ lớp phủ và độ hấp dẫn
+export const T_RESERVED = 1 << 8; // M6b: đất triều đình chưa cấp (cần phẩm hàm cao hơn) — không xây được, walker vẫn đi qua
 
 export interface Grid {
   terrain: Uint16Array; // cờ T_*
@@ -47,10 +48,10 @@ export function hasFlag(g: Grid, x: number, y: number, flag: number): boolean {
   return inBounds(x, y) && (g.terrain[gridOffset(x, y)] & flag) !== 0;
 }
 
-/** Ô đất trống có thể xây: không nước, không đường, không công trình. */
+/** Ô đất trống có thể xây: không nước, không đường, không công trình, không phải đất chưa cấp (M6b). */
 export function isBuildable(g: Grid, x: number, y: number): boolean {
   if (!inBounds(x, y)) return false;
-  return (g.terrain[gridOffset(x, y)] & (T_WATER | T_ROAD | T_BUILDING)) === 0;
+  return (g.terrain[gridOffset(x, y)] & (T_WATER | T_ROAD | T_BUILDING | T_RESERVED)) === 0;
 }
 
 /** Đường đi được: có đường và không ngập (M4: walker không qua đường ngập). */

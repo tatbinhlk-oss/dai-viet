@@ -2,6 +2,7 @@
 import { createRng } from './rng';
 import { createGrid, GRID_SIZE, gridOffset, T_WATER } from './map/grid';
 import { generateTerrain, type TerrainOptions } from './map/terrain';
+import { applyMapFile, type MapDef } from './map/mapfile';
 import { BuildingType, emptyLedger, FigureType, isDike, isWall, LABOR_CATS, RES_COUNT, Resource, TICKS_PER_TILE, type Ledger, type MoodCause } from './state';
 import { newBuilding, type GameState } from './state';
 import { tick } from './tick';
@@ -16,7 +17,7 @@ import { paddyYield } from './flood/consequences';
 import { dikeSafety, workNeeded } from './buildings/dike';
 import { inFloodWatch, LEVEL_NAMES, SEASON_DAYS } from './flood/season';
 import { ticksPerTile } from './figures/movement';
-import { initCourt, giftCost, RANK_NAMES, SALARY, EDICT_TYPE_TEXT, storedLoads, draftablePopulation } from './city/court';
+import { initCourt, giftCost, kingDef, RANK_NAMES, SALARY, EDICT_TYPE_TEXT, storedLoads, draftablePopulation } from './city/court';
 import { initWorship, coverage, DEITY_NAMES, festivalCost, moodTarget, templeCount } from './city/worship';
 import { cultureBreakdown, initRatings, prosperityCap } from './city/ratings';
 import { currentRatings } from './scenario/victory';
@@ -28,17 +29,31 @@ import type { Edict, EdictState, EdictType, Goals, GameOver } from './state';
 export { tick, applyCommand, GRID_SIZE };
 export type { GameState, Command };
 
-export function createSim(seed: number, terrain: TerrainOptions = {}): GameState {
+export interface SimOptions extends TerrainOptions {
+  /** M6b: bản đồ thật nạp từ file (src/data/maps); có thì bỏ qua sinh ngẫu nhiên / phẳng */
+  map?: MapDef;
+}
+
+export function createSim(seed: number, opts: SimOptions = {}): GameState {
   const rng = createRng(seed);
   const grid = createGrid();
-  generateTerrain(grid, rng, terrain);
-  // cửa ngõ: ô đất gần mép trái nhất, ưu tiên hàng giữa; sông ở mép thì lùi vào trong
   let entry = gridOffset(0, GRID_SIZE / 2);
-  outer: for (let x = 0; x < GRID_SIZE; x++) {
-    for (let d = 0; d < GRID_SIZE / 2; d++) {
-      const a = gridOffset(x, GRID_SIZE / 2 + d), b = gridOffset(x, GRID_SIZE / 2 - d);
-      if (!(grid.terrain[a] & T_WATER)) { entry = a; break outer; }
-      if (!(grid.terrain[b] & T_WATER)) { entry = b; break outer; }
+  let riverMouth = -1;
+  const enemyEntry: GameState['enemyEntry'] = { sea: -1, south: -1, north: -1 };
+  if (opts.map) {
+    applyMapFile(grid, opts.map);
+    entry = gridOffset(opts.map.entry[0], opts.map.entry[1]);
+    riverMouth = gridOffset(opts.map.riverMouth[0], opts.map.riverMouth[1]);
+    for (const k of ['sea', 'south', 'north'] as const) { const p = opts.map.enemy?.[k]; if (p) enemyEntry[k] = gridOffset(p[0], p[1]); }
+  } else {
+    generateTerrain(grid, rng, opts);
+    // cửa ngõ: ô đất gần mép trái nhất, ưu tiên hàng giữa; sông ở mép thì lùi vào trong
+    outer: for (let x = 0; x < GRID_SIZE; x++) {
+      for (let d = 0; d < GRID_SIZE / 2; d++) {
+        const a = gridOffset(x, GRID_SIZE / 2 + d), b = gridOffset(x, GRID_SIZE / 2 - d);
+        if (!(grid.terrain[a] & T_WATER)) { entry = a; break outer; }
+        if (!(grid.terrain[b] & T_WATER)) { entry = b; break outer; }
+      }
     }
   }
   computeWaterDist(grid);
@@ -51,6 +66,8 @@ export function createSim(seed: number, terrain: TerrainOptions = {}): GameState
     figures: [{ id: 0, type: FigureType.None, mode: 0, x: 0, y: 0, nx: 0, ny: 0, progress: 0, prevOffset: -1, path: new Int32Array(0), pathIdx: 0, buildingId: 0, destBuildingId: 0, roamLength: 0, maxRoamLength: 0, returning: false, resource: Resource.None, loads: 0, cargo: [], waitTicks: 0, boatHome: -1, hp: 0, timer: 0, route: -1 }],
     freeFigures: [],
     entryOffset: entry,
+    riverMouthOffset: riverMouth,
+    enemyEntry,
     speed: 1,
     treasury: economy.startTreasury,
     population: 0,
@@ -71,7 +88,7 @@ export function createSim(seed: number, terrain: TerrainOptions = {}): GameState
     court: initCourt(0, courtCfg.favor.start),
     worship: initWorship(),
     ratings: initRatings(),
-    scenario: { key: 'sandbox', name: 'Tự do', goals: { population: 0, culture: 0, prosperity: 0, peace: 0, favor: 0 }, timeLimitYears: 0, milestoneYears: [], routes: ROUTES.map((r) => r.key) },
+    scenario: { key: 'sandbox', name: 'Tự do', goals: { population: 0, culture: 0, prosperity: 0, peace: 0, favor: 0 }, timeLimitYears: 0, milestoneYears: [], routes: ROUTES.map((r) => r.key), king: '', peakChances: null, promoteTo: 0, next: '', map: '', land: [] },
     scenarioEvents: [],
     gameOver: '',
     trade: initTrade(),
@@ -191,7 +208,7 @@ export interface CityStats {
   ratings: RatingStats;
   court: CourtStats;
   worship: WorshipStats;
-  scenario: { key: string; name: string; goals: Goals; current: Goals; timeLimitYears: number; gameOver: GameOver };
+  scenario: { key: string; name: string; goals: Goals; current: Goals; timeLimitYears: number; gameOver: GameOver; next: string; king: string; kingText: string; map: string; /** ô đưa camera tới lúc mở màn: giữa vùng đất cấp đầu, không có thì cửa ngõ */ start: [number, number] };
   /** M6a */
   trade: TradeStats;
   war: WarStats;
@@ -249,6 +266,13 @@ export interface FloodStats {
   breachesThisYear: number;
   siltedPaddies: number;
   sluices: { id: number; x: number; y: number; open: boolean; height: number }[];
+}
+
+/** M6b: ô giữa vùng đất cấp thấp nhất (màn có đất cấp) hoặc cửa ngõ. */
+function startTile(s: GameState): [number, number] {
+  const first = [...s.scenario.land].sort((a, b) => a.rank - b.rank)[0];
+  if (first) return [Math.round((first.rect[0] + first.rect[2]) / 2), Math.round((first.rect[1] + first.rect[3]) / 2)];
+  return [s.entryOffset % GRID_SIZE, Math.floor(s.entryOffset / GRID_SIZE)];
 }
 
 export function cityStats(s: GameState): CityStats {
@@ -329,7 +353,10 @@ export function cityStats(s: GameState): CityStats {
     ratings: { culture: s.ratings.culture, prosperity: s.ratings.prosperity, prosperityCap: prosperityCap(s), peace: s.ratings.peace, health: s.ratings.health, cultureBreakdown: cultureBreakdown(s), yearsCalm: s.ratings.yearsCalm },
     court: courtStats,
     worship: worshipStats,
-    scenario: { key: s.scenario.key, name: s.scenario.name, goals: { ...s.scenario.goals }, current: currentRatings(s), timeLimitYears: s.scenario.timeLimitYears, gameOver: s.gameOver },
+    scenario: {
+      key: s.scenario.key, name: s.scenario.name, goals: { ...s.scenario.goals }, current: currentRatings(s), timeLimitYears: s.scenario.timeLimitYears, gameOver: s.gameOver,
+      next: s.scenario.next, king: kingDef(s.scenario.king)?.name ?? '', kingText: kingDef(s.scenario.king)?.text ?? '', map: s.scenario.map, start: startTile(s),
+    },
     trade: tradeStats,
     war: warStats,
   };
@@ -344,6 +371,8 @@ export interface Snapshot {
   housingCapacity: number;
   city: CityStats;
   selected: BuildingInfo | null;
+  /** M6b: ô cửa ngõ (camera đưa tới khi mở bản đồ thật) */
+  entryOffset: number;
   full?: { terrain: Uint16Array; elevation: Uint8Array; bType: Uint8Array; bLevel: Uint8Array };
   changed?: { offsets: Uint32Array; terrain: Uint16Array; bType: Uint8Array; bLevel: Uint8Array };
   /** [x, y, nx, ny, progress, type, resource] × n */
@@ -370,6 +399,7 @@ export function takeSnapshot(s: GameState, full: boolean, selectedId = 0): Snaps
     population: s.population,
     housingCapacity: s.housingCapacity,
     city: cityStats(s),
+    entryOffset: s.entryOffset,
     selected: selectedId ? inspectBuilding(s, selectedId) : null,
     figures,
   };

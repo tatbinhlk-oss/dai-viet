@@ -14,6 +14,7 @@ export const COLOR = {
   sunken: 0x7a7448, // đất trũng
   overlayUnprotected: 0x5aa0d8,
   overlayProtected: 0x6fcf7a,
+  reserved: 0x202018, // M6b: đất triều đình chưa cấp (phủ tối)
   dike: [0x8a7a52, 0x6e6040, 0xa89a6a] as [number, number, number],
   dikePlanned: [0x5a5a50, 0x4a4a40, 0x707068] as [number, number, number],
   sluiceGate: 0x3b6e9c,
@@ -71,6 +72,7 @@ export const TYPE_COLORS: Partial<Record<BuildingType, [number, number, number]>
   [BuildingType.Ruins]: C(0x3a3430, 0x2a2420, 0x4a3a30),
   [BuildingType.Dock]: C(0x7a5a3a, 0x5e4630, 0x9a7a4a),
   [BuildingType.Academy]: C(0xc8b090, 0xa89070, 0x6a3a2a),
+  [BuildingType.QuocTuGiam]: C(0xd8c090, 0xb09868, 0x8a2a2a),
   [BuildingType.PuppetStage]: C(0x6a8aa0, 0x506a80, 0xa03a3a),
   [BuildingType.Shrine]: C(0x9a5a4a, 0x7a4638, 0x3a6a8a),
   [BuildingType.Altar]: C(0xa08a5a, 0x806e48, 0xd8b870),

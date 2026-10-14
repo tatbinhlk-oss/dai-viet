@@ -1,0 +1,135 @@
+{
+  "_note": "Màn 2 (M6b) — trấn lị: hai con sông, lũ thường, vua hiếu chiến (trọng trại lính, chiếu chỉ binh dịch thưởng hậu), giặc Chiêm từ nam và cướp biển theo cửa sông. Cả hai tuyến buôn. Thắng → An phủ sứ, sang màn Sơn Nam.",
+  "key": "tranLi",
+  "name": "Trấn lị",
+  "order": 2,
+  "map": "tran-li",
+  "description": "Trấn lị bên ngã ba sông. Lũ về mỗi năm, giặc Chiêm từ phương nam và cướp biển theo cửa sông; vua hiếu chiến đòi binh dịch.",
+  "rank": 1,
+  "favor": 50,
+  "treasury": 8000,
+  "king": "martial",
+  "goals": {
+    "population": 1500,
+    "culture": 35,
+    "prosperity": 20,
+    "peace": 20,
+    "favor": 60
+  },
+  "timeLimitYears": 12,
+  "milestoneYears": [
+    3,
+    6,
+    9
+  ],
+  "promoteTo": 3,
+  "edicts": [
+    {
+      "year": 1,
+      "type": "goods",
+      "resource": "pottery",
+      "amount": 6,
+      "deadlineMonths": 18,
+      "reward": 6
+    },
+    {
+      "year": 2,
+      "type": "money",
+      "amount": 400,
+      "deadlineMonths": 12,
+      "reward": 5
+    },
+    {
+      "year": 2,
+      "type": "dike",
+      "amount": 100,
+      "height": 2,
+      "deadlineMonths": 24,
+      "reward": 10
+    },
+    {
+      "year": 3,
+      "type": "troops",
+      "amount": 20,
+      "deadlineMonths": 12,
+      "reward": 8
+    },
+    {
+      "year": 4,
+      "type": "ritual",
+      "building": "academy",
+      "amount": 1,
+      "deadlineMonths": 24,
+      "reward": 6
+    },
+    {
+      "year": 5,
+      "type": "goods",
+      "resource": "silk",
+      "amount": 4,
+      "deadlineMonths": 18,
+      "reward": 8
+    },
+    {
+      "year": 6,
+      "type": "corvee",
+      "amount": 2000,
+      "deadlineMonths": 24,
+      "reward": 6
+    },
+    {
+      "year": 7,
+      "type": "troops",
+      "amount": 40,
+      "deadlineMonths": 12,
+      "reward": 10
+    },
+    {
+      "year": 8,
+      "type": "goods",
+      "resource": "weapons",
+      "amount": 4,
+      "deadlineMonths": 18,
+      "reward": 8
+    }
+  ],
+  "events": [
+    {
+      "year": 3,
+      "kind": "rain"
+    },
+    {
+      "year": 4,
+      "kind": "inspector"
+    },
+    {
+      "year": 5,
+      "month": 3,
+      "kind": "invasion",
+      "source": "south",
+      "amount": 6
+    },
+    {
+      "year": 6,
+      "kind": "rain"
+    },
+    {
+      "year": 8,
+      "month": 5,
+      "kind": "invasion",
+      "source": "sea",
+      "amount": 8
+    },
+    {
+      "year": 10,
+      "month": 2,
+      "kind": "invasion",
+      "source": "south",
+      "amount": 10
+    }
+  ],
+  "routes": [
+    "mountain",
+    "sea"
+  ]
+}

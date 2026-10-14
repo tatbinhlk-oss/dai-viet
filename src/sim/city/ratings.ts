@@ -33,7 +33,7 @@ export function cultureBreakdown(s: GameState): { key: string; name: string; cov
     ['dinh', 'Đình làng', working(s, BuildingType.Dinh), C.dinh],
     ['temple', 'Chùa và đền', working(s, BuildingType.Temple) + working(s, BuildingType.Shrine) + working(s, BuildingType.Altar) + working(s, BuildingType.VanMieu), C.temple],
     ['school', 'Lớp học thầy đồ', working(s, BuildingType.School), C.school],
-    ['academy', 'Trường học', working(s, BuildingType.Academy), C.academy],
+    ['academy', 'Trường học', working(s, BuildingType.Academy) + working(s, BuildingType.QuocTuGiam), C.academy], // M6b: Quốc Tử Giám tính như trường học
     ['entertainment', 'Chèo và rối nước', working(s, BuildingType.Theater) + working(s, BuildingType.PuppetStage), C.entertainment],
   ];
   return groups.map(([key, name, n, cfg]) => {
