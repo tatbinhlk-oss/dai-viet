@@ -1,6 +1,6 @@
 # Đại Việt — city builder theo Caesar 3
 
-Game xây thành phố kiểu Caesar 3 lấy bối cảnh Đại Việt, chạy trên web. Mô phỏng thuần TypeScript trong Web Worker, PixiJS 8 vẽ isometric 64×32, UI gửi lệnh vào sim.
+Game xây thành phố kiểu Caesar 3 lấy bối cảnh Đại Việt, chạy trên web. Mô phỏng thuần TypeScript trong Web Worker, PixiJS 8 vẽ isometric 64×32 từ spritesheet, UI gửi lệnh vào sim.
 
 Tài liệu thiết kế cơ chế (nhà, walker, chuỗi sản xuất, lũ và đê, triều đình, chỉ số) nằm trong Claude Project "Làm game".
 
@@ -11,6 +11,7 @@ npm install
 npm run dev      # http://localhost:5173
 npm test         # sim chạy headless
 npm run build
+npm run assets   # M6-0: sinh hình tạm vào assets/ rồi đóng gói public/sheets/ (chỉ cần khi đổi bảng công trình hoặc thay hình)
 ```
 
 Thêm `?seed=123` vào URL để đổi bản đồ. `?scenario=sonNam` chơi màn Sơn Nam (mục tiêu, chiếu chỉ) trên bản đồ ngẫu nhiên; không có thì chơi tự do (không có thắng / hết hạn, vẫn có triều đình). Thêm `?demo=1` để mở màn Sơn Nam với thị trấn mẫu của test cổng M3/M4/M5 (bản đồ phẳng, ~130 nhà, đủ 6 chuỗi xưởng, tuyến đê 160 đoạn với 8 trạm giữ đê) và xem nó tự chạy; bật nút **Vùng ngập** để thấy bãi bồi chưa có đê che (xanh) và đã có đê che (lục). `?look=7,70` đưa camera tới ô (x, y), ví dụ tới tuyến đê của thị trấn mẫu.
@@ -22,7 +23,11 @@ Thêm `?seed=123` vào URL để đổi bản đồ. `?scenario=sonNam` chơi m�
 - [x] **M3 Kinh tế** — 6 chuỗi xưởng + 9 nguyên liệu, kho 8 ngăn, lao động 9 ngành + người mộ phu, thuế + lại thu thuế, lòng dân + di cư hai chiều + tội phạm, nhà bậc 6–8, cháy/sập + tuần đinh/thợ cả; UI Preact (thanh xây theo nhóm, bảng công trình, cố vấn)
 - [x] **M4 Lũ đê** — mùa lũ tháng 6–9 với đỉnh 1–4, nha môn dự báo, flood-fill theo cao độ + cao đê, đoạn đê và phu đê (lao dịch từ đình), độ bền và vỡ đê, hậu quả ngập theo loại ô, phù sa và bạc màu, cống, thuyền nan; UI: lớp phủ vùng ngập, bảng Thủy lợi, an toàn đê. Thiết kế: `docs/m4-thiet-ke.md`
 - [x] **M5 Triều đình** — Ân sủng, phẩm hàm và bổng lộc, tiến cống, cống nạp, chiếu chỉ 5 loại do sứ giả đem tới nha môn, lao dịch (ngành thứ 10), khoa cử, 4 tín ngưỡng với lễ hội và Tết, 4 chỉ số + sức khỏe, nhà quan lại bậc 9–10, màn chơi có mục tiêu và điều kiện thắng / cách chức; UI: bảng Nha môn, Tín ngưỡng, Chỉ số. Thiết kế: `docs/m5-thiet-ke.md`
-- [ ] **M6 Phát hành** — thương mại, giặc, 3 màn, art riêng, PWA
+- [ ] **M6 Phát hành** — thiết kế: `docs/m6-thiet-ke.md`
+  - [x] **M6-0** khung spritesheet: hình tạm có nhãn tên sinh bằng script, đóng gói `public/sheets`, render công trình / walker / đất nền bằng Sprite, nút "Hiện tên"
+  - [ ] **M6a** thương mại, giặc, lưu game
+  - [ ] **M6b** 3 màn chơi và chuỗi phẩm hàm
+  - [ ] **M6c** hình vẽ, âm thanh, PWA, điện thoại, phát hành
 
 ## Cấu trúc
 
@@ -50,13 +55,16 @@ src/sim/      mô phỏng — không import Pixi/DOM; tick.ts giữ lịch 50 vi
   scenario/   demo.ts — thị trấn mẫu dùng cho test và ?demo=1; planDikeLine / legacyDike / dikeStation / buildCourtTown
               loader.ts (nạp màn), events.ts (mưa lớn, hà đê sứ, lệnh đắp đê), victory.ts (thắng / thua)
 src/worker/   vòng lặp sim trong Worker, gửi snapshot
-src/render/   iso.ts (hằng số ô, chiếu, neo, zIndex), chunks.ts, figures.ts, app.ts
+src/render/   iso.ts (hằng số ô, chiếu, neo, zIndex), sheets.ts (nạp spritesheet), chunks.ts (đất nền theo chunk, công trình), figures.ts, palette.ts (màu khối dự phòng), app.ts
+assets/       PNG nguồn: buildings/, houses/, ground/, figures/ (hình tạm do scripts/gen-placeholders.ts sinh; thay hình thật = thả PNG cùng tên), fonts/
+public/sheets/ spritesheet đã đóng gói (scripts/pack-sprites.ts): <nhóm>.png + .json, mỗi frame có anchor (0.5, 1) và footprint
+scripts/      gen-placeholders.ts, pack-sprites.ts (chạy bằng tsx, vẽ bằng @napi-rs/canvas)
 src/ui/       Preact + signals: TopBar, BuildBar (khóa theo phẩm hàm), InfoPanel, Advisors (+ Thủy lợi, Nha môn, Tín ngưỡng, Chỉ số), YamenPanel
 src/main.ts   nối worker ↔ render ↔ ui
 tests/        vitest chạy sim headless (cổng M2: tests/village, M3: tests/city, M4: tests/flood, M5: tests/court; cơ chế: tests/m3, m4, m5)
 ```
 
-Quy tắc cố định từ M1: kích thước ô chỉ ghi ở `render/iso.ts`; điểm neo sprite công trình là góc dưới hình thoi móng; thứ tự vẽ `(x + y) × 8 + layer`; `roundPixels`, `scaleMode: nearest`, zoom 0,5× / 1× / 2×.
+Quy tắc cố định từ M1: kích thước ô chỉ ghi ở `render/iso.ts`; điểm neo sprite công trình là góc dưới hình thoi móng, anchor (0.5, 1), công trình N×N rộng đúng N×64 px; thứ tự vẽ `(x + y) × 8 + layer`; `roundPixels`, `scaleMode: nearest`, không mip-map, zoom 0,5× / 1× / 2×.
 
 ## Ghi chú M3 (chỗ khác hoặc rút gọn so với tài liệu thiết kế)
 
@@ -96,3 +104,11 @@ Giữ đúng thiết kế: Ân sủng −2/năm, chiếu chỉ trễ lần đầ
 - **Chơi tự do** (không `?scenario`): vẫn có Ân sủng, Tết, cống nạp, tín ngưỡng nhưng không có chiếu chỉ, không thắng / hết hạn; vẫn bị cách chức.
 - **Cổng M5** (`tests/court.test.ts`): màn Sơn Nam trên thị trấn mẫu với người chơi tự động (thuế 11%, thi hành chiếu chỉ, lễ hội khi thần < 45, tiến cống, vá đê) thắng ở năm 6 ≈ 1.150 ngày; ở 1× (2,5 s/ngày) là ~48 phút, ở 2× là 24 phút. Vốn màn 10.000 vì thị trấn mẫu dựng sẵn tốn ~8.900.
 - Để M6: giặc giã, thuyền buôn (Thịnh vượng "≥ 4 chuyến"), Quốc Tử Giám, thăng phẩm hàm theo chuỗi màn, nạp màn từ nhiều file.
+
+## Ghi chú M6-0 (khung spritesheet tạm)
+
+- **Thay hình thật**: thả PNG cùng tên vào `assets/buildings/<khóa>.png` (khóa trong buildings.json; đống tro `ruins_1..3`), `assets/houses/house_l0..10.png`, `assets/ground/` (grass0–4, floodplain, water, road, floor, sunken, flooded, overlay_*, tree, dike0–4, dike0–4_road, sluice0–4_open/closed), `assets/figures/<loại>_<ne|se|sw|nw>_<0–3>.png` (+ `_full_` cho xe bò, phu kho, đoàn xe, thuyền; `cargo_<hàng>.png` 10×5), xóa tên file khỏi `assets/placeholders.json` (chạy lại `assets:gen` sẽ ghi đè hình tạm — khi đã có hình thật chỉ chạy `assets:pack`), rồi `npm run assets:pack`. Code không đổi; thay dần từng loại được, frame nào thiếu thì vẽ khối màu như trước.
+- **Đất nền** vẽ bằng ParticleContainer theo chunk 16×16 (một texture chung là sheet ground), chỉ dựng lại chunk có ô đổi; đê và cống vẽ ở lớp đất (frame theo mức cao, có/không đường vắt qua, cống đóng/mở). Công trình và walker là Sprite trong một container sắp theo `(x + y) × 8 + layer`, nên walker đi sau nhà bị che đúng.
+- **"Hiện tên"**: nhãn Pixi chỉ vẽ lên frame có hình thật (hình tạm đã có nhãn trong PNG, không vẽ đè); mặc định bật khi sheet còn hình tạm, tắt khi đã thay hết. Nhãn, nút, ô chữ không bo góc.
+- Font nhãn tạm: DejaVu Sans Bold (`assets/fonts`, giấy phép Bitstream Vera cho phép phân phối). Sprite Caesar 3 không đưa vào repo; `assets/extracted/` nằm trong .gitignore.
+- `tests/sprites.test.ts` kiểm mọi loại công trình / bậc nhà / đê / walker có frame, anchor (0.5, 1), rộng N×64, footprint đúng.

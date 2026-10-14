@@ -1,134 +1,90 @@
-// Bản đồ chia chunk 16×16 ô. Mỗi chunk một Graphics, chỉ vẽ lại khi có ô trong chunk đổi.
-// Vẫn vẽ khối Graphics phẳng (placeholder); sau thay bằng sprite từ spritesheet, cùng điểm neo.
-import { Container, Graphics } from 'pixi.js';
+// Bản đồ: đất nền chia chunk 16×16 ô, mỗi chunk một ParticleContainer (mọi ô dùng chung sheet ground) chỉ dựng lại khi có ô đổi;
+// công trình là Sprite từ sheet buildings đặt tại điểm neo (góc dưới hình thoi móng), zIndex = (x + y) × 8 + layer.
+// Thiếu frame thì vẽ khối màu bằng Graphics như trước (không crash). Nhãn tên Pixi bật/tắt bằng nút "Hiện tên".
+import { Container, Graphics, Particle, ParticleContainer, Sprite, Text, type Texture } from 'pixi.js';
 import { GRID_SIZE, T_BUILDING, T_FLOODED, T_FLOODPLAIN, T_ROAD, T_SUNKEN, T_TREE, T_UNPROTECTED, T_WATER } from '../sim/map/grid';
 import { BuildingType, isDike } from '../sim/state';
-import { BUILDING_DEFS } from '../sim/buildings/defs';
-import { HALF_H, HALF_W, tileToWorld, TILE_H } from './iso';
+import { BUILDING_DEFS, HOUSE_LEVELS } from '../sim/buildings/defs';
+import { HALF_H, HALF_W, LAYER_BUILDING, tileToWorld, TILE_H, zIndexOf } from './iso';
+import { blockColors, typeHeight } from './palette';
+import { frameOf, isPlaceholder, type Sheets } from './sheets';
 
 export const CHUNK = 16;
 const CHUNKS_PER_SIDE = GRID_SIZE / CHUNK;
 
-const COLOR = {
-  grass: [0x6f8f3a, 0x76963f, 0x6a8a37, 0x7a9a44, 0x80a04a], // theo elevation 0..4
-  floodplain: 0x8fa85a,
-  water: 0x3b6e9c,
-  road: 0xb89a62,
-  tree: 0x3f6a2a,
-  // M4
-  flooded: 0x4f82b0, // nước lũ phủ lên ô
-  sunken: 0x7a7448, // đất trũng (đào đất đắp đê, đê vỡ)
-  overlayUnprotected: 0x5aa0d8, // lớp phủ: bãi bồi lũ vừa sẽ ngập
-  overlayProtected: 0x6fcf7a, // lớp phủ: bãi bồi có đê che
-  dike: [0x8a7a52, 0x6e6040, 0xa89a6a] as [number, number, number],
-  dikePlanned: [0x5a5a50, 0x4a4a40, 0x707068] as [number, number, number],
-  sluiceGate: 0x3b6e9c,
-};
-
-// màu khối placeholder: [mặt trái, mặt phải, mái]. Nhà theo bậc 0..10; công trình theo loại.
-const HOUSE_COLORS: [number, number, number][] = [
-  [0x8a8a7a, 0x6e6e60, 0xa8a898], // lều trống: xám
-  [0x9c6b3c, 0x7d5530, 0xc9a06a], // lều tranh
-  [0xa0743f, 0x80592f, 0xd8b06a], // nhà tranh vách đất
-  [0xa66a3a, 0x85522c, 0xc98a4a], // nhà tranh
-  [0x8f5a2a, 0x70451f, 0xb08050], // nhà gỗ lợp lá
-  [0xb0553a, 0x8a3f2a, 0x9a4632], // nhà gỗ lợp ngói
-  [0xc8b89a, 0xa89878, 0x8a3a2a], // nhà ba gian: tường vôi, ngói
-  [0xd8c8a8, 0xb8a888, 0x7a2e22], // nhà ngói năm gian
-  [0xe0d0b0, 0xc0b090, 0x6a2a20], // nhà phố
-  [0xe8dcc0, 0xc8bca0, 0x4a2a20], // tư dinh
-  [0xf0e4c8, 0xd0c4a8, 0x3a2418], // phủ đệ
-];
-const C = (l: number, r: number, t: number): [number, number, number] => [l, r, t];
-const TYPE_COLORS: Partial<Record<BuildingType, [number, number, number]>> = {
-  [BuildingType.Paddy]: C(0x5f8f3a, 0x4f7a2e, 0x9bc45a),
-  [BuildingType.VegGarden]: C(0x5a8a3a, 0x4a7430, 0x7fbf4a),
-  [BuildingType.PigSty]: C(0x8a6a4a, 0x6e543a, 0xc89a8a),
-  [BuildingType.FishWharf]: C(0x7a6a50, 0x5e523e, 0x8ab0c0),
-  [BuildingType.Granary]: C(0xb59a5a, 0x8f7a45, 0xd9c080),
-  [BuildingType.Warehouse]: C(0x9a8060, 0x7a6448, 0x6a5a4a),
-  [BuildingType.Market]: C(0xc08a4a, 0x9a6b35, 0xe8c070),
-  [BuildingType.ClayPit]: C(0xa0603a, 0x80502e, 0xc07848),
-  [BuildingType.CottonField]: C(0x8aa060, 0x70844c, 0xe8e8e0),
-  [BuildingType.TeaHill]: C(0x4a7a3a, 0x3a642e, 0x5a9a48),
-  [BuildingType.MulberryField]: C(0x5a7a40, 0x4a6434, 0x7a9a50),
-  [BuildingType.CopperMine]: C(0x7a6a5a, 0x5e5246, 0xb87a4a),
-  [BuildingType.IronMine]: C(0x6a6a6a, 0x505050, 0x8a8a90),
-  [BuildingType.SaltPan]: C(0x9aa0a8, 0x7a8088, 0xf0f0f0),
-  [BuildingType.LumberCamp]: C(0x7a5a3a, 0x5e4630, 0x4a6a30),
-  [BuildingType.Kiln]: C(0xa05a3a, 0x80462e, 0x5a3a2a),
-  [BuildingType.Loom]: C(0x9a7a5a, 0x7a6048, 0xc8b8a0),
-  [BuildingType.TeaHouse]: C(0x8a7050, 0x6e5a40, 0x6a8a4a),
-  [BuildingType.SilkWorkshop]: C(0xa08a6a, 0x806e54, 0xd8b84a),
-  [BuildingType.Foundry]: C(0x6a5040, 0x523e32, 0xb87a3a),
-  [BuildingType.Smithy]: C(0x5a5050, 0x443c3c, 0x7a7a80),
-  [BuildingType.Well]: C(0x777777, 0x555555, 0x4aa0d0),
-  [BuildingType.BrickWell]: C(0xa05a40, 0x804632, 0x4aa0d0),
-  [BuildingType.Dinh]: C(0x8a4a3a, 0x6a3428, 0x5a3a2a),
-  [BuildingType.Temple]: C(0xc8a060, 0xa0804a, 0x6a3020),
-  [BuildingType.School]: C(0xb8a080, 0x988064, 0x5a4030),
-  [BuildingType.Clinic]: C(0xb0b090, 0x909074, 0x4a7a5a),
-  [BuildingType.Theater]: C(0xa03a3a, 0x80302e, 0xd8a040),
-  [BuildingType.WatchPost]: C(0x6a5a4a, 0x52463a, 0xa03a2a),
-  [BuildingType.BuilderPost]: C(0x7a6a5a, 0x5e5246, 0x4a6a8a),
-  [BuildingType.Yamen]: C(0xa04040, 0x803434, 0x3a2a2a),
-  [BuildingType.Garden]: C(0x4a7a30, 0x3a6428, 0x5aa040),
-  [BuildingType.LotusPond]: C(0x4a7a90, 0x3a6474, 0x70b0a0),
-  [BuildingType.Ruins]: C(0x3a3430, 0x2a2420, 0x4a3a30),
-  [BuildingType.Dock]: C(0x7a5a3a, 0x5e4630, 0x9a7a4a),
-  [BuildingType.Academy]: C(0xc8b090, 0xa89070, 0x6a3a2a),
-  [BuildingType.PuppetStage]: C(0x6a8aa0, 0x506a80, 0xa03a3a),
-  [BuildingType.Shrine]: C(0x9a5a4a, 0x7a4638, 0x3a6a8a),
-  [BuildingType.Altar]: C(0xa08a5a, 0x806e48, 0xd8b870),
-  [BuildingType.VanMieu]: C(0xd8c0a0, 0xb8a080, 0x8a2a2a),
-};
-const FLAT = new Set<BuildingType>([BuildingType.Paddy, BuildingType.VegGarden, BuildingType.CottonField, BuildingType.TeaHill, BuildingType.MulberryField, BuildingType.SaltPan, BuildingType.ClayPit, BuildingType.Garden, BuildingType.LotusPond, BuildingType.Ruins, BuildingType.Altar]);
-const HEIGHT_BY_SIZE = [0, 10, 18, 26];
-function typeHeight(t: BuildingType, size: number, level: number): number {
-  if (t === BuildingType.House) return 10 + Math.min(level, 10) * 1.5;
-  if (FLAT.has(t)) return t === BuildingType.Garden ? 6 : 2;
-  if (t === BuildingType.Well || t === BuildingType.BrickWell) return 8;
-  return HEIGHT_BY_SIZE[size] ?? 20;
-}
 /** Kích thước móng tại ô neo: đống tro ghi kích thước vào bLevel. */
 const sizeOf = (t: number, level: number): number => (t === BuildingType.Ruins ? Math.max(1, level) : BUILDING_DEFS[t]?.size ?? 1);
+const keyOf = (t: BuildingType): string => BUILDING_DEFS[t].key;
+
+/** Tên frame công trình trong sheet buildings. */
+export function buildingFrame(t: BuildingType, level: number): string {
+  if (t === BuildingType.House) return `house_l${Math.min(level, 10)}`;
+  if (t === BuildingType.Ruins) return `ruins_${Math.max(1, level)}`;
+  return keyOf(t);
+}
+/** Tên frame đê / cống trong sheet ground (bLevel = cao + 16 nếu cống mở). */
+export function dikeFrame(t: BuildingType, level: number, road: boolean): string {
+  const h = level & 15, open = (level & 16) !== 0;
+  if (t === BuildingType.Sluice) return `sluice${h}_${open ? 'open' : 'closed'}`;
+  return road ? `dike${h}_road` : `dike${h}`;
+}
+
+/** Khối màu dự phòng, cùng hình dạng PNG tạm: gốc tại đỉnh dưới hình thoi móng. */
+export function drawBlock(g: Graphics, n: number, h: number, col: [number, number, number]): void {
+  const L = { x: -n * HALF_W, y: -n * HALF_H }, R = { x: n * HALF_W, y: -n * HALF_H }, B = { x: 0, y: 0 }, T = { x: 0, y: -n * TILE_H };
+  g.poly([L.x, L.y, L.x, L.y - h, B.x, B.y - h, B.x, B.y]).fill(col[0]);
+  g.poly([B.x, B.y, B.x, B.y - h, R.x, R.y - h, R.x, R.y]).fill(col[1]);
+  g.poly([T.x, T.y - h, R.x, R.y - h, B.x, B.y - h, L.x, L.y - h]).fill(col[2]);
+}
 
 export class ChunkLayer {
-  readonly container = new Container();
-  private readonly ground: Graphics[] = [];
-  private readonly objects: Graphics[] = [];
+  /** đất nền — luôn dưới mọi thứ */
+  readonly groundContainer = new Container();
+  /** công trình (+ walker do FigureLayer thêm vào), sắp theo zIndex */
+  readonly objects = new Container();
+  private readonly chunks: ParticleContainer[] = [];
   private readonly dirty = new Set<number>();
+  private readonly dirtyBuildings = new Set<number>();
+  private readonly sprites = new Map<number, { node: Sprite | Graphics; label: Text | null; key: string }>();
   private terrain: Uint16Array = new Uint16Array(GRID_SIZE * GRID_SIZE);
   private elevation: Uint8Array = new Uint8Array(GRID_SIZE * GRID_SIZE);
   private bType: Uint8Array = new Uint8Array(GRID_SIZE * GRID_SIZE);
   private bLevel: Uint8Array = new Uint8Array(GRID_SIZE * GRID_SIZE);
   private overlay = false;
+  private showNames = false;
 
-  /** M4: bật/tắt lớp phủ vùng ngập — vẽ lại mọi chunk. */
+  constructor(private readonly sheets: Sheets) {
+    this.objects.sortableChildren = true;
+    for (let cy = 0; cy < CHUNKS_PER_SIDE; cy++) {
+      for (let cx = 0; cx < CHUNKS_PER_SIDE; cx++) {
+        const pc = new ParticleContainer({ texture: sheets.ground.base, dynamicProperties: { position: false, vertex: false, rotation: false, uvs: false, color: false } });
+        pc.zIndex = cx + cy;
+        this.chunks.push(pc);
+        this.groundContainer.addChild(pc);
+      }
+    }
+    this.groundContainer.sortableChildren = true;
+  }
+
+  /** M4: bật/tắt lớp phủ vùng ngập — dựng lại mọi chunk. */
   setOverlay(on: boolean): void {
     if (this.overlay === on) return;
     this.overlay = on;
-    for (let i = 0; i < this.ground.length; i++) this.dirty.add(i);
+    for (let i = 0; i < this.chunks.length; i++) this.dirty.add(i);
   }
 
-  constructor() {
-    this.container.sortableChildren = true;
-    for (let cy = 0; cy < CHUNKS_PER_SIDE; cy++) {
-      for (let cx = 0; cx < CHUNKS_PER_SIDE; cx++) {
-        const g = new Graphics();
-        const o = new Graphics();
-        g.zIndex = (cx + cy) * 2;
-        o.zIndex = (cx + cy) * 2 + 1;
-        this.ground.push(g);
-        this.objects.push(o);
-        this.container.addChild(g, o);
-      }
-    }
+  /** M6-0: nhãn tên Pixi đè lên công trình có hình thật (hình tạm đã có nhãn trong PNG). */
+  setShowNames(on: boolean): void {
+    if (this.showNames === on) return;
+    this.showNames = on;
+    for (const o of this.sprites.keys()) this.dirtyBuildings.add(o);
   }
 
   setFull(terrain: Uint16Array, elevation: Uint8Array, bType: Uint8Array, bLevel: Uint8Array): void {
     this.terrain = terrain; this.elevation = elevation; this.bType = bType; this.bLevel = bLevel;
-    for (let i = 0; i < this.ground.length; i++) this.dirty.add(i);
+    for (let i = 0; i < this.chunks.length; i++) this.dirty.add(i);
+    for (const o of this.sprites.keys()) this.dirtyBuildings.add(o);
+    for (let o = 0; o < bType.length; o++) if (bType[o]) this.dirtyBuildings.add(o);
   }
 
   applyChanges(offsets: Uint32Array, terrain: Uint16Array, bType: Uint8Array, bLevel: Uint8Array): void {
@@ -136,12 +92,8 @@ export class ChunkLayer {
       const o = offsets[k];
       this.terrain[o] = terrain[k]; this.bType[o] = bType[k]; this.bLevel[o] = bLevel[k];
       const x = o % GRID_SIZE, y = (o / GRID_SIZE) | 0;
-      // công trình lớn có thể vắt qua chunk lân cận: đánh bẩn cả 3×3 chunk quanh
-      const cx = (x / CHUNK) | 0, cy = (y / CHUNK) | 0;
-      for (let dy = -1; dy <= 0; dy++) for (let dx = -1; dx <= 0; dx++) {
-        const ax = cx + dx, ay = cy + dy;
-        if (ax >= 0 && ay >= 0) this.dirty.add(ay * CHUNKS_PER_SIDE + ax);
-      }
+      this.dirty.add(((y / CHUNK) | 0) * CHUNKS_PER_SIDE + ((x / CHUNK) | 0));
+      this.dirtyBuildings.add(o);
     }
   }
 
@@ -163,17 +115,25 @@ export class ChunkLayer {
     return null;
   }
 
-  /** Vẽ lại các chunk bẩn. Gọi mỗi frame; thường là 0 việc. */
+  /** Vẽ lại các chunk và công trình bẩn. Gọi mỗi frame; thường là 0 việc. */
   flush(): void {
-    for (const c of this.dirty) this.redraw(c);
+    for (const c of this.dirty) this.redrawChunk(c);
     this.dirty.clear();
+    for (const o of this.dirtyBuildings) this.redrawBuilding(o);
+    this.dirtyBuildings.clear();
   }
 
-  private redraw(c: number): void {
+  private ground(key: string): Texture | null { return frameOf(this.sheets.ground, key); }
+
+  private redrawChunk(c: number): void {
     const cx = c % CHUNKS_PER_SIDE, cy = (c / CHUNKS_PER_SIDE) | 0;
-    const g = this.ground[c].clear();
-    const o = this.objects[c].clear();
-    // Duyệt theo x+y tăng dần để thứ tự vẽ đúng ngay cả trong một Graphics
+    const pc = this.chunks[c];
+    pc.removeParticles();
+    const add = (key: string, wx: number, wy: number): void => {
+      const tex = this.ground(key);
+      if (tex) pc.addParticle(new Particle({ texture: tex, x: wx, y: wy + TILE_H, anchorX: 0.5, anchorY: 1 }));
+    };
+    // Duyệt theo x+y tăng dần để thứ tự vẽ đúng (đê cao che ô phía sau)
     for (let s = 0; s < CHUNK * 2 - 1; s++) {
       for (let dx = Math.max(0, s - CHUNK + 1); dx <= Math.min(CHUNK - 1, s); dx++) {
         const dy = s - dx;
@@ -181,71 +141,69 @@ export class ChunkLayer {
         const i = y * GRID_SIZE + x;
         const t = this.terrain[i];
         const { wx, wy } = tileToWorld(x, y);
-        let fill: number;
-        if (t & T_WATER) fill = COLOR.water;
-        else if (t & T_ROAD) fill = COLOR.road;
-        else if (t & T_BUILDING) fill = 0x55503a;
-        else if (t & T_SUNKEN) fill = COLOR.sunken;
-        else if (t & T_FLOODPLAIN) fill = COLOR.floodplain;
-        else fill = COLOR.grass[this.elevation[i]] ?? COLOR.grass[0];
-        diamond(g, wx, wy, fill);
-        if (t & T_ROAD) g.stroke({ color: 0x8a7046, width: 1 });
-        // M4: nước lũ phủ mờ lên ô (kể cả đường, móng); lớp phủ vùng ngập khi bật
-        if (t & T_FLOODED) diamond(g, wx, wy, COLOR.flooded, 0.65);
-        else if (this.overlay && t & T_FLOODPLAIN && !(t & T_WATER)) diamond(g, wx, wy, t & T_UNPROTECTED ? COLOR.overlayUnprotected : COLOR.overlayProtected, 0.35);
-        if (t & T_TREE) o.circle(wx, wy + HALF_H - 6, 7).fill(COLOR.tree);
         const bt = this.bType[i];
-        if (bt) this.drawBuilding(o, x, y, bt, this.bLevel[i]);
+        const dike = bt && isDike(bt as BuildingType);
+        let base: string;
+        if (t & T_WATER) base = 'water';
+        else if (dike) base = t & T_FLOODPLAIN ? 'floodplain' : `grass${this.elevation[i]}`;
+        else if (t & T_ROAD) base = 'road';
+        else if (t & T_BUILDING) base = 'floor';
+        else if (t & T_SUNKEN) base = 'sunken';
+        else if (t & T_FLOODPLAIN) base = 'floodplain';
+        else base = `grass${Math.min(4, this.elevation[i])}`;
+        add(base, wx, wy);
+        if (t & T_FLOODED) add('flooded', wx, wy);
+        else if (this.overlay && t & T_FLOODPLAIN && !(t & T_WATER)) add(t & T_UNPROTECTED ? 'overlay_unprotected' : 'overlay_protected', wx, wy);
+        if (t & T_TREE) add('tree', wx, wy);
+        if (dike) add(dikeFrame(bt as BuildingType, this.bLevel[i], (t & T_ROAD) !== 0), wx, wy);
       }
     }
+    pc.update();
   }
 
-  /** Vẽ khối N×N với ô neo (x, y) = góc dưới móng. Điểm neo đúng như buildingAnchor() trong iso.ts. */
-  private drawBuilding(o: Graphics, ax: number, ay: number, type: number, level: number): void {
-    if (isDike(type as BuildingType)) { this.drawDike(o, ax, ay, type, level); return; }
-    const n = sizeOf(type, level);
-    const h = typeHeight(type, n, level);
-    const col = type === BuildingType.House ? HOUSE_COLORS[level] ?? HOUSE_COLORS[0] : TYPE_COLORS[type as BuildingType] ?? HOUSE_COLORS[0];
-    const x0 = ax - n + 1, y0 = ay - n + 1;
-    // 4 đỉnh hình thoi móng: trên (x0,y0), phải (ax, y0), dưới (ax, ay), trái (x0, ay)
-    const top = tileToWorld(x0, y0);
-    const right = tileToWorld(ax, y0);
-    const bottom = tileToWorld(ax, ay);
-    const left = tileToWorld(x0, ay);
-    const T = { x: top.wx, y: top.wy }, R = { x: right.wx + HALF_W, y: right.wy + HALF_H };
-    const B = { x: bottom.wx, y: bottom.wy + TILE_H }, L = { x: left.wx - HALF_W, y: left.wy + HALF_H };
-    // mặt trái: L→B, nâng cao h
-    o.poly([L.x, L.y, L.x, L.y - h, B.x, B.y - h, B.x, B.y]).fill(col[0]);
-    // mặt phải: B→R
-    o.poly([B.x, B.y, B.x, B.y - h, R.x, R.y - h, R.x, R.y]).fill(col[1]);
-    // mái
-    o.poly([T.x, T.y - h, R.x, R.y - h, B.x, B.y - h, L.x, L.y - h]).fill(col[2]);
-  }
-
-  /**
-   * M4: đoạn đê 1 ô. bLevel = mức cao (0 = mới vẽ, chờ đắp) + 16 nếu cống đang mở.
-   * Vẽ như khối thấp, cao theo mức; cống mở vẽ khe nước ở đỉnh; đường vắt qua thì đỉnh màu đường.
-   */
-  private drawDike(o: Graphics, ax: number, ay: number, type: number, level: number): void {
-    const h = level & 15, open = (level & 16) !== 0;
-    const hp = h === 0 ? 3 : 4 + h * 5;
-    const col = h === 0 ? COLOR.dikePlanned : COLOR.dike;
-    const c = tileToWorld(ax, ay);
-    const T = { x: c.wx, y: c.wy }, R = { x: c.wx + HALF_W, y: c.wy + HALF_H }, B = { x: c.wx, y: c.wy + TILE_H }, L = { x: c.wx - HALF_W, y: c.wy + HALF_H };
-    o.poly([L.x, L.y, L.x, L.y - hp, B.x, B.y - hp, B.x, B.y]).fill(col[0]);
-    o.poly([B.x, B.y, B.x, B.y - hp, R.x, R.y - hp, R.x, R.y]).fill(col[1]);
-    const i = ay * GRID_SIZE + ax;
-    const top = this.terrain[i] & T_ROAD ? COLOR.road : col[2];
-    o.poly([T.x, T.y - hp, R.x, R.y - hp, B.x, B.y - hp, L.x, L.y - hp]).fill(top);
-    if (type === BuildingType.Sluice) {
-      // cống: khe ở giữa đỉnh, xanh nước khi mở, tối khi đóng
-      o.poly([T.x, T.y - hp + 6, T.x + 10, T.y - hp + 11, T.x, T.y - hp + 16, T.x - 10, T.y - hp + 11]).fill(open ? COLOR.sluiceGate : 0x2a2418);
+  /** Sprite công trình tại ô neo o (đê, cống vẽ ở lớp đất). */
+  private redrawBuilding(o: number): void {
+    const cur = this.sprites.get(o);
+    const bt = this.bType[o] as BuildingType;
+    if (!bt || isDike(bt)) {
+      if (cur) { cur.node.destroy(); cur.label?.destroy(); this.sprites.delete(o); }
+      return;
     }
-    if (h === 0) o.poly([T.x, T.y - hp, R.x, R.y - hp, B.x, B.y - hp, L.x, L.y - hp]).stroke({ color: 0xd8c890, width: 1 });
+    const level = this.bLevel[o];
+    const key = buildingFrame(bt, level);
+    const wantLabel = this.showNames && !isPlaceholder(this.sheets.buildings, key);
+    if (cur && cur.key === key && (cur.label !== null) === wantLabel) return;
+    if (cur) { cur.node.destroy(); cur.label?.destroy(); }
+    const ax = o % GRID_SIZE, ay = (o / GRID_SIZE) | 0;
+    const { wx, wy } = tileToWorld(ax, ay);
+    const px = wx, py = wy + TILE_H; // góc dưới hình thoi ô neo
+    const n = sizeOf(bt, level);
+    const tex = frameOf(this.sheets.buildings, key);
+    let node: Sprite | Graphics;
+    if (tex) {
+      const sp = new Sprite(tex);
+      sp.anchor.set(0.5, 1);
+      node = sp;
+    } else {
+      const g = new Graphics();
+      drawBlock(g, n, typeHeight(bt, n, level), blockColors(bt, level));
+      node = g;
+    }
+    node.position.set(px, py);
+    node.zIndex = zIndexOf(ax, ay, LAYER_BUILDING);
+    this.objects.addChild(node);
+    let label: Text | null = null;
+    if (wantLabel) {
+      const name = bt === BuildingType.House ? (level <= 1 ? `Lều ${level}` : `Nhà ${level}`) : BUILDING_DEFS[bt].short ?? BUILDING_DEFS[bt].name;
+      label = new Text({ text: name, style: { fontFamily: 'sans-serif', fontSize: 10, fontWeight: 'bold', fill: 0xfff6e0, stroke: { color: 0x14100a, width: 3 } } });
+      label.anchor.set(0.5, 0.5);
+      label.position.set(px, py - typeHeight(bt, n, level) - n * HALF_H);
+      label.zIndex = zIndexOf(ax, ay, LAYER_BUILDING) + 0.5;
+      this.objects.addChild(label);
+    }
+    this.sprites.set(o, { node, label, key });
   }
 }
 
-function diamond(g: Graphics, wx: number, wy: number, color: number, alpha = 1): void {
-  // Hình thoi với tâm trên tại (wx, wy): đỉnh trên wy, trái/phải wy+HALF_H, dưới wy+TILE_H
-  g.poly([wx, wy, wx + HALF_W, wy + HALF_H, wx, wy + TILE_H, wx - HALF_W, wy + HALF_H]).fill({ color, alpha });
-}
+/** Tên hiển thị của nhà theo bậc (dùng cho hover). */
+export const houseName = (level: number): string => HOUSE_LEVELS[level]?.name ?? '';

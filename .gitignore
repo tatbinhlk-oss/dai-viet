@@ -2,3 +2,5 @@ node_modules
 dist
 .DS_Store
 *.local
+# M6: đồ họa trích từ bản cài Caesar 3 trên máy (không đưa vào repo công khai)
+assets/extracted

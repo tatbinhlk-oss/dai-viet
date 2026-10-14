@@ -7,7 +7,7 @@ import { BuildingType, isDike } from './sim/state';
 import type { WorkerIn, WorkerOut } from './worker/sim.worker';
 import { App } from './ui/App';
 import { toolSize } from './ui/BuildBar';
-import { bridge, fps, hoverText, overlay, tool, ui } from './ui/store';
+import { bridge, fps, hoverText, overlay, showNames, tool, ui } from './ui/store';
 
 const HINT = 'Chuột phải kéo để dời · lăn để zoom · chuột trái để đặt. Công trình cần đường kề; công trình có người làm cần nhà ở gần để người mộ phu tìm được nhân công. Lũ về tháng Sáu: vẽ đê (Đê điều) để đình làng cử phu đi đắp.';
 
@@ -28,6 +28,8 @@ async function main() {
   };
   tool.subscribe((t) => { render.ghostSize = toolSize(t); });
   overlay.subscribe((on) => render.setOverlay(on));
+  showNames.value = render.placeholderArt; // còn hình tạm thì bật (nhãn Pixi chỉ vẽ lên frame có hình thật)
+  showNames.subscribe((on) => render.setShowNames(on));
 
   hoverText.value = HINT;
   render.onTileHover = (x, y) => {
