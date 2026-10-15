@@ -102,6 +102,7 @@ save('ground/flooded.png', diamond(hex(COLOR.flooded), 0.65));
 save('ground/overlay_unprotected.png', diamond(hex(COLOR.overlayUnprotected), 0.35));
 save('ground/overlay_protected.png', diamond(hex(COLOR.overlayProtected), 0.35));
 save('ground/reserved.png', diamond(hex(COLOR.reserved), 0.45)); // M6b: đất chưa cấp
+save('ground/overlay_white.png', diamond('#ffffff')); // QoL: lớp phủ thông tin — render tô màu (tint) và độ mờ theo giá trị
 {
   const c = createCanvas(TILE_W, TILE_H); const g = c.getContext('2d');
   g.beginPath(); g.arc(HALF_W, TILE_H - 6, 7, 0, Math.PI * 2); g.fillStyle = hex(COLOR.tree); g.fill();

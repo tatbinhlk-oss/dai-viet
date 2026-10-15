@@ -5,7 +5,7 @@ import { Container, Graphics, Particle, ParticleContainer, Sprite, Text, type Te
 import { GRID_SIZE, T_BUILDING, T_FLOODED, T_FLOODPLAIN, T_RESERVED, T_ROAD, T_SUNKEN, T_TREE, T_UNPROTECTED, T_WATER } from '../sim/map/grid';
 import { BuildingType, isDike } from '../sim/state';
 import { BUILDING_DEFS, HOUSE_LEVELS } from '../sim/buildings/defs';
-import { HALF_H, HALF_W, LAYER_BUILDING, tileToWorld, TILE_H, zIndexOf } from './iso';
+import { HALF_H, HALF_W, LAYER_BUILDING, tileToWorld, TILE_H, zIndexOf, LAYER_OVERLAY } from './iso';
 import { blockColors, typeHeight } from './palette';
 import { frameOf, isPlaceholder, type Sheets } from './sheets';
 
@@ -50,7 +50,13 @@ export class ChunkLayer {
   private elevation: Uint8Array = new Uint8Array(GRID_SIZE * GRID_SIZE);
   private bType: Uint8Array = new Uint8Array(GRID_SIZE * GRID_SIZE);
   private bLevel: Uint8Array = new Uint8Array(GRID_SIZE * GRID_SIZE);
-  private overlay = false;
+  private overlay = false; // vùng ngập (theo cờ địa hình)
+  private overlayData: Uint8Array | null = null; // QoL: lớp phủ giá trị mỗi ô
+  private readonly overlayChunks: ParticleContainer[] = [];
+  private readonly overlayHash: number[] = [];
+  private readonly dirtyOverlay = new Set<number>();
+  private dim = false; // mờ công trình khi bật lớp phủ giá trị
+  private readonly markers = new Map<number, Container>(); // QoL: biểu tượng ⚠ theo ô neo
   private showNames = false;
 
   constructor(private readonly sheets: Sheets) {
@@ -61,9 +67,60 @@ export class ChunkLayer {
         pc.zIndex = cx + cy;
         this.chunks.push(pc);
         this.groundContainer.addChild(pc);
+        const oc = new ParticleContainer({ texture: sheets.ground.base, dynamicProperties: { position: false, vertex: false, rotation: false, uvs: false, color: false } });
+        oc.zIndex = cx + cy + 0.5;
+        this.overlayChunks.push(oc);
+        this.overlayHash.push(0);
+        this.groundContainer.addChild(oc);
       }
     }
     this.groundContainer.sortableChildren = true;
+  }
+
+  /** QoL: dữ liệu lớp phủ mỗi snapshot (null = tắt). Chỉ dựng lại chunk có giá trị đổi. Công trình mờ đi để thấy màu ô dưới. */
+  setOverlayData(data: Uint8Array | null): void {
+    const wasOn = this.overlayData !== null;
+    this.overlayData = data;
+    if (data === null) {
+      if (wasOn) for (let c = 0; c < this.overlayChunks.length; c++) { this.overlayChunks[c].removeParticles(); this.overlayChunks[c].update(); this.overlayHash[c] = 0; }
+    } else {
+      for (let c = 0; c < this.overlayChunks.length; c++) {
+        const cx = c % CHUNKS_PER_SIDE, cy = (c / CHUNKS_PER_SIDE) | 0;
+        let h = 1;
+        for (let dy = 0; dy < CHUNK; dy++) { const row = (cy * CHUNK + dy) * GRID_SIZE + cx * CHUNK; for (let dx = 0; dx < CHUNK; dx++) h = (Math.imul(h, 31) + data[row + dx] + 1) | 0; }
+        if (h !== this.overlayHash[c]) { this.overlayHash[c] = h; this.dirtyOverlay.add(c); }
+      }
+    }
+    const dim = data !== null;
+    if (dim !== this.dim) {
+      this.dim = dim;
+      for (const sp of this.sprites.values()) { sp.node.alpha = dim ? 0.3 : 1; if (sp.label) sp.label.visible = !dim; }
+    }
+  }
+
+  /** QoL: biểu tượng ⚠ trên công trình có vấn đề (ô neo). */
+  setProblems(offsets: Uint32Array): void {
+    const want = new Set<number>();
+    for (let i = 0; i < offsets.length; i++) want.add(offsets[i]);
+    for (const [o, node] of this.markers) if (!want.has(o)) { node.destroy({ children: true }); this.markers.delete(o); }
+    for (const o of want) {
+      if (this.markers.has(o)) continue;
+      const bt = this.bType[o] as BuildingType;
+      if (!bt) continue;
+      const level = this.bLevel[o], n = sizeOf(bt, level);
+      const ax = o % GRID_SIZE, ay = (o / GRID_SIZE) | 0;
+      const { wx, wy } = tileToWorld(ax, ay);
+      const node = new Container();
+      const g = new Graphics();
+      g.circle(0, 0, 7).fill(0xd84a3a).stroke({ color: 0x3a1410, width: 1.5 });
+      g.rect(-1.2, -4.5, 2.4, 5.5).fill(0xfff6e0);
+      g.circle(0, 3.4, 1.3).fill(0xfff6e0);
+      node.addChild(g);
+      node.position.set(wx, wy + TILE_H - typeHeight(bt, n, level) - n * HALF_H - 10);
+      node.zIndex = zIndexOf(ax, ay, LAYER_OVERLAY);
+      this.objects.addChild(node);
+      this.markers.set(o, node);
+    }
   }
 
   /** M4: bật/tắt lớp phủ vùng ngập — dựng lại mọi chunk. */
@@ -119,11 +176,37 @@ export class ChunkLayer {
   flush(): void {
     for (const c of this.dirty) this.redrawChunk(c);
     this.dirty.clear();
+    for (const c of this.dirtyOverlay) this.redrawOverlayChunk(c);
+    this.dirtyOverlay.clear();
     for (const o of this.dirtyBuildings) this.redrawBuilding(o);
     this.dirtyBuildings.clear();
   }
 
   private ground(key: string): Texture | null { return frameOf(this.sheets.ground, key); }
+
+  /** Lớp phủ giá trị: ô trắng tint theo giá trị — 1–100 đỏ, 101–200 lục, 201 vàng; độ mờ theo cường độ. */
+  private redrawOverlayChunk(c: number): void {
+    const data = this.overlayData;
+    const pc = this.overlayChunks[c];
+    pc.removeParticles();
+    const tex = this.ground('overlay_white');
+    if (data && tex) {
+      const cx = c % CHUNKS_PER_SIDE, cy = (c / CHUNKS_PER_SIDE) | 0;
+      for (let dy = 0; dy < CHUNK; dy++) {
+        for (let dx = 0; dx < CHUNK; dx++) {
+          const x = cx * CHUNK + dx, y = cy * CHUNK + dy;
+          const v = data[y * GRID_SIZE + x];
+          if (!v) continue;
+          let tint = 0xf0d040, alpha = 0.5;
+          if (v <= 100) { tint = 0xe03a2a; alpha = 0.25 + (0.5 * v) / 100; }
+          else if (v <= 200) { tint = 0x40c050; alpha = 0.25 + (0.5 * (v - 100)) / 100; }
+          const { wx, wy } = tileToWorld(x, y);
+          pc.addParticle(new Particle({ texture: tex, x: wx, y: wy + TILE_H, anchorX: 0.5, anchorY: 1, tint, alpha }));
+        }
+      }
+    }
+    pc.update();
+  }
 
   private redrawChunk(c: number): void {
     const cx = c % CHUNKS_PER_SIDE, cy = (c / CHUNKS_PER_SIDE) | 0;
@@ -168,6 +251,8 @@ export class ChunkLayer {
     const bt = this.bType[o] as BuildingType;
     if (!bt || isDike(bt)) {
       if (cur) { cur.node.destroy(); cur.label?.destroy(); this.sprites.delete(o); }
+      const mk = this.markers.get(o);
+      if (mk) { mk.destroy({ children: true }); this.markers.delete(o); }
       return;
     }
     const level = this.bLevel[o];
@@ -192,7 +277,10 @@ export class ChunkLayer {
     }
     node.position.set(px, py);
     node.zIndex = zIndexOf(ax, ay, LAYER_BUILDING);
+    if (this.dim) node.alpha = 0.3;
     this.objects.addChild(node);
+    const mk = this.markers.get(o); // công trình đổi → bỏ biểu tượng, snapshot sau đặt lại
+    if (mk) { mk.destroy({ children: true }); this.markers.delete(o); }
     let label: Text | null = null;
     if (wantLabel) {
       const name = bt === BuildingType.House ? (level <= 1 ? `Lều ${level}` : `Nhà ${level}`) : BUILDING_DEFS[bt].short ?? BUILDING_DEFS[bt].name;
@@ -200,6 +288,7 @@ export class ChunkLayer {
       label.anchor.set(0.5, 0.5);
       label.position.set(px, py - typeHeight(bt, n, level) - n * HALF_H);
       label.zIndex = zIndexOf(ax, ay, LAYER_BUILDING) + 0.5;
+      if (this.dim) label.visible = false;
       this.objects.addChild(label);
     }
     this.sprites.set(o, { node, label, key });

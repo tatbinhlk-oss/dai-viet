@@ -1,6 +1,6 @@
 // Trạng thái UI (Preact signals). UI chỉ đọc snapshot và gửi lệnh qua `bridge` — không chạm state sim.
 import { signal } from '@preact/signals';
-import type { Command, Snapshot } from '../sim';
+import type { Command, OverlayMode, Snapshot } from '../sim';
 
 export type Panel = 'labor' | 'finance' | 'mood' | 'storage' | 'flood' | 'court' | 'worship' | 'ratings' | 'trade' | null;
 
@@ -12,8 +12,8 @@ export const tool = signal<string>('road');
 export const openGroup = signal<string | null>(null);
 export const panel = signal<Panel>(null);
 export const hoverText = signal('');
-/** M4: lớp phủ vùng ngập (bãi bồi chưa có đê che tô xanh, có đê che tô lục) */
-export const overlay = signal(false);
+/** Lớp phủ đang bật (sim/overlay.ts): '' tắt, 'flood' vùng ngập (M4), còn lại QoL */
+export const overlay = signal<OverlayMode>('');
 /** M6-0: nhãn tên Pixi đè lên công trình (mặc định bật khi còn hình tạm, tắt khi đã có hình thật) */
 export const showNames = signal(false);
 

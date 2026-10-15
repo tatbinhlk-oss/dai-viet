@@ -25,6 +25,8 @@ import { court as courtCfg } from './buildings/defs';
 import { initTrade, PRICES, quotaOf, ROUTES, routeBuys, routeSells } from './city/trade';
 import { initWar, nextInvasion, SOURCE_TEXT, WAR } from './city/war';
 import { figureDialogue, type FigureInfo } from './figures/dialogue';
+import { buildingProblem, computeOverlay, problemAnchors, type OverlayMode } from './overlay';
+export { OVERLAY_MODES, type OverlayMode } from './overlay';
 export { figureAt } from './figures/dialogue';
 import type { Edict, EdictState, EdictType, Goals, GameOver } from './state';
 
@@ -135,6 +137,8 @@ export interface BuildingInfo {
   flooded: boolean;
   /** M6a: thành, lính, giặc */
   hp: number | null;
+  /** QoL: vì sao công trình có vấn đề (thiếu người, không kề đường…), null = ổn */
+  problem: string | null;
   /** đê/cống */
   dike: { height: number; target: number; integrity: number; workPct: number; sluiceOpen: boolean | null; working: boolean } | null;
   /** ruộng lúa */
@@ -176,6 +180,7 @@ export function inspectBuilding(s: GameState, id: number): BuildingInfo | null {
     paddy: b.type === BuildingType.Paddy ? { silted: b.silted, dryYears: b.dryYears, yieldPct: Math.round(paddyYield(b) * 100) } : null,
     pollutedDays: b.pollutedDays,
     hp: isWall(b.type) ? b.integrity : null,
+    problem: buildingProblem(s, b),
   };
 }
 
@@ -375,6 +380,10 @@ export interface Snapshot {
   selected: BuildingInfo | null;
   /** M6c: walker đang chọn (câu thoại) */
   selectedFigure: FigureInfo | null;
+  /** QoL: lớp phủ đang bật — giá trị mỗi ô (xem sim/overlay.ts); không bật = undefined */
+  overlay?: Uint8Array;
+  /** QoL: ô neo các công trình có vấn đề (biểu tượng báo) */
+  problems: Uint32Array;
   /** M6b: ô cửa ngõ (camera đưa tới khi mở bản đồ thật) */
   entryOffset: number;
   full?: { terrain: Uint16Array; elevation: Uint8Array; bType: Uint8Array; bLevel: Uint8Array };
@@ -385,7 +394,7 @@ export interface Snapshot {
 
 export const FIG_STRIDE = 7;
 
-export function takeSnapshot(s: GameState, full: boolean, selectedId = 0, selectedFigureId = 0): Snapshot {
+export function takeSnapshot(s: GameState, full: boolean, selectedId = 0, selectedFigureId = 0, overlayMode: OverlayMode = ''): Snapshot {
   let n = 0;
   for (const f of s.figures) if (f.type !== FigureType.None) n++;
   const figures = new Int16Array(n * FIG_STRIDE);
@@ -406,9 +415,11 @@ export function takeSnapshot(s: GameState, full: boolean, selectedId = 0, select
     entryOffset: s.entryOffset,
     selected: selectedId ? inspectBuilding(s, selectedId) : null,
     selectedFigure: selectedFigureId && s.figures[selectedFigureId]?.type !== FigureType.None ? figureDialogue(s, s.figures[selectedFigureId]) : null,
+    problems: problemAnchors(s),
     figures,
   };
   const g = s.grid;
+  if (overlayMode && overlayMode !== 'flood') { snap.overlay = new Uint8Array(GRID_SIZE * GRID_SIZE); computeOverlay(s, overlayMode, snap.overlay); }
   if (full) {
     snap.full = { terrain: g.terrain.slice(), elevation: g.elevation.slice(), bType: g.bType.slice(), bLevel: g.bLevel.slice() };
   } else if (s.dirty.size) {

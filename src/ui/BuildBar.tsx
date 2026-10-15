@@ -2,6 +2,7 @@ import { BUILDING_DEFS, BUILDING_KEYS } from '../sim/buildings/defs';
 import { BuildingType } from '../sim/state';
 import { GROUPS, TERRAIN_HINT } from './format';
 import { bridge, hoverText, openGroup, overlay, showNames, tool, ui } from './store';
+import { OVERLAY_MODES, type OverlayMode } from '../sim/overlay';
 import { RANK_NAMES } from '../sim/city/court';
 
 const byGroup = new Map<string, string[]>();
@@ -39,7 +40,12 @@ export function BuildBar() {
         ))}
         <button class={tool.value === 'raze' ? 'active' : ''} onClick={() => { pick('raze'); openGroup.value = null; }}>Phá</button>
         <span class="sp" />
-        <button class={overlay.value ? 'active' : ''} title="Tô xanh bãi bồi lũ vừa sẽ ngập, tô lục bãi bồi đã có đê che" onClick={() => (overlay.value = !overlay.value)}>Vùng ngập</button>
+        <label class="overlaypick" title={OVERLAY_MODES.find((m) => m.key === overlay.value)?.hint || 'Lớp phủ thông tin trên bản đồ (như Caesar 3)'}>
+          Lớp phủ{' '}
+          <select class={overlay.value ? 'active' : ''} value={overlay.value} onChange={(e) => (overlay.value = (e.currentTarget as HTMLSelectElement).value as OverlayMode)}>
+            {OVERLAY_MODES.map((m) => <option value={m.key}>{m.name}</option>)}
+          </select>
+        </label>
         <button class={showNames.value ? 'active' : ''} title="Ghi tên công trình lên hình (hình tạm đã có sẵn tên)" onClick={() => (showNames.value = !showNames.value)}>Hiện tên</button>
       </div>
       {g && (
