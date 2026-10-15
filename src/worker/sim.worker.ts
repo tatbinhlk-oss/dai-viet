@@ -1,5 +1,5 @@
 // Vòng lặp mô phỏng trong Web Worker. Nhận Command, gửi Snapshot. Không biết gì về Pixi.
-import { applyCommand, buildingIdAt, createSim, figureAt, takeSnapshot, tick, type Command, type GameState, type OverlayMode } from '../sim';
+import { applyCommand, applyUndo, buildingIdAt, createSim, figureAt, placementError, takeSnapshot, tick, undoAfter, undoBefore, type Command, type GameState, type OverlayMode, type UndoRecord } from '../sim';
 import { TICKS_PER_DAY } from '../sim/state';
 import { buildCourtTown, buildStressTown, demoPriorities } from '../sim/scenario/demo';
 import { createScenario, SCENARIOS } from '../sim/scenario/loader';
@@ -13,6 +13,8 @@ export type WorkerIn =
   | { type: 'cmds'; cmds: Command[] }
   /** QoL: bật lớp phủ (sim tính mỗi snapshot), '' = tắt */
   | { type: 'overlay'; mode: OverlayMode }
+  /** QoL: hoàn tác lần xây gần nhất (trong ngày) */
+  | { type: 'undo' }
   /** chọn công trình tại ô để xem chi tiết; x < 0 = bỏ chọn */
   | { type: 'select'; x: number; y: number }
   /** M6a: lưu game — IndexedDB (khe 'auto' tự lưu mỗi tháng, 'manual' khi bấm Lưu), xuất / nhập file .dvsav */
@@ -83,12 +85,22 @@ let sentFull = false;
 let selectedId = 0;
 let selectedFigureId = 0; // M6c: walker đang chọn (ưu tiên công trình nếu ô có công trình)
 let overlayMode: OverlayMode = '';
+let undo: UndoRecord | null = null; // QoL: lần xây gần nhất, hết hạn sau một ngày game
+const undoable = (): boolean => !!undo && !!state && state.time.totalDays - undo.day < 1;
+/** chạy một gói lệnh xây và ghi lại để hoàn tác */
+function runBuild(cmds: Command[]): void {
+  if (!state) return;
+  const before = undoBefore(state);
+  for (const c of cmds) applyCommand(state, c);
+  undo = undoAfter(state, before) ?? undo;
+}
 
 function post(full: boolean): void {
   if (!state) return;
   if (selectedId && state.buildings[selectedId]?.type === 0) selectedId = 0;
   if (selectedFigureId && state.figures[selectedFigureId]?.type === 0) selectedFigureId = 0;
   const snap = takeSnapshot(state, full, selectedId, selectedFigureId, overlayMode);
+  snap.undoable = undoable();
   const transfer: ArrayBuffer[] = [];
   if (snap.full) transfer.push(snap.full.terrain.buffer as ArrayBuffer, snap.full.elevation.buffer as ArrayBuffer, snap.full.bType.buffer as ArrayBuffer, snap.full.bLevel.buffer as ArrayBuffer);
   if (snap.changed) transfer.push(snap.changed.offsets.buffer as ArrayBuffer, snap.changed.terrain.buffer as ArrayBuffer, snap.changed.bType.buffer as ArrayBuffer, snap.changed.bLevel.buffer as ArrayBuffer);
@@ -133,13 +145,23 @@ self.onmessage = (e: MessageEvent<WorkerIn>) => {
     selectedFigureId = m.x < 0 || selectedId ? 0 : (figureAt(state, m.x, m.y)?.id ?? 0);
     if (sentFull) post(false);
   } else if (m.type === 'cmd' && state) {
-    applyCommand(state, m.cmd);
+    if (m.cmd.type === 'build') {
+      const why = placementError(state, m.cmd.kind, m.cmd.x, m.cmd.y);
+      if (why) notice(`Không đặt được: ${why}`); else runBuild([m.cmd]);
+    } else applyCommand(state, m.cmd);
+    if (sentFull) post(false);
+  } else if (m.type === 'undo' && state) {
+    if (undoable() && undo) { const n = applyUndo(state, undo); notice(n ? `Đã hoàn tác ${n} chỗ` : 'Không còn gì để hoàn tác'); }
+    undo = null;
     if (sentFull) post(false);
   } else if (m.type === 'overlay') {
     overlayMode = m.mode;
     if (state && sentFull) post(false);
   } else if (m.type === 'cmds' && state) {
-    for (const c of m.cmds) applyCommand(state, c);
+    const builds = m.cmds.filter((c): c is Extract<Command, { type: 'build' }> => c.type === 'build');
+    for (const c of m.cmds) if (c.type !== 'build') applyCommand(state, c);
+    if (builds.length === 1) { const why = placementError(state, builds[0].kind, builds[0].x, builds[0].y); if (why) notice(`Không đặt được: ${why}`); else runBuild(builds); }
+    else if (builds.length) runBuild(builds); // kéo đoạn / vùng: ô không đặt được thì bỏ qua lặng lẽ
     if (sentFull) post(false);
   } else if (m.type === 'save') {
     void saveTo('manual');

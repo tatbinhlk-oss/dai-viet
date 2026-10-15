@@ -41,12 +41,12 @@ export function BuildBar() {
         <button class={tool.value === 'raze' ? 'active' : ''} onClick={() => { pick('raze'); openGroup.value = null; }}>Phá</button>
         <span class="sp" />
         <label class="overlaypick" title={OVERLAY_MODES.find((m) => m.key === overlay.value)?.hint || 'Lớp phủ thông tin trên bản đồ (như Caesar 3)'}>
-          Lớp phủ{' '}
           <select class={overlay.value ? 'active' : ''} value={overlay.value} onChange={(e) => (overlay.value = (e.currentTarget as HTMLSelectElement).value as OverlayMode)}>
-            {OVERLAY_MODES.map((m) => <option value={m.key}>{m.name}</option>)}
+            {OVERLAY_MODES.map((m) => <option value={m.key}>{m.key ? m.name : 'Lớp phủ: không'}</option>)}
           </select>
         </label>
         <button class={showNames.value ? 'active' : ''} title="Ghi tên công trình lên hình (hình tạm đã có sẵn tên)" onClick={() => (showNames.value = !showNames.value)}>Hiện tên</button>
+        <button disabled={!ui.value?.undoable} title="Hoàn tác lần xây gần nhất (trong ngày; Ctrl+Z)" onClick={() => bridge.undo()}>Hoàn tác</button>
       </div>
       {g && (
         <div class="row sub">

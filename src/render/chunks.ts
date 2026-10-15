@@ -154,6 +154,9 @@ export class ChunkLayer {
     }
   }
 
+  /** QoL: lưới hiện có cho kiểm chỗ đặt (chỉ đọc). */
+  tiles(): { terrain: Uint16Array; elevation: Uint8Array; bType: Uint8Array } { return { terrain: this.terrain, elevation: this.elevation, bType: this.bType }; }
+
   /** Công trình tại ô (tìm ô neo trong vùng 3×3 phía dưới-phải vì bType chỉ ghi ở neo). */
   buildingAt(x: number, y: number): { type: number; level: number } | null {
     if (x < 0 || y < 0 || x >= GRID_SIZE || y >= GRID_SIZE) return null;

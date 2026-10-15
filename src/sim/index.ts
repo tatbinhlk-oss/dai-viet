@@ -27,6 +27,9 @@ import { initWar, nextInvasion, SOURCE_TEXT, WAR } from './city/war';
 import { figureDialogue, type FigureInfo } from './figures/dialogue';
 import { buildingProblem, computeOverlay, problemAnchors, type OverlayMode } from './overlay';
 export { OVERLAY_MODES, type OverlayMode } from './overlay';
+export { placementError } from './buildings/spawn';
+export { placementCheck, type TileView } from './buildings/placement';
+export { undoBefore, undoAfter, applyUndo, type UndoRecord } from './undo';
 export { figureAt } from './figures/dialogue';
 import type { Edict, EdictState, EdictType, Goals, GameOver } from './state';
 
@@ -384,6 +387,8 @@ export interface Snapshot {
   overlay?: Uint8Array;
   /** QoL: ô neo các công trình có vấn đề (biểu tượng báo) */
   problems: Uint32Array;
+  /** QoL: còn hoàn tác được lần xây gần nhất (worker đặt) */
+  undoable?: boolean;
   /** M6b: ô cửa ngõ (camera đưa tới khi mở bản đồ thật) */
   entryOffset: number;
   full?: { terrain: Uint16Array; elevation: Uint8Array; bType: Uint8Array; bLevel: Uint8Array };

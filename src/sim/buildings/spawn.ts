@@ -1,7 +1,8 @@
 // Đặt và phá đường / công trình. Mọi thay đổi lưới phải đi qua đây để dirty được ghi nhận.
 import { BuildingType, isDike, isWall, type Building, type GameState, newBuilding } from '../state';
 import { gridOffset, hasFlag, inBounds, isBuildable, T_BUILDING, T_FLOODPLAIN, T_ROAD, T_TREE, T_WATER, type Grid } from '../map/grid';
-import { BUILDING_DEFS } from './defs';
+import { placementCheck } from './placement';
+import { BUILDING_DEFS, BUILDING_KEYS, court } from './defs';
 import { removeFigure } from '../figures/figure';
 
 const markDirty = (s: GameState, x: number, y: number) => s.dirty.add(gridOffset(x, y));
@@ -16,6 +17,21 @@ export function placeRoad(s: GameState, x: number, y: number): boolean {
   s.grid.terrain[i] = (s.grid.terrain[i] & ~T_TREE) | T_ROAD;
   markDirty(s, x, y);
   return true;
+}
+
+/** QoL: vì sao lệnh xây sẽ bị từ chối (địa hình, tiền, phẩm hàm); null = được. Dùng để báo người chơi. */
+export function placementError(s: GameState, kind: string): string | null;
+export function placementError(s: GameState, kind: string, x: number, y: number): string | null;
+export function placementError(s: GameState, kind: string, x?: number, y?: number): string | null {
+  const type = kind === 'road' ? undefined : BUILDING_KEYS.get(kind);
+  if (kind !== 'road' && (type === undefined || type === BuildingType.None || type === BuildingType.Ruins)) return 'không đặt được';
+  if (type !== undefined) {
+    const def = BUILDING_DEFS[type];
+    if (def.rank > s.court.rank) return `cần phẩm hàm ${court.ranks.names[def.rank]}`;
+    if (def.cost > 0 && s.treasury < def.cost) return `không đủ tiền (cần ${def.cost} quan)`;
+  }
+  if (x === undefined || y === undefined) return null;
+  return placementCheck({ terrain: s.grid.terrain, elevation: s.grid.elevation, bType: s.grid.bType }, kind, type, x, y);
 }
 
 /** Kiểm tra móng N×N có hợp địa hình không (bãi bồi, đất cao, núi, kề nước). */
