@@ -37,7 +37,6 @@ export function updateRisks(s: GameState): void {
 
 function updateRuins(s: GameState, b: Building): void {
   const stage = ruinStage(s.grid.bLevel[gridOffset(b.x + b.size - 1, b.y + b.size - 1)]);
-  if (stage === RuinStage.Burning && b.burnDays <= R.burnDays / 2) setRuinStage(s, b, RuinStage.Ash); // nửa sau: lửa tắt, còn tro
   if (stage === RuinStage.Burning && nextInt(s.rng, 16) < R.spreadChancePer16) {
     // lan sang một ô kề ngẫu nhiên
     const side = nextInt(s.rng, 4);
@@ -50,4 +49,5 @@ function updateRuins(s: GameState, b: Building): void {
     }
   }
   if (--b.burnDays <= 0) removeBuilding(s, b);
+  else if (stage === RuinStage.Burning && b.burnDays <= R.burnDays / 2) setRuinStage(s, b, RuinStage.Ash); // nửa sau: lửa tắt, còn tro nguội
 }

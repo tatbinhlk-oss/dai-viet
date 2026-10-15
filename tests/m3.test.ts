@@ -12,6 +12,7 @@ import { updateSentiment } from '../src/sim/city/sentiment';
 import { updateRisks } from '../src/sim/city/risk';
 import { missingFor } from '../src/sim/buildings/house';
 import { gridOffset } from '../src/sim/map/grid';
+import { economy } from '../src/sim/buildings/defs';
 
 const build = (s: GameState, kind: string, x: number, y: number): GameState['buildings'][number] => {
   const n = s.buildings.length;
