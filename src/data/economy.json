@@ -57,5 +57,5 @@
     "groupRandom": 4
   },
   "crime": { "protestBelow": 50, "thiefBelow": 30, "riotAtOrBelow": 10, "thiefStealPct": 10, "thiefStealMax": 300, "catchRange": 2 },
-  "risk": { "fireThreshold": 100, "collapseThreshold": 200, "burnDays": 12, "spreadChancePer16": 2, "spreadAmount": 30 }
+  "risk": { "_note": "cháy burnDays ngày (nửa đầu có lửa lan, nửa sau tro nguội) rồi dọn; sập thành đống gạch vụn collapseDays ngày rồi dọn, không lan", "fireThreshold": 100, "collapseThreshold": 200, "burnDays": 12, "collapseDays": 6, "spreadChancePer16": 2, "spreadAmount": 30 }
 }

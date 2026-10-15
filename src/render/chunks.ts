@@ -15,7 +15,7 @@ export const ROAD_VARIANTS = 3;
 const CHUNKS_PER_SIDE = GRID_SIZE / CHUNK;
 
 /** Kích thước móng tại ô neo: đống tro ghi kích thước vào bLevel. */
-const sizeOf = (t: number, level: number): number => (t === BuildingType.Ruins ? Math.max(1, level) : t === BuildingType.House ? ((level >> 4) & 3) + 1 : BUILDING_DEFS[t]?.size ?? 1);
+const sizeOf = (t: number, level: number): number => (t === BuildingType.Ruins ? Math.max(1, level & 15) : t === BuildingType.House ? ((level >> 4) & 3) + 1 : BUILDING_DEFS[t]?.size ?? 1);
 /** bậc nhà nằm ở 4 bit thấp của bLevel (bit 4–5 là cỡ) */
 export const houseLevelOf = (bLevel: number): number => bLevel & 15;
 const keyOf = (t: BuildingType): string => BUILDING_DEFS[t].key;
@@ -23,7 +23,7 @@ const keyOf = (t: BuildingType): string => BUILDING_DEFS[t].key;
 /** Tên frame công trình trong sheet buildings. */
 export function buildingFrame(t: BuildingType, level: number): string {
   if (t === BuildingType.House) { const n = ((level >> 4) & 3) + 1; return `house${n > 1 ? n : ''}_l${Math.min(level & 15, 10)}`; }
-  if (t === BuildingType.Ruins) return `ruins_${Math.max(1, level)}`;
+  if (t === BuildingType.Ruins) { const stage = (level >> 4) & 3; return `${stage === 1 ? 'ash' : stage === 2 ? 'rubble' : 'ruins'}_${Math.max(1, level & 15)}`; } // đống tro: 4 bit thấp = cỡ, bit 4–5 = giai đoạn (cháy / tro / gạch vụn)
   return keyOf(t);
 }
 /** Tên frame đê / cống trong sheet ground (bLevel = cao + 16 nếu cống mở). */
@@ -50,6 +50,8 @@ export class ChunkLayer {
   private readonly dirty = new Set<number>();
   private readonly dirtyBuildings = new Set<number>();
   private readonly sprites = new Map<number, { node: Sprite | Graphics; label: Text | null; key: string }>();
+  /** lửa trên đống tro đang cháy: sprite con đổi khung theo thời gian */
+  private readonly fires = new Map<number, { sp: Sprite; n: number }>();
   private terrain: Uint16Array = new Uint16Array(GRID_SIZE * GRID_SIZE);
   private elevation: Uint8Array = new Uint8Array(GRID_SIZE * GRID_SIZE);
   private bType: Uint8Array = new Uint8Array(GRID_SIZE * GRID_SIZE);
@@ -196,6 +198,13 @@ export class ChunkLayer {
 
   private ground(key: string): Texture | null { return frameOf(this.sheets.ground, key); }
 
+  /** Hoạt ảnh lửa (4 khung, ~6 khung/giây). Gọi mỗi frame với thời gian ms. */
+  animate(ms: number): void {
+    if (this.fires.size === 0) return;
+    const k = Math.floor(ms / 160) % 4;
+    for (const f of this.fires.values()) { const t = frameOf(this.sheets.buildings, `fire_${f.n}_${k}`); if (t && f.sp.texture !== t) f.sp.texture = t; }
+  }
+
   /** Frame đường đất theo kết nối 4 phía (bit0 −y, bit1 +x, bit2 +y, bit3 −x) và biến thể băm theo ô; null nếu sheet chưa có. */
   private roadFrame(x: number, y: number): string | null {
     const road = (xx: number, yy: number): boolean => xx >= 0 && yy >= 0 && xx < GRID_SIZE && yy < GRID_SIZE && (this.terrain[yy * GRID_SIZE + xx] & T_ROAD) !== 0;
@@ -275,7 +284,7 @@ export class ChunkLayer {
     const cur = this.sprites.get(o);
     const bt = this.bType[o] as BuildingType;
     if (!bt || isDike(bt)) {
-      if (cur) { cur.node.destroy(); cur.label?.destroy(); this.sprites.delete(o); }
+      if (cur) { cur.node.destroy(); cur.label?.destroy(); this.sprites.delete(o); this.fires.delete(o); }
       const mk = this.markers.get(o);
       if (mk) { mk.destroy({ children: true }); this.markers.delete(o); }
       return;
@@ -284,7 +293,7 @@ export class ChunkLayer {
     const key = buildingFrame(bt, level);
     const wantLabel = this.showNames && !isPlaceholder(this.sheets.buildings, key);
     if (cur && cur.key === key && (cur.label !== null) === wantLabel) return;
-    if (cur) { cur.node.destroy(); cur.label?.destroy(); }
+    if (cur) { cur.node.destroy(); cur.label?.destroy(); this.fires.delete(o); }
     const ax = o % GRID_SIZE, ay = (o / GRID_SIZE) | 0;
     const { wx, wy } = tileToWorld(ax, ay);
     const px = wx, py = wy + TILE_H; // góc dưới hình thoi ô neo
@@ -295,6 +304,10 @@ export class ChunkLayer {
       const sp = new Sprite(tex);
       sp.anchor.set(0.5, 1);
       node = sp;
+      if (key.startsWith('ruins_')) { // đang cháy: lửa hoạt ảnh đè lên (frame fire_<n>_<k>)
+        const ft = frameOf(this.sheets.buildings, `fire_${n}_0`);
+        if (ft) { const fire = new Sprite(ft); fire.anchor.set(0.5, 1); sp.addChild(fire); this.fires.set(o, { sp: fire, n }); }
+      }
     } else {
       const g = new Graphics();
       drawBlock(g, n, typeHeight(bt, n, level), blockColors(bt, level));
