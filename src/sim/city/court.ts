@@ -32,7 +32,9 @@ export function addFavor(s: GameState, delta: number): void {
 }
 
 // ---------- M6b: tính cách vua ----------
-export interface KingDef { name: string; text: string; edictBonus: Partial<Record<EdictType, number>>; graduateBonus: number; yearly: { building: string; perPop: number; minPop: number; bonus: number; penalty: number } }
+/** M7: chiếu chỉ vua tự thêm theo tính cách (court.json → king.*.extraEdict). */
+export interface KingExtraEdict { type: EdictType; building?: string; amount: number; fromYear: number; everyYears: number; growEvery: number; month: number; deadlineMonths: number; reward: number }
+export interface KingDef { name: string; text: string; edictBonus: Partial<Record<EdictType, number>>; graduateBonus: number; yearly: { building: string; perPop: number; minPop: number; bonus: number; penalty: number }; extraEdict?: KingExtraEdict }
 const KINGS = court.king as unknown as Record<string, KingDef | string>;
 export function kingDef(kind: KingKind): KingDef | null {
   if (!kind) return null;
@@ -41,7 +43,25 @@ export function kingDef(kind: KingKind): KingDef | null {
   return k;
 }
 export const KING_KINDS: KingKind[] = ['buddhist', 'confucian', 'martial'];
-for (const k of KING_KINDS) { const d = kingDef(k)!; if (!BUILDING_KEYS.has(d.yearly.building)) throw new Error(`court.json: vua ${k} cần công trình "${d.yearly.building}" không có`); }
+for (const k of KING_KINDS) {
+  const d = kingDef(k)!;
+  if (!BUILDING_KEYS.has(d.yearly.building)) throw new Error(`court.json: vua ${k} cần công trình "${d.yearly.building}" không có`);
+  if (d.extraEdict?.building && !BUILDING_KEYS.has(d.extraEdict.building)) throw new Error(`court.json: vua ${k} extraEdict cần công trình "${d.extraEdict.building}" không có`);
+}
+
+/** M7: lịch chiếu chỉ vua tự thêm theo tính cách, cho màn dài `timeLimitYears` năm (0 = 3 kỳ). Bỏ năm đã có chiếu chỉ cùng loại. */
+export function kingExtraEdicts(kind: KingKind, timeLimitYears: number, taken: { year: number; type: EdictType }[]): EdictSpec[] {
+  const x = kingDef(kind)?.extraEdict;
+  if (!x) return [];
+  const last = timeLimitYears > 0 ? timeLimitYears - 1 : x.fromYear + x.everyYears * 2;
+  const out: EdictSpec[] = [];
+  for (let year = x.fromYear; year <= last; year += x.everyYears) {
+    if (taken.some((e) => e.year === year && e.type === x.type)) continue;
+    const mult = 1 + Math.floor((year - x.fromYear) / x.growEvery);
+    out.push({ type: x.type, year, month: x.month, resource: Resource.None, building: (x.building ? BUILDING_KEYS.get(x.building)! : BuildingType.None) as BuildingType, amount: x.amount * mult, height: 2, deadlineMonths: x.deadlineMonths, reward: x.reward });
+  }
+  return out;
+}
 
 /** Đầu năm: vua xét công trình mình trọng (chùa / trường / trại lính) có đủ theo dân không. */
 export function kingYearly(s: GameState): void {

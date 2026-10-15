@@ -46,10 +46,11 @@
     "sunken": [-5, 1, 2, 2]
   },
   "boat": {
-    "_note": "Thuyền nan: hai công trình đều có bến trong dockRange ô và đường thủy < đường bộ × waterVsRoad thì hàng đi thuyền, ticksPerTile tick/ô.",
+    "_note": "Thuyền nan: hai công trình đều có bến trong dockRange ô và đường thủy < đường bộ × waterVsRoad thì hàng đi thuyền, ticksPerTile tick/ô. Chở tối đa loads kiện: xe bò chờ ở cửa xưởng tới waitDays ngày cho kiện thứ hai (M7).",
     "dockRange": 3,
     "ticksPerTile": 10,
     "loads": 2,
+    "waitDays": 8,
     "waterVsRoad": 0.5
   }
 }

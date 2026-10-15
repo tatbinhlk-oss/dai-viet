@@ -1,8 +1,8 @@
 // Di chuyển theo ô: mỗi tick progress += 1; đủ TICKS_PER_TILE thì sang ô kế.
 // Hai chế độ: Walk (theo path BFS) và Roam (ngẫu nhiên trên đường, không quay đầu nếu còn lối khác).
-import { FigureMode, FigureType, TICKS_PER_TILE, type Figure, type GameState } from '../state';
-import { gridOffset, isRoad, isWater, neighbors4, offsetX, offsetY, T_BUILDING, T_FLOODED, T_WATER, type Grid } from '../map/grid';
-import { findPath, passLandTo, passRoad, passWater } from '../map/routing';
+import { FigureMode, FigureType, isHostile, TICKS_PER_TILE, type Figure, type GameState } from '../state';
+import { gridOffset, isGateTile, isRoad, isWater, neighbors4, offsetX, offsetY, T_BUILDING, T_FLOODED, T_WATER, type Grid } from '../map/grid';
+import { findPath, passHostileTo, passLandTo, passRoad, passWater } from '../map/routing';
 import { nextInt } from '../rng';
 import { flood } from '../buildings/defs';
 
@@ -18,7 +18,7 @@ export const figureOffset = (f: Figure): number => gridOffset(f.x, f.y);
 /** Đặt path tới `to`; trả false nếu không tới được. Thuyền nan đi trên ô sông. */
 export function setWalkPath(s: GameState, f: Figure, to: number, onRoad: boolean): boolean {
   const from = figureOffset(f);
-  const path = findPath(s.grid, from, to, onWater(f) ? passWater : onRoad ? passRoad : passLandTo(to));
+  const path = findPath(s.grid, from, to, onWater(f) ? passWater : onRoad ? passRoad : isHostile(f.type) ? passHostileTo(to) : passLandTo(to));
   if (path.length === 0 && from !== to) return false;
   f.path = path;
   f.pathIdx = 0;
@@ -58,6 +58,7 @@ export function step(s: GameState, f: Figure): StepResult {
     // ô kế bị chặn (đường bị phá) → báo để hành vi tính lại
     const isLast = f.pathIdx === f.path.length - 1;
     if (onWater(f)) { if (!isWater(g, next)) return StepResult.Blocked; }
+    else if (isHostile(f.type) && isGateTile(g, next)) return StepResult.Blocked; // M7: cổng thành vừa dựng chắn giặc
     else if (!isLast && !isRoad(g, next) && !isLandFree(g, next)) return StepResult.Blocked;
     f.pathIdx++;
     f.nx = offsetX(next); f.ny = offsetY(next);

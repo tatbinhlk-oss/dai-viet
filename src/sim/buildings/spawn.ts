@@ -1,8 +1,8 @@
 // Đặt và phá đường / công trình. Mọi thay đổi lưới phải đi qua đây để dirty được ghi nhận.
 import { BuildingType, isDike, isWall, type Building, type GameState, newBuilding } from '../state';
-import { gridOffset, hasFlag, inBounds, isBuildable, T_BUILDING, T_FLOODPLAIN, T_ROAD, T_TREE, T_WATER, type Grid } from '../map/grid';
+import { gridOffset, hasFlag, inBounds, isBuildable, T_BUILDING, T_FLOODPLAIN, T_RESERVED, T_ROAD, T_TREE, T_WATER, type Grid } from '../map/grid';
 import { placementCheck } from './placement';
-import { BUILDING_DEFS, BUILDING_KEYS, court } from './defs';
+import { BUILDING_DEFS, BUILDING_KEYS, court, economy } from './defs';
 import { removeFigure } from '../figures/figure';
 
 const markDirty = (s: GameState, x: number, y: number) => s.dirty.add(gridOffset(x, y));
@@ -19,17 +19,34 @@ export function placeRoad(s: GameState, x: number, y: number): boolean {
   return true;
 }
 
+/** M7: cầu gỗ — ô sông mang thêm cờ đường (giữ T_WATER để thuyền vẫn qua). Tốn economy.bridgeCost quan mỗi ô. */
+export function placeBridge(s: GameState, x: number, y: number): boolean {
+  if (!inBounds(x, y)) return false;
+  const i = gridOffset(x, y);
+  if ((s.grid.terrain[i] & (T_WATER | T_ROAD | T_BUILDING | T_RESERVED)) !== T_WATER) return false;
+  if (s.treasury < economy.bridgeCost) return false;
+  s.treasury -= economy.bridgeCost;
+  s.thisYear.construction += economy.bridgeCost;
+  s.grid.terrain[i] |= T_ROAD;
+  markDirty(s, x, y);
+  return true;
+}
+
+/** 'road' / 'bridge': công cụ vẽ ô, không phải công trình. */
+export const isFlatKind = (kind: string): boolean => kind === 'road' || kind === 'bridge';
+
 /** QoL: vì sao lệnh xây sẽ bị từ chối (địa hình, tiền, phẩm hàm); null = được. Dùng để báo người chơi. */
 export function placementError(s: GameState, kind: string): string | null;
 export function placementError(s: GameState, kind: string, x: number, y: number): string | null;
 export function placementError(s: GameState, kind: string, x?: number, y?: number): string | null {
-  const type = kind === 'road' ? undefined : BUILDING_KEYS.get(kind);
-  if (kind !== 'road' && (type === undefined || type === BuildingType.None || type === BuildingType.Ruins)) return 'không đặt được';
+  const type = isFlatKind(kind) ? undefined : BUILDING_KEYS.get(kind);
+  if (!isFlatKind(kind) && (type === undefined || type === BuildingType.None || type === BuildingType.Ruins)) return 'không đặt được';
   if (type !== undefined) {
     const def = BUILDING_DEFS[type];
     if (def.rank > s.court.rank) return `cần phẩm hàm ${court.ranks.names[def.rank]}`;
     if (def.cost > 0 && s.treasury < def.cost) return `không đủ tiền (cần ${def.cost} quan)`;
   }
+  if (kind === 'bridge' && s.treasury < economy.bridgeCost) return `không đủ tiền (cần ${economy.bridgeCost} quan)`;
   if (x === undefined || y === undefined) return null;
   return placementCheck({ terrain: s.grid.terrain, elevation: s.grid.elevation, bType: s.grid.bType }, kind, type, x, y);
 }
@@ -44,6 +61,7 @@ export function canPlaceBuilding(g: Grid, type: BuildingType, x: number, y: numb
       const cx = x + dx, cy = y + dy;
       // đê: đặt được lên ô đường (đường vắt qua đê); các loại khác cần ô trống
       if (def.terrain === 'land') { if (!inBounds(cx, cy) || (g.terrain[gridOffset(cx, cy)] & (T_WATER | T_BUILDING)) !== 0) return false; if (isWall(type) && hasFlag(g, cx, cy, T_ROAD)) return false; } // M6a: thành không đặt lên đường
+      else if (def.terrain === 'road') { if (!inBounds(cx, cy) || (g.terrain[gridOffset(cx, cy)] & (T_WATER | T_BUILDING | T_ROAD | T_RESERVED)) !== T_ROAD) return false; } // M7: cổng thành chỉ đặt lên ô đường trống (không phải cầu)
       else if (!isBuildable(g, cx, cy)) return false;
       const elev = g.elevation[gridOffset(cx, cy)];
       switch (def.terrain) {
@@ -152,6 +170,7 @@ export function raze(s: GameState, x: number, y: number): boolean {
   if (!inBounds(x, y)) return false;
   const i = gridOffset(x, y);
   const t = s.grid.terrain[i];
+  if (t & T_BUILDING && s.buildings[s.grid.buildingId[i]]?.type === BuildingType.Gate) { removeBuilding(s, s.buildings[s.grid.buildingId[i]]); return true; } // M7: phá cổng thì đường bên dưới còn
   if (t & T_ROAD) {
     s.grid.terrain[i] = t & ~T_ROAD;
     markDirty(s, x, y);

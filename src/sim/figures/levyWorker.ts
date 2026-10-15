@@ -43,10 +43,21 @@ function claim(s: GameState, f: Figure, seg: Building): boolean {
   return true;
 }
 
-/** Đình làng cử nhóm phu đê nếu có đoạn đê chờ trong tầm. */
+/** M7: nhóm phu đi lao dịch cho triều đình (route = CORVEE_ROUTE): ra cửa ngõ rồi về đình, chỉ để nhìn thấy chiếu chỉ lao dịch đang thi hành. */
+export const CORVEE_ROUTE = -2;
+function sendCorveeGang(s: GameState, dinh: Building, door: number): void {
+  const f = createFigure(s, FigureType.LevyWorker, door, dinh.id);
+  if (!f) return;
+  f.loads = D.gangSize;
+  f.route = CORVEE_ROUTE;
+  if (setWalkPath(s, f, s.entryOffset, false)) dinh.figureId2 = f.id;
+  else removeFigure(s, f.id);
+}
+
+/** Đình làng cử nhóm phu đê nếu có đoạn đê chờ trong tầm; không có đê mà đang lao dịch thì cử phu đi lao dịch (M7). */
 export function sendLevyGang(s: GameState, dinh: Building, door: number): void {
   const seg = findDikeWork(s, door, D.levyRange);
-  if (!seg) return;
+  if (!seg) { if (s.court.corveeWorkers > 0) sendCorveeGang(s, dinh, door); return; }
   const f = createFigure(s, FigureType.LevyWorker, door, dinh.id);
   if (!f) return;
   f.loads = D.gangSize;
@@ -83,6 +94,12 @@ function work(s: GameState, f: Figure): void {
 }
 
 export function updateLevyWorker(s: GameState, f: Figure): void {
+  if (f.route === CORVEE_ROUTE) { // M7: phu lao dịch: tới cửa ngõ (hoặc bị chặn) thì quay về đình
+    const r = step(s, f);
+    if (r === StepResult.Moving || r === StepResult.ArrivedTile) return;
+    if (f.returning) removeFigure(s, f.id); else goHome(s, f);
+    return;
+  }
   if (f.mode === FigureMode.Idle) { work(s, f); return; }
   const r = step(s, f);
   if (r === StepResult.Moving || r === StepResult.ArrivedTile) return;

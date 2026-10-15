@@ -1,6 +1,6 @@
 // Tìm đường BFS trên lưới — tương đương map/routing.c của Julius (tính lazy khi cần).
 // Hai chế độ: chỉ đi trên đường (walker có việc), hoặc đi trên đất (dân nhập cư).
-import { GRID_CELLS, type Grid, isLand, isRoad, isWater, neighbors4 } from './grid';
+import { GRID_CELLS, type Grid, isGateTile, isLand, isRoad, isWater, neighbors4 } from './grid';
 
 export const UNREACHABLE = 0xffff;
 
@@ -52,6 +52,9 @@ export const passRoad = isRoad;
 /** Đất đi bộ được; cho phép bước vào ô đích dù là công trình (để tới cửa nhà). */
 export const passLandTo = (target: number) => (g: Grid, o: number): boolean => o === target || isLand(g, o);
 export const passLand = isLand;
+/** M7: giặc / quân triều đình đi trên đất nhưng không qua cổng thành (phải phá). */
+export const passHostileTo = (target: number) => (g: Grid, o: number): boolean => (o === target || isLand(g, o)) && !isGateTile(g, o);
+export const passHostile = (g: Grid, o: number): boolean => isLand(g, o) && !isGateTile(g, o);
 /** Thuyền nan: chỉ đi trên ô sông (M4). */
 export const passWater = isWater;
 

@@ -7,7 +7,7 @@ import { BUILDING_DEFS, economy, isRawProducer, isWorkshop, spawnDelay, UNITS_PE
 import { roadAccess } from './spawn';
 import { createFigure, removeFigure } from '../figures/figure';
 import { startRoam } from '../figures/movement';
-import { sendCart, planWarehouseman } from '../figures/cartpusher';
+import { sendCart, planWarehouseman, waitingForBoat } from '../figures/cartpusher';
 import { sendMarketBuyer } from '../figures/market';
 import { paddyYield } from '../flood/consequences';
 import { sendLevyGang } from '../figures/levyWorker';
@@ -34,7 +34,7 @@ export const pctWorkers = (b: Building): number => {
 export function updateProduction(s: GameState): void {
   for (const b of s.buildings) {
     const def = BUILDING_DEFS[b.type];
-    if (!def || def.progressMax === 0 || b.figureId !== 0 || b.progress >= def.progressMax || b.flooded) continue;
+    if (!def || def.progressMax === 0 || (b.figureId !== 0 && !waitingForBoat(s.figures[b.figureId])) || b.progress >= def.progressMax || b.flooded) continue; // M7: xe chờ thuyền thì vẫn sản xuất
     let gain = b.numWorkers;
     if (b.type === BuildingType.Paddy) { if (s.worship.paddyFreezeDays > 0) continue; gain = Math.round(gain * PADDY_SEASON[s.time.month] * paddyYield(b)); } // M5: Tiên nông quở
     if (isWorkshop(b.type)) {

@@ -35,7 +35,7 @@ export const GOODS: Resource[] = RESOURCES.map((_, i) => i).filter((i) => RESOUR
 
 // ---------- công trình ----------
 
-export type TerrainRule = 'any' | 'floodplain' | 'highland' | 'mountain' | 'shore' | 'land';
+export type TerrainRule = 'any' | 'floodplain' | 'highland' | 'mountain' | 'shore' | 'land' | 'road';
 export interface Desirability { value: number; step: number; delta: number; range: number }
 export interface WalkerDef { figure: FigureType; roam: number; delays: number[] }
 export interface BuildingDef {

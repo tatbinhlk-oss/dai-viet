@@ -101,6 +101,6 @@ describe('kéo vẽ đoạn (đường, đê, thành)', () => {
       for (let i = 1; i < path.length; i++) expect(Math.abs(path[i][0] - path[i - 1][0]) + Math.abs(path[i][1] - path[i - 1][1])).toBe(1);
       expect(new Set(path.map((t) => t.join(','))).size).toBe(path.length);
     }
-    expect([...LINE_TOOLS]).toEqual(['road', 'dike', 'sluice', 'earthWall', 'stoneWall']);
+    expect([...LINE_TOOLS]).toEqual(['road', 'bridge', 'dike', 'sluice', 'earthWall', 'stoneWall']);
   });
 });

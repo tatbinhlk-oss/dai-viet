@@ -2,7 +2,7 @@
 import { render as renderUI, h } from 'preact';
 import { createRenderApp } from './render/app';
 import type { Command, Snapshot } from './sim';
-import { BUILDING_DEFS, BUILDING_KEYS, HOUSE_LEVELS } from './sim/buildings/defs';
+import { BUILDING_DEFS, BUILDING_KEYS, economy, HOUSE_LEVELS } from './sim/buildings/defs';
 import { BuildingType, isDike } from './sim/state';
 import type { WorkerIn, WorkerOut } from './worker/sim.worker';
 import { App } from './ui/App';
@@ -102,7 +102,7 @@ async function main() {
     send({ type: 'cmds', cmds: tiles.map(([x, y]) => ({ type: 'build', kind, x, y }) as Command) });
     audio.play('click');
   };
-  const toolCost = (kind: string): number => { const ty = BUILDING_KEYS.get(kind); return ty ? BUILDING_DEFS[ty].cost : 0; };
+  const toolCost = (kind: string): number => { if (kind === 'bridge') return economy.bridgeCost; const ty = BUILDING_KEYS.get(kind); return ty ? BUILDING_DEFS[ty].cost : 0; };
   render.onLinePreview = (n) => {
     if (n > 0) { const c = toolCost(tool.value) * n; hoverText.value = `${n} ô${c ? ` · ${c} quan` : ''}${latest && c > latest.treasury ? ' — không đủ tiền' : ''} — thả chuột để ${tool.value === 'raze' ? 'phá' : 'xây'}, Esc để bỏ`; }
     else if (hoverText.value.endsWith('Esc để bỏ')) hoverText.value = HINT;
@@ -113,8 +113,10 @@ async function main() {
     if (kind === 'inspect') return null;
     const v = render.tiles();
     if (kind === 'raze') return v.terrain[y * GRID_SIZE + x] & (T_ROAD | T_BUILDING) ? null : 'không có gì để phá';
-    const ty = kind === 'road' ? undefined : BUILDING_KEYS.get(kind);
-    if (kind !== 'road' && ty === undefined) return 'không đặt được';
+    const flat = kind === 'road' || kind === 'bridge';
+    const ty = flat ? undefined : BUILDING_KEYS.get(kind);
+    if (!flat && ty === undefined) return 'không đặt được';
+    if (kind === 'bridge' && latest && latest.treasury < economy.bridgeCost) return `không đủ tiền (cần ${economy.bridgeCost} quan)`;
     if (ty !== undefined && latest) {
       const def = BUILDING_DEFS[ty];
       if (def.rank > latest.city.court.rank) return `cần phẩm hàm ${latest.city.court.salaryNames[def.rank]}`;
@@ -136,7 +138,7 @@ async function main() {
     if (kind === 'inspect' || kind === 'raze') { hoverText.value = under || HINT; return; }
     // đang cầm công cụ xây: tên, giá, lý do không đặt được
     const ty = BUILDING_KEYS.get(kind);
-    const name = kind === 'road' ? 'Đường' : ty ? BUILDING_DEFS[ty].name : kind;
+    const name = kind === 'road' ? 'Đường' : kind === 'bridge' ? 'Cầu gỗ' : ty ? BUILDING_DEFS[ty].name : kind;
     const cost = toolCost(kind);
     const why = render.validate(x, y);
     hoverText.value = `${name}${cost ? ` · ${cost} quan` : ''}${why ? ` — ${why}` : ''}${under ? ` (ô: ${under})` : ''}`;

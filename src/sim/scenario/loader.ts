@@ -3,7 +3,7 @@
 import { createSim } from '../index';
 import { BuildingType, Resource, type GameState } from '../state';
 import { BUILDING_KEYS, RESOURCES } from '../buildings/defs';
-import { scheduleEdict } from '../city/court';
+import { kingExtraEdicts, scheduleEdict } from '../city/court';
 import { addScenarioEvent } from './events';
 import { applyLandGrants, type MapDef } from '../map/mapfile';
 import { nextScenarioKey, SCENARIOS, type ScenarioDef } from './list';
@@ -49,6 +49,7 @@ export function createScenario(key: string, seed: number, flat?: boolean, carrie
       amount: e.amount, height: e.height ?? 2, deadlineMonths: e.deadlineMonths, reward: e.reward,
     });
   }
+  for (const e of kingExtraEdicts(s.scenario.king, def.timeLimitYears, def.edicts)) scheduleEdict(s, e); // M7: vua đổi chiếu chỉ theo tính cách
   for (const ev of def.events) addScenarioEvent(s, ev.year, ev.kind, ev.month, ev.amount, ev.height, ev.source);
   return s;
 }

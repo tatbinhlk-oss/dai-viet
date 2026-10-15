@@ -1,6 +1,7 @@
 {
   "_note": "Số cân bằng chung. Chỉnh ở đây, không sửa code.",
   "startTreasury": 5000,
+  "bridgeCost": 40,
   "defaultTaxRate": 7,
   "wagePer10WorkersPerYear": 30,
   "workforcePct": 60,

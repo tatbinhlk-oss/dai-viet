@@ -62,6 +62,9 @@ export const isLand = (g: Grid, o: number): boolean => {
   return (t & T_ROAD) !== 0 || (t & (T_WATER | T_BUILDING)) === 0;
 };
 export const isWater = (g: Grid, o: number): boolean => (g.terrain[o] & T_WATER) !== 0;
+/** M7: ô cổng thành (1×1 nên ô neo = ô móng). Số 49 = BuildingType.Gate — không import state để tránh vòng. */
+export const GATE_TYPE = 49;
+export const isGateTile = (g: Grid, o: number): boolean => g.bType[o] === GATE_TYPE;
 
 /** 4 ô kề (N, E, S, W) dưới dạng offset, -1 nếu ngoài biên. */
 export function neighbors4(o: number, out: Int32Array): void {

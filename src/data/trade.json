@@ -22,6 +22,7 @@
   "war": {
     "_note": "giặc giã (Julius invasion rút gọn): giặc đi bộ tới công trình gần nhất, đứng cạnh attackTicks tick thì đốt; mỗi tên phá tối đa raidBudget công trình rồi rút; thành (tường) chặn đường, giặc đứng cạnh wallTicks tick thì phá. Lính từ trại lính (mỗi lính tốn 1 kiện vũ khí, tối đa perBarracks), đánh giặc trong tầm engageRange; đòn mỗi hitEveryTicks tick.",
     "enemyHp": 100, "enemyDamage": 10, "militiaHp": 100, "militiaDamage": 15, "hitEveryTicks": 10, "attackTicks": 40, "wallTicks": 80, "raidBudget": 3,
-    "perBarracks": 4, "engageRange": 30, "warningMonths": 2, "wallHp": { "earthWall": 3, "stoneWall": 8 }
+    "perBarracks": 4, "engageRange": 30, "warningMonths": 2, "wallHp": { "earthWall": 3, "stoneWall": 8, "gate": 4 },
+    "dismissalTroops": 6
   }
 }

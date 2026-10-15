@@ -1,4 +1,4 @@
-import { BUILDING_DEFS, BUILDING_KEYS } from '../sim/buildings/defs';
+import { BUILDING_DEFS, BUILDING_KEYS, economy } from '../sim/buildings/defs';
 import { BuildingType } from '../sim/state';
 import { GROUPS, TERRAIN_HINT } from './format';
 import { bridge, hoverText, openGroup, overlay, showNames, tool, ui } from './store';
@@ -35,6 +35,7 @@ export function BuildBar() {
       <div class="row">
         <button class={tool.value === 'inspect' ? 'active' : ''} onClick={() => { pick('inspect'); openGroup.value = null; }}>Xem</button>
         <button class={tool.value === 'road' ? 'active' : ''} onClick={() => { pick('road'); openGroup.value = null; }}>Đường</button>
+        <button class={tool.value === 'bridge' ? 'active' : ''} title={`Cầu gỗ bắc qua sông, ${economy.bridgeCost} quan mỗi ô; dân đi như đường, thuyền vẫn qua (B)`} onClick={() => { pick('bridge'); openGroup.value = null; }}>Cầu</button>
         {GROUPS.map(([id, label]) => (
           <button class={g === id ? 'open' : ''} onClick={() => (openGroup.value = g === id ? null : id)}>{label}</button>
         ))}
@@ -67,7 +68,7 @@ export function BuildBar() {
 }
 
 export const toolSize = (t: string): number => {
-  if (t === 'road' || t === 'raze' || t === 'inspect') return 1;
+  if (t === 'road' || t === 'bridge' || t === 'raze' || t === 'inspect') return 1;
   const type = BUILDING_KEYS.get(t);
   return type ? BUILDING_DEFS[type].size : 1;
 };
