@@ -13,9 +13,15 @@ export const CHUNK = 16;
 /** số biến thể mỗi kiểu nối đường trong sheet ground (scripts/art/road.ts) */
 export const ROAD_VARIANTS = 3;
 /** số biến thể cỏ / bãi bồi / nước và cây (scripts/art/ground.ts); thiếu frame thì về frame không số */
-export const GROUND_VARIANTS = 4, TREE_VARIANTS = 4;
-/** băm ô → biến thể */
-export const tileHash = (x: number, y: number): number => (Math.imul(x, 73856093) ^ Math.imul(y, 19349663)) >>> 0;
+export const GROUND_VARIANTS = 6, TREE_VARIANTS = 4;
+/** Băm ô → số giả ngẫu nhiên 32 bit đã trộn kỹ (lấy bit cao khi chia dư: bit thấp của phép nhân lẻ lặp theo chu kỳ 2^k ô). */
+export function tileHash(x: number, y: number): number {
+  let h = (Math.imul(x, 0x9e3779b1) ^ Math.imul(y + 0x5bd1e995, 0x85ebca77)) >>> 0;
+  h ^= h >>> 15; h = Math.imul(h, 0x2c1b3c6d) >>> 0; h ^= h >>> 12; h = Math.imul(h, 0x297a2d39) >>> 0; h ^= h >>> 15;
+  return h >>> 0;
+}
+/** chia dư trên bit cao của băm */
+export const hashMod = (h: number, n: number): number => (h >>> 8) % n;
 const CHUNKS_PER_SIDE = GRID_SIZE / CHUNK;
 
 /** Kích thước móng tại ô neo: đống tro ghi kích thước vào bLevel. */
@@ -204,7 +210,7 @@ export class ChunkLayer {
 
   private ground(key: string): Texture | null { return frameOf(this.sheets.ground, key); }
   /** `${base}_${k}` nếu sheet có biến thể, không thì `base`. */
-  private variant(base: string, hash: number): string { const k = `${base}_${hash % GROUND_VARIANTS}`; return this.ground(k) ? k : base; }
+  private variant(base: string, hash: number): string { const k = `${base}_${hashMod(hash, GROUND_VARIANTS)}`; return this.ground(k) ? k : base; }
 
   /** Hoạt ảnh đè (lửa, khói): ~6 khung/giây, lặp theo số khung của mỗi loại. Gọi mỗi frame với thời gian ms. */
   animate(ms: number): void {
@@ -217,8 +223,7 @@ export class ChunkLayer {
   private roadFrame(x: number, y: number): string | null {
     const road = (xx: number, yy: number): boolean => xx >= 0 && yy >= 0 && xx < GRID_SIZE && yy < GRID_SIZE && (this.terrain[yy * GRID_SIZE + xx] & T_ROAD) !== 0;
     const mask = (road(x, y - 1) ? 1 : 0) | (road(x + 1, y) ? 2 : 0) | (road(x, y + 1) ? 4 : 0) | (road(x - 1, y) ? 8 : 0);
-    const v = (Math.imul(x, 73856093) ^ Math.imul(y, 19349663)) >>> 0;
-    const key = `road_${mask}_${v % ROAD_VARIANTS}`;
+    const key = `road_${mask}_${hashMod(tileHash(x, y), ROAD_VARIANTS)}`;
     return this.ground(key) ? key : null;
   }
 
@@ -253,9 +258,9 @@ export class ChunkLayer {
     for (const sp of this.trees.get(c) ?? []) sp.destroy();
     const treeSprites: Sprite[] = [];
     this.trees.set(c, treeSprites);
-    const add = (key: string, wx: number, wy: number): void => {
+    const add = (key: string, wx: number, wy: number, mirror = false): void => {
       const tex = this.ground(key);
-      if (tex) pc.addParticle(new Particle({ texture: tex, x: wx, y: wy + TILE_H, anchorX: 0.5, anchorY: 1 }));
+      if (tex) pc.addParticle(new Particle({ texture: tex, x: wx, y: wy + TILE_H, anchorX: 0.5, anchorY: 1, scaleX: mirror ? -1 : 1 }));
     };
     // Duyệt theo x+y tăng dần để thứ tự vẽ đúng (đê cao che ô phía sau)
     for (let s = 0; s < CHUNK * 2 - 1; s++) {
@@ -269,6 +274,7 @@ export class ChunkLayer {
         const dike = bt && isDike(bt as BuildingType);
         let base: string, roadKey: string | null = null;
         const hv = tileHash(x, y);
+        const mirror = ((hv >>> 4) & 1) === 1; // lật gương nền theo băm: gấp đôi số dạng không tốn frame
         const soil = t & T_SUNKEN ? 'sunken' : this.variant(t & T_FLOODPLAIN ? 'floodplain' : `grass${Math.min(4, this.elevation[i])}`, hv);
         if (t & T_WATER) base = t & T_ROAD ? 'bridge' : this.variant('water', hv); // M7: cầu gỗ
         else if (dike) base = t & T_FLOODPLAIN ? 'floodplain' : `grass${this.elevation[i]}`;
@@ -279,12 +285,12 @@ export class ChunkLayer {
         }
         else if (t & T_BUILDING) base = 'floor';
         else base = soil;
-        add(base, wx, wy);
+        add(base, wx, wy, mirror && base !== 'bridge');
         if (roadKey) add(roadKey, wx, wy);
         if (t & T_FLOODED) add('flooded', wx, wy);
         else if (this.overlay && t & T_FLOODPLAIN && !(t & T_WATER)) add(t & T_UNPROTECTED ? 'overlay_unprotected' : 'overlay_protected', wx, wy);
         if (t & T_TREE) { // cây: sprite riêng ở lớp công trình, biến thể theo băm (0–2 bụi tre, 3 cây đa — cây đa thưa hơn)
-          const tv = hv % 7 === 0 ? TREE_VARIANTS - 1 : hv % (TREE_VARIANTS - 1);
+          const tv = hashMod(hv, 7) === 0 ? TREE_VARIANTS - 1 : hashMod(hv, TREE_VARIANTS - 1);
           const tt = this.ground(`tree_${tv}`) ?? this.ground('tree');
           if (tt) { const sp = new Sprite(tt); sp.anchor.set(0.5, 1); sp.position.set(wx, wy + TILE_H); sp.zIndex = zIndexOf(x, y, LAYER_BUILDING); this.objects.addChild(sp); treeSprites.push(sp); }
         }
