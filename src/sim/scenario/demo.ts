@@ -161,6 +161,8 @@ export function demoPriorities(s: GameState): void {
 export function buildStressTown(s: GameState, targetBuildings = 1500): void {
   const saved = s.treasury;
   s.treasury = 1e9;
+  // lều trống của thị trấn mẫu cũng có dân sẵn: nhà gộp 2×2 ở dải phố còn chỗ nhiều nên hút hết dân nhập cư, xưởng ở thị trấn mẫu không ai làm
+  for (const b of s.buildings) if (b.type === BuildingType.House && b.population === 0 && b.level === 0) { b.population = HOUSE_LEVELS[1].capacity; setHouseLevel(s, b, 1); }
   const services = ['watchPost', 'builderPost', 'brickWell', 'clinic'];
   let k = 0;
   const count = () => s.buildings.filter((b) => b.type !== BuildingType.None).length;

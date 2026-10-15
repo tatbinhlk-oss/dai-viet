@@ -162,6 +162,7 @@ Giữ đúng thiết kế: Ân sủng −2/năm, chiếu chỉ trễ lần đầ
 - **Tụt bậc**: Phủ đệ 3×3 xuống Tư dinh thì co về 2×2 ở góc trên trái, năm ô kia thành nhà 1×1 bậc 8 chia nhau dân dư; Tư dinh 2×2 xuống bậc 8 giữ khối 2×2 (coi như đã gộp). Dân vượt sức chứa mới thì bỏ đi.
 - **Render**: `bLevel` ở ô neo ghi bậc ở 4 bit thấp và cỡ (1–3) ở bit 4–5; frame `house2_l1..9`, `house3_l10` sinh tự động (hình tạm có dấu ⊞). Bảng Xem ghi "2×2 (gộp)".
 - **Chợ**: nhà gộp ăn gấp bốn nên lương thực luôn thiếu; người gánh chợ cứ chuyến lẻ ưu tiên hàng hóa đang có nhu cầu (trước đây luôn đi vựa, không bao giờ lấy gốm / muối / vải ở kho).
+- **Lỗi lộ ra khi làm**: walker đi bộ trên đất bị `movement.ts` chặn ở ô ngập dù tìm đường cho qua, nên lũ lớn ngập cửa ngõ là dân nhập cư sinh ra rồi bị xóa ngay suốt mùa lũ (từ M4, trước nay chỉ không gặp vì nhánh ngẫu nhiên). Đã cho lội qua ô ngập như `isLand`.
 - **Hệ quả cân bằng**: nhà lên bậc nhanh hơn (dịch vụ và hàng hóa tính theo nhà, không theo dân), dân đông hơn, thất nghiệp cao hơn trên thị trấn mẫu. Cổng M3 nay xét bậc nhà cao nhất từng đạt trong 10 năm (một đám cháy lan ngẫu nhiên có thể kéo cả xóm tụt bậc ở cuối kỳ).
 
 ## Ghi chú QoL (tiện ích theo Caesar 3, sau M6c)
