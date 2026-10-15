@@ -94,7 +94,7 @@ for (const [key, t] of BUILDING_KEYS) {
 }
 const SECTIONS: [string, string][] = [...GROUPS, ['houses', 'Bậc nhà'], ['infra', 'Đường, cầu, phá']];
 const INFRA: [string, string, string[]][] = [
-  ['road', 'Đường', ['miễn phí', 'kéo để vẽ đoạn, gấp khúc một lần']],
+  ['road', 'Đường', ['miễn phí', 'kéo để vẽ đoạn, gấp khúc một lần', 'điện thoại: chạm hai điểm rồi ✓']],
   ['bridge', 'Cầu gỗ', [`${economy.bridgeCost} quan mỗi ô`, 'chỉ trên ô sông']],
   ['raze', 'Phá', ['kéo vùng để phá nhiều', 'Ctrl+Z hoàn tác lần xây gần nhất']],
 ];

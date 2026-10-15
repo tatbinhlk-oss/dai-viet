@@ -85,6 +85,10 @@
       .scenario select { background: var(--bg); color: var(--ink); border: 1px solid var(--line); font: inherit; padding: 1px 4px; max-width: 170px; }
       .gameover { position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%); background: var(--bg); border: 2px solid var(--on); padding: 14px 20px; font-size: 15px; max-width: 420px; text-align: center; box-sizing: border-box; max-height: calc(100% - 24px); overflow-y: auto; -webkit-overflow-scrolling: touch; touch-action: pan-y; }
       .gameover .actions { position: sticky; bottom: -14px; background: var(--bg); padding: 8px 0 14px; margin-bottom: -14px; }
+      .linebar { position: absolute; left: 50%; bottom: 30px; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: rgba(20, 18, 14, 0.92); border: 1px solid var(--on); max-width: calc(100% - 20px); box-sizing: border-box; font-size: 13px; }
+      .linebar span { flex: 1 1 auto; min-width: 0; }
+      .linebar button { min-height: 40px; min-width: 56px; white-space: nowrap; font-size: 14px; }
+      .linebar button:disabled { opacity: 0.5; cursor: default; }
       .status { position: absolute; bottom: 0; left: 0; right: 0; padding: 4px 10px; color: #c8bda0; font-size: 12px; background: rgba(20, 18, 14, 0.85); pointer-events: none; }
       @media (max-width: 700px), (max-height: 520px) {
         #ui { font-size: 12px; }
@@ -97,7 +101,10 @@
         .gameover { width: calc(100% - 24px); max-width: none; top: 50%; max-height: calc(100% - 110px); padding: 10px 12px; }
         .gameover.saves, .gameover.start { width: calc(100% - 24px); }
         .gameover .actions { bottom: -10px; padding-bottom: 10px; margin-bottom: -10px; }
+        .linebar { bottom: 26px; left: 10px; right: 150px; transform: none; max-width: none; justify-content: flex-end; padding: 4px 8px; gap: 6px; }
       }
+      /* màn dọc hẹp: thanh xác nhận trọn bề ngang, nằm trên bản đồ thu nhỏ */
+      @media (max-width: 600px) { .linebar { right: 10px; bottom: 112px; } }
     </style>
   </head>
   <body>

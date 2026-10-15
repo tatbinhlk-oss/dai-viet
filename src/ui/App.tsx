@@ -5,7 +5,7 @@ import { Advisors } from './Advisors';
 import { SavesPanel } from './SavesPanel';
 import { Toasts } from './Toasts';
 import { StartMenu } from './StartMenu';
-import { bridge, briefing, campaign, hoverText, ui } from './store';
+import { bridge, briefing, campaign, hoverText, linePending, tool, ui } from './store';
 import { num } from './format';
 import { SCENARIOS } from '../sim/scenario/list';
 
@@ -48,6 +48,23 @@ function Briefing() {
   );
 }
 
+/** Điện thoại: thanh xác nhận đoạn chạm hai điểm — nằm ngay trên dòng trạng thái. Nút to cho ngón tay. */
+function LineBar() {
+  const p = linePending.value;
+  if (!p) return null;
+  const verb = tool.value === 'raze' ? 'Phá' : 'Xây';
+  return (
+    <div class="linebar">
+      {p.stage === 'start'
+        ? <span>{p.chained ? 'Nối tiếp: ' : ''}chạm ô cuối{p.rect ? ' (góc đối diện)' : ''}{p.chained ? ' hoặc ✕ để thôi' : ` · chạm lại ô đầu để ${verb.toLowerCase()} một ô`}</span>
+        : <span>{p.ok}{p.ok < p.count ? `/${p.count}` : ''} ô{p.cost ? ` · ${p.cost} quan` : ''}{!p.enough ? ' — không đủ tiền' : ''}</span>}
+      {p.stage === 'end' && !p.rect && <button onClick={() => bridge.flipLine()} title="Đổi chỗ gấp khúc sang góc kia">↔ Gấp khúc</button>}
+      {p.stage === 'end' && <button class="active" disabled={p.ok === 0 || !p.enough} onClick={() => bridge.confirmLine()}>✓ {verb}</button>}
+      <button onClick={() => bridge.cancelLine()}>✕ Bỏ</button>
+    </div>
+  );
+}
+
 export function App() {
   return (
     <>
@@ -74,6 +91,7 @@ export function App() {
           </div>
         </div>
       )}
+      <LineBar />
       <div class="status">{hoverText.value}</div>
     </>
   );

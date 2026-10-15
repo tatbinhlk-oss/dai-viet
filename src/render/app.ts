@@ -6,7 +6,7 @@ import { ChunkLayer } from './chunks';
 import { FigureLayer } from './figures';
 import { loadSheets } from './sheets';
 import { HALF_H, HALF_W, TILE_H, tileToWorld, worldToTile, ZOOM_LEVELS } from './iso';
-import { linePath, rectPath } from './line';
+import { linePath, rectPath, snapRoadStart, type LinePending } from './line';
 import { Minimap } from './minimap';
 
 export interface RenderApp {
@@ -17,6 +17,14 @@ export interface RenderApp {
   onLine: (tiles: [number, number][]) => void;
   /** đang kéo đoạn: số ô hiện trong mờ (để UI hiện) */
   onLinePreview: (count: number) => void;
+  /** điện thoại: chạm hai điểm (đầu → cuối) rồi xác nhận — trạng thái đoạn đang chờ cho thanh ✓ Xây · ↔ · ✕ Bỏ; null = không có */
+  onLinePending: (p: LinePending | null) => void;
+  /** điện thoại: ✓ xây đoạn đang chờ (đường / đê / thành: ô cuối thành điểm đầu đoạn kế) */
+  confirmLine(): void;
+  /** điện thoại: ↔ đổi chiều gấp khúc của đoạn đang chờ */
+  flipLine(): void;
+  /** bỏ đoạn đang kéo / đang chờ (Esc, ✕, đổi công cụ) */
+  cancelLine(): void;
   /** kích thước khung đặt công trình hiện tại (1 = ô đơn) */
   ghostSize: number;
   /** công cụ hiện tại là loại kéo dài (đường, đê, cống, thành) */
@@ -89,6 +97,12 @@ export async function createRenderApp(canvas: HTMLCanvasElement): Promise<Render
   let lineStart: { x: number; y: number } | null = null;
   let lineTiles: [number, number][] = [];
   let dragRect = false; // đang kéo vùng (rectTool) thay vì đoạn
+  // Điện thoại: chạm hai điểm. pending 1 = đã có điểm đầu (lineStart), 2 = đã có điểm cuối (tapEnd) và đoạn mờ chờ ✓.
+  // Giữa hai lần chạm vẫn kéo / chụm dời bản đồ thoải mái. Sau ✓ ô cuối thành điểm đầu đoạn kế (chained: bỏ ô đầu vì đã là đường).
+  let pending: 0 | 1 | 2 = 0;
+  let tapEnd: { x: number; y: number } | null = null;
+  let flip = false, chained = false;
+  const TOUCH_OFFSET = 40; // giữ rồi kéo bằng ngón: điểm cuối lấy cao hơn ngón 40 px để ngón không che ô
 
   // Camera: bắt đầu nhìn vào giữa bản đồ
   let zoomIdx = 1;
@@ -148,7 +162,8 @@ export async function createRenderApp(canvas: HTMLCanvasElement): Promise<Render
           if (!p || touches.size !== 1 || Math.hypot(p.x - downX, p.y - downY) >= 10) return;
           const t = screenToTile(p.x, p.y);
           if (!inGrid(t.x, t.y)) return;
-          touchDrawing = true; lineStart = t; dragRect = result.rectTool; updateLine(t.x, t.y);
+          cancelLine();
+          touchDrawing = true; lineStart = t; dragRect = result.rectTool; result.onLinePreview(updateLine(t.x, t.y));
         }, 450);
       }
       if (touches.size === 2) { pinchBase = touchSpan(); pinchZoomIdx = zoomIdx; pinched = true; }
@@ -159,7 +174,7 @@ export async function createRenderApp(canvas: HTMLCanvasElement): Promise<Render
     if (e.button === 1 || e.button === 2 || (e.button === 0 && spaceHeld)) { dragging = true; canvas.setPointerCapture(e.pointerId); return; }
     if (e.button === 0 && (result.lineTool || result.rectTool)) {
       const t = screenToTile(e.clientX, e.clientY);
-      if (inGrid(t.x, t.y)) { lineStart = t; dragRect = result.rectTool; updateLine(t.x, t.y); canvas.setPointerCapture(e.pointerId); }
+      if (inGrid(t.x, t.y)) { cancelLine(); lineStart = t; dragRect = result.rectTool; result.onLinePreview(updateLine(t.x, t.y)); canvas.setPointerCapture(e.pointerId); }
     }
   });
   canvas.addEventListener('pointermove', (e) => {
@@ -167,7 +182,7 @@ export async function createRenderApp(canvas: HTMLCanvasElement): Promise<Render
     if (e.pointerType === 'touch') {
       if (!touches.has(e.pointerId)) return;
       touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
-      if (touchDrawing) { const t = screenToTile(e.clientX, e.clientY); updateLine(t.x, t.y); return; }
+      if (touchDrawing) { const t = screenToTile(e.clientX, e.clientY - TOUCH_OFFSET); result.onLinePreview(updateLine(t.x, t.y)); return; }
       if (Math.hypot(e.clientX - downX, e.clientY - downY) >= 10) clearTimeout(touchDrawTimer);
       const c = touchCenter();
       const z = ZOOM_LEVELS[zoomIdx];
@@ -193,7 +208,7 @@ export async function createRenderApp(canvas: HTMLCanvasElement): Promise<Render
     const t = screenToTile(e.clientX, e.clientY);
     if (t.x !== hoverX || t.y !== hoverY) { hoverX = t.x; hoverY = t.y; result.onTileHover(t.x, t.y); }
     drawHover();
-    if (lineStart) { updateLine(t.x, t.y); return; }
+    if (lineStart && !pending) { result.onLinePreview(updateLine(t.x, t.y)); return; }
     // công trình khác: mỗi lần bấm đặt một cái (không còn đặt theo vệt chuột)
   });
   const endTouch = (e: PointerEvent) => {
@@ -202,14 +217,14 @@ export async function createRenderApp(canvas: HTMLCanvasElement): Promise<Render
     clearTimeout(touchDrawTimer);
     if (touchDrawing) {
       touchDrawing = false;
-      if (e.type === 'pointerup') { const t = screenToTile(e.clientX, e.clientY); updateLine(t.x, t.y); const tiles = lineTiles; cancelLine(); if (tiles.length) result.onLine(tiles); } else cancelLine();
+      if (e.type === 'pointerup') { const t = screenToTile(e.clientX, e.clientY - TOUCH_OFFSET); updateLine(t.x, t.y); const tiles = lineTiles; cancelLine(); if (tiles.length) result.onLine(tiles); } else cancelLine();
       return;
     }
-    // chạm nhanh, không kéo, không chụm → đặt / xem tại ô
+    // chạm nhanh, không kéo, không chụm → đặt / xem tại ô; công cụ kéo dài / vùng: chạm hai điểm rồi ✓ (tapTile)
     if (touches.size === 0 && !pinched && e.type === 'pointerup' && performance.now() - touchDownAt < 500 && Math.hypot(e.clientX - downX, e.clientY - downY) < 10) {
       const t = screenToTile(e.clientX, e.clientY);
       hoverX = t.x; hoverY = t.y; result.onTileHover(t.x, t.y); drawHover();
-      result.onTileClick(t.x, t.y, 0);
+      if ((result.lineTool || result.rectTool) && inGrid(t.x, t.y)) tapTile(t); else result.onTileClick(t.x, t.y, 0);
     }
     if (touches.size > 0) { const c = touchCenter(); lastX = c.x; lastY = c.y; }
     if (touches.size < 2) pinchBase = 0;
@@ -218,7 +233,7 @@ export async function createRenderApp(canvas: HTMLCanvasElement): Promise<Render
     if (miniDrag) { miniDrag = false; return; }
     if (e.pointerType === 'touch') { endTouch(e); return; }
     if (dragging) { dragging = false; return; }
-    if (lineStart && e.button === 0) {
+    if (lineStart && !pending && e.button === 0) {
       const t = screenToTile(e.clientX, e.clientY);
       updateLine(t.x, t.y);
       const tiles = lineTiles;
@@ -249,11 +264,12 @@ export async function createRenderApp(canvas: HTMLCanvasElement): Promise<Render
     return worldToTile(wx, wy);
   }
   const inGrid = (x: number, y: number) => x >= 0 && y >= 0 && x < GRID_SIZE && y < GRID_SIZE;
-  /** tính lại đoạn mờ từ điểm đầu tới ô (x, y) (kẹp vào lưới) và vẽ */
-  function updateLine(x: number, y: number) {
-    if (!lineStart) return;
+  /** tính lại đoạn mờ từ điểm đầu tới ô (x, y) (kẹp vào lưới) và vẽ; trả về số ô đặt được. Nối tiếp: bỏ ô đầu (đã là đường). */
+  function updateLine(x: number, y: number): number {
+    if (!lineStart) return 0;
     const cx = Math.max(0, Math.min(GRID_SIZE - 1, x)), cy = Math.max(0, Math.min(GRID_SIZE - 1, y));
-    lineTiles = dragRect ? rectPath(lineStart.x, lineStart.y, cx, cy) : linePath(lineStart.x, lineStart.y, cx, cy);
+    const path = dragRect ? rectPath(lineStart.x, lineStart.y, cx, cy) : linePath(lineStart.x, lineStart.y, cx, cy, flip);
+    lineTiles = chained ? path.slice(1) : path;
     ghost.clear();
     let ok = 0;
     for (const [tx, ty] of lineTiles) {
@@ -263,13 +279,43 @@ export async function createRenderApp(canvas: HTMLCanvasElement): Promise<Render
       const color = bad ? 0xe05040 : 0xfff2a8;
       ghost.poly([wx, wy, wx + HALF_W, wy + HALF_H, wx, wy + TILE_H, wx - HALF_W, wy + HALF_H]).fill({ color, alpha: bad ? 0.25 : 0.35 }).stroke({ color, width: 1, alpha: 0.8 });
     }
-    result.onLinePreview(ok);
+    if (pending) drawMarker();
+    return ok;
+  }
+  /** điện thoại: dấu điểm đầu (viền dày + chấm giữa) đè lên đoạn mờ */
+  function drawMarker() {
+    if (!lineStart) return;
+    const { wx, wy } = tileToWorld(lineStart.x, lineStart.y);
+    ghost.poly([wx, wy, wx + HALF_W, wy + HALF_H, wx, wy + TILE_H, wx - HALF_W, wy + HALF_H]).stroke({ color: 0xffffff, width: 3, alpha: 0.95 });
+    ghost.circle(wx, wy + HALF_H, 4).fill({ color: 0xfff2a8, alpha: 0.95 });
+  }
+  function pendingInfo(ok: number): LinePending {
+    return { stage: pending === 2 ? 'end' : 'start', ok, count: lineTiles.length, rect: dragRect, chained };
+  }
+  /** điện thoại: một lần chạm nhanh với công cụ kéo dài / vùng — chọn điểm đầu, rồi điểm cuối (chạm nữa thì dời điểm cuối) */
+  function tapTile(t: { x: number; y: number }) {
+    if (pending === 0) {
+      const [sx, sy] = result.lineTool && !result.rectTool ? snapRoadStart(chunks.tiles().terrain, GRID_SIZE, t.x, t.y) : [t.x, t.y];
+      lineStart = { x: sx, y: sy }; dragRect = result.rectTool; pending = 1; flip = false; chained = false; lineTiles = []; tapEnd = null;
+      ghost.clear(); drawMarker();
+      result.onLinePending(pendingInfo(0));
+      return;
+    }
+    if (pending === 1 && lineStart && t.x === lineStart.x && t.y === lineStart.y) {
+      // chạm lại ô đầu: nối tiếp thì thôi nối; không thì đặt ngay một ô
+      if (chained) { cancelLine(); return; }
+      const ok = updateLine(t.x, t.y); const tiles = lineTiles; cancelLine(); if (ok) result.onLine(tiles);
+      return;
+    }
+    tapEnd = t; pending = 2;
+    result.onLinePending(pendingInfo(updateLine(t.x, t.y)));
   }
   function cancelLine() {
-    if (!lineStart) return;
-    lineStart = null; lineTiles = []; dragRect = false;
+    if (!lineStart && !pending) return;
+    lineStart = null; lineTiles = []; dragRect = false; pending = 0; tapEnd = null; flip = false; chained = false;
     ghost.clear();
     result.onLinePreview(0);
+    result.onLinePending(null);
   }
   function drawHover() {
     hover.clear();
@@ -297,6 +343,23 @@ export async function createRenderApp(canvas: HTMLCanvasElement): Promise<Render
     onTileHover: () => {},
     onLine: () => {},
     onLinePreview: () => {},
+    onLinePending: () => {},
+    confirmLine() {
+      if (pending !== 2 || !tapEnd) return;
+      const tiles = lineTiles, end = tapEnd, chain = !dragRect;
+      if (!chain) { cancelLine(); if (tiles.length) result.onLine(tiles); return; }
+      // nối tiếp: ô cuối thành điểm đầu đoạn kế (ô đó vừa xây nên bỏ khỏi đoạn kế); ✕ để thôi
+      lineStart = end; pending = 1; tapEnd = null; flip = false; chained = true; lineTiles = [];
+      ghost.clear(); drawMarker();
+      if (tiles.length) result.onLine(tiles);
+      result.onLinePending(pendingInfo(0));
+    },
+    flipLine() {
+      if (pending !== 2 || !tapEnd || dragRect) return;
+      flip = !flip;
+      result.onLinePending(pendingInfo(updateLine(tapEnd.x, tapEnd.y)));
+    },
+    cancelLine,
     ghostSize: 1,
     lineTool: true,
     rectTool: false,

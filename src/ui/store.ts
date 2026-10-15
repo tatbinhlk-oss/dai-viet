@@ -2,6 +2,7 @@
 import { signal } from '@preact/signals';
 import type { Command, OverlayMode, Snapshot } from '../sim';
 import type { SaveMeta } from '../worker/sim.worker';
+import type { LinePending } from '../render/line';
 
 export type Panel = 'settings' | 'overview' | 'labor' | 'finance' | 'mood' | 'storage' | 'flood' | 'court' | 'worship' | 'ratings' | 'trade' | 'guide' | null;
 
@@ -13,6 +14,8 @@ export const tool = signal<string>('road');
 export const openGroup = signal<string | null>(null);
 export const panel = signal<Panel>(null);
 export const hoverText = signal('');
+/** Điện thoại: đoạn chạm hai điểm đang chờ xác nhận (thanh ✓ Xây · ↔ · ✕ Bỏ); main thêm giá và đủ tiền hay không */
+export const linePending = signal<(LinePending & { cost: number; enough: boolean }) | null>(null);
 /** Lớp phủ đang bật (sim/overlay.ts): '' tắt, 'flood' vùng ngập (M4), còn lại QoL */
 export const overlay = signal<OverlayMode>('');
 /** M6-0: nhãn tên Pixi đè lên công trình (mặc định bật khi còn hình tạm, tắt khi đã có hình thật) */
@@ -77,6 +80,10 @@ export const soundOn = signal(true);
 export const bridge = {
   cmd: (_c: Command) => {},
   select: (_x: number, _y: number) => {},
+  /** điện thoại: thanh xác nhận đoạn chạm hai điểm */
+  confirmLine: () => {},
+  flipLine: () => {},
+  cancelLine: () => {},
   /** QoL: hoàn tác lần xây gần nhất */
   undo: () => {},
   /** QoL: đưa camera tới ô; lưới render cho bản đồ thu nhỏ; vùng đang nhìn */
