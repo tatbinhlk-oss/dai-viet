@@ -2,12 +2,16 @@
 // gen-placeholders.ts bỏ qua các file này nên không đè lại bằng khối màu. Chạy: `npm run assets:art` (nằm trong `npm run assets`).
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { readFileSync } from 'node:fs';
 import { houseFrames } from './art/house';
+import { figureFrames } from './art/figures';
+import { RES_COLOR } from '../src/render/palette';
 
 const ROOT = join(import.meta.dirname, '..');
 const ASSETS = join(ROOT, 'assets');
 
-const frames = { ...houseFrames() };
+const resources = JSON.parse(readFileSync(join(ROOT, 'src/data/resources.json'), 'utf8')) as { list: { key: string }[] };
+const frames = { ...houseFrames(), ...figureFrames(resources.list.map((r, i) => ({ key: r.key, color: RES_COLOR[i] ?? 0xffffff })).filter((_, i) => i > 0)) };
 const files: string[] = [];
 for (const [rel, canvas] of Object.entries(frames)) {
   const file = join(ASSETS, rel);
