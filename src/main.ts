@@ -39,6 +39,9 @@ async function main() {
   bridge.tiles = () => render.tiles();
   bridge.view = () => render.view();
   // QoL: cài đặt — âm lượng, cỡ chữ
+  // Điện thoại: chặn zoom trang (chụm hai ngón trên thanh / bảng, chạm đúp) — zoom trang làm canvas theo khung nhìn đã zoom còn DOM theo khung bố cục, hai lớp lệch nhau
+  document.addEventListener('gesturestart', (e) => e.preventDefault());
+  document.addEventListener('touchmove', (e) => { if ((e as TouchEvent & { scale?: number }).scale !== undefined && (e as TouchEvent & { scale?: number }).scale !== 1) e.preventDefault(); }, { passive: false });
   settings.subscribe((st) => { audio.setVolume(st.volume); document.documentElement.style.setProperty('--ui-scale', String(st.uiScale)); render.setMinimap(st.minimap && !startMenu.value); });
   startMenu.subscribe((open) => render.setMinimap(settings.value.minimap && !open));
   // QoL: phím tắt (không bắt khi đang gõ vào ô nhập)
