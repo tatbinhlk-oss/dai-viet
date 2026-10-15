@@ -4,7 +4,7 @@
 import { canvas, darken, hex, HALF_H, HALF_W, lighten, line, poly, rng, TILE_H, TILE_W, type Canvas, type Ctx } from './lib';
 import { COLOR } from '../../src/render/palette';
 
-export const GROUND_VARIANTS = 4;
+export const GROUND_VARIANTS = 6;
 export const TREE_VARIANTS = 4;
 
 /** Ô hình thoi 64×32 tô màu `fill`; vẽ thêm bằng `draw` trong vùng cắt hình thoi. */
@@ -29,10 +29,10 @@ const inTile = (r: () => number): [number, number] => { const u = r(), v = r(); 
 export function grassTile(e: number, k: number): Canvas {
   const base = COLOR.grass[Math.min(4, e)];
   return tile(hex(base), (g, r) => {
-    // loang màu nhẹ
-    for (let i = 0; i < 4; i++) { const [x, y] = inTile(r); g.fillStyle = hex(r() < 0.5 ? darken(base, 0.06) : lighten(base, 0.06)); g.beginPath(); g.ellipse(x, y, 6 + r() * 8, 2.5 + r() * 3, 0, 0, Math.PI * 2); g.fill(); }
-    // bụi cỏ
-    for (let i = 0; i < 14 + k * 3; i++) { const [x, y] = inTile(r); const col = hex(r() < 0.5 ? darken(base, 0.22) : lighten(base, 0.2)); line(g, [x, y], [x - 0.8, y - 2 - r() * 1.5], col, 0.6); line(g, [x, y], [x + 0.8, y - 2 - r()], col, 0.6); }
+    // loang màu rất nhẹ (vệt to mờ để nối với ô kề, không thành đốm)
+    for (let i = 0; i < 2 + (k % 3); i++) { const [x, y] = inTile(r); g.fillStyle = hex(r() < 0.5 ? darken(base, 0.035) : lighten(base, 0.04)); g.beginPath(); g.ellipse(x, y, 10 + r() * 14, 3 + r() * 4, 0, 0, Math.PI * 2); g.fill(); }
+    // bụi cỏ (mật độ khác nhau theo biến thể)
+    for (let i = 0; i < 8 + ((k * 5) % 11); i++) { const [x, y] = inTile(r); const col = hex(r() < 0.5 ? darken(base, 0.22) : lighten(base, 0.2)); line(g, [x, y], [x - 0.8, y - 2 - r() * 1.5], col, 0.6); line(g, [x, y], [x + 0.8, y - 2 - r()], col, 0.6); }
     // hoa dại (biến thể 1 và 3)
     if (k % 2 === 1) for (let i = 0; i < 2; i++) { const [x, y] = inTile(r); g.fillStyle = r() < 0.5 ? '#f0e070' : '#f0f0f0'; g.fillRect(x, y - 1, 1, 1); g.fillRect(x + 2, y - 2, 1, 1); }
   }, 1000 + e * 10 + k);
@@ -41,7 +41,7 @@ export function grassTile(e: number, k: number): Canvas {
 export function floodplainTile(k: number): Canvas {
   const base = COLOR.floodplain;
   return tile(hex(base), (g, r) => {
-    for (let i = 0; i < 3; i++) { const [x, y] = inTile(r); g.fillStyle = hex(darken(base, 0.12 + r() * 0.08)); g.beginPath(); g.ellipse(x, y, 7 + r() * 9, 2.5 + r() * 2.5, 0, 0, Math.PI * 2); g.fill(); } // vệt bùn
+    for (let i = 0; i < 1 + (k % 3); i++) { const [x, y] = inTile(r); g.fillStyle = hex(darken(base, 0.06 + r() * 0.06)); g.beginPath(); g.ellipse(x, y, 9 + r() * 12, 3 + r() * 3, 0, 0, Math.PI * 2); g.fill(); } // vệt bùn
     for (let i = 0; i < 2; i++) { const [x, y] = inTile(r); g.fillStyle = 'rgba(170,190,205,0.25)'; g.beginPath(); g.ellipse(x, y, 4 + r() * 4, 1.2 + r(), 0, 0, Math.PI * 2); g.fill(); } // ánh nước
     for (let i = 0; i < 6 + k * 2; i++) { const [x, y] = inTile(r); const col = hex(r() < 0.5 ? darken(base, 0.25) : lighten(base, 0.18)); line(g, [x, y], [x - 0.6, y - 1.5 - r()], col, 0.6); line(g, [x, y], [x + 0.8, y - 1.8 - r()], col, 0.6); }
   }, 1100 + k);
@@ -50,9 +50,9 @@ export function floodplainTile(k: number): Canvas {
 export function waterTile(k: number): Canvas {
   const base = COLOR.water;
   return tile(hex(base), (g, r) => {
-    for (let i = 0; i < 3; i++) { const [x, y] = inTile(r); g.fillStyle = hex(r() < 0.5 ? darken(base, 0.08) : lighten(base, 0.07)); g.beginPath(); g.ellipse(x, y, 8 + r() * 10, 2 + r() * 2, 0, 0, Math.PI * 2); g.fill(); }
+    for (let i = 0; i < 1 + (k % 2); i++) { const [x, y] = inTile(r); g.fillStyle = hex(r() < 0.5 ? darken(base, 0.05) : lighten(base, 0.05)); g.beginPath(); g.ellipse(x, y, 10 + r() * 12, 2.5 + r() * 2.5, 0, 0, Math.PI * 2); g.fill(); }
     // gợn sóng: nét sáng ngắn lượn theo trục ngang, lệch theo biến thể
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 3 + (k % 3); i++) {
       const [x, y] = inTile(r); const w = 5 + r() * 6;
       g.strokeStyle = `rgba(200,225,240,${0.35 + r() * 0.3})`; g.lineWidth = 0.7;
       g.beginPath(); g.moveTo(x - w, y); g.quadraticCurveTo(x - w / 2, y - 1.2, x, y); g.quadraticCurveTo(x + w / 2, y + 1.2, x + w, y); g.stroke();
