@@ -70,3 +70,67 @@ describe('lớp phủ thông tin', () => {
     expect(buildingProblem(s, house)).toBeNull();
   });
 });
+
+describe('đặt công trình: lý do, khung xanh / đỏ, hoàn tác, kéo vùng', () => {
+  it('placementCheck (render dùng) khớp canPlaceBuilding của sim trên mọi loại và ô thử', async () => {
+    const { canPlaceBuilding, placementError } = await import('../src/sim/buildings/spawn');
+    const { placementCheck } = await import('../src/sim/buildings/placement');
+    const { BUILDING_KEYS, BUILDING_DEFS } = await import('../src/sim/buildings/defs');
+    for (const key of ['langVenSong', 'thangLong', 'sonNam']) {
+      const s = createScenario(key, 11, key === 'sonNam');
+      s.treasury = 1e6; s.court.rank = 8;
+      if (key === 'sonNam') { buildCourtTown(s); }
+      const v = { terrain: s.grid.terrain, elevation: s.grid.elevation, bType: s.grid.bType };
+      let checked = 0;
+      for (const [kind, type] of BUILDING_KEYS) {
+        if (type === BuildingType.None || type === BuildingType.Ruins) continue;
+        for (let i = 0; i < 120; i++) {
+          const x = (i * 37 + type * 11) % GRID_SIZE, y = (i * 53 + type * 7) % GRID_SIZE;
+          const simOk = canPlaceBuilding(s.grid, type, x, y);
+          const why = placementCheck(v, kind, type, x, y);
+          if (BUILDING_DEFS[type] && (type === BuildingType.Dike || type === BuildingType.Sluice) && (s.grid.terrain[gridOffset(x, y)] & 4)) continue; // đê lên đê: tôn cao, sim xử riêng
+          expect(why === null, `${key} ${kind} (${x},${y}) sim=${simOk} why=${why}`).toBe(simOk);
+          expect(placementError(s, kind, x, y) === null).toBe(simOk);
+          checked++;
+        }
+      }
+      expect(checked).toBeGreaterThan(1000);
+    }
+    // tiền và phẩm hàm
+    const s = createScenario('langVenSong', 2);
+    expect(placementError(s, 'quocTuGiam', 80, 80)).toMatch(/phẩm hàm/);
+    s.treasury = 10;
+    expect(placementError(s, 'dinh', 80, 80)).toMatch(/không đủ tiền/);
+    expect(placementError(s, 'road', 150, 100)).toMatch(/chưa cấp/);
+    expect(placementError(s, 'road', 80, 80)).toBeNull();
+  });
+  it('hoàn tác bỏ công trình và đường vừa đặt, trả tiền; nhà đã có dân thì giữ', async () => {
+    const { undoBefore, undoAfter, applyUndo } = await import('../src/sim/undo');
+    const s = createScenario('sonNam', 3, true);
+    const t0 = s.treasury;
+    const before = undoBefore(s);
+    for (let x = 100; x <= 110; x++) applyCommand(s, { type: 'build', kind: 'road', x, y: 30 });
+    applyCommand(s, { type: 'build', kind: 'dinh', x: 100, y: 27 });
+    applyCommand(s, { type: 'build', kind: 'house', x: 104, y: 29 });
+    applyCommand(s, { type: 'build', kind: 'house', x: 105, y: 29 });
+    const rec = undoAfter(s, before)!;
+    expect(rec.buildingIds).toHaveLength(3);
+    expect(rec.roads).toHaveLength(11);
+    expect(rec.cost).toBe(t0 - s.treasury);
+    s.buildings[rec.buildingIds[2]].population = 5; // nhà đã có dân → giữ
+    const n = applyUndo(s, rec);
+    expect(n).toBe(2 + 11);
+    expect(s.buildings.filter((b) => b.type !== BuildingType.None)).toHaveLength(1);
+    expect(s.grid.terrain[gridOffset(100, 30)] & 2).toBe(0);
+    expect(s.treasury).toBe(t0 - 10); // chỉ còn tiền của nhà giữ lại (lều 10 quan)
+    expect(undoAfter(s, undoBefore(s))).toBeNull();
+  });
+  it('rectPath phủ đúng hình chữ nhật hai góc bất kỳ', async () => {
+    const { rectPath, RECT_TOOLS } = await import('../src/render/line');
+    expect(rectPath(3, 3, 3, 3)).toEqual([[3, 3]]);
+    expect(rectPath(5, 2, 2, 4)).toHaveLength(12);
+    expect(rectPath(5, 2, 2, 4)[0]).toEqual([2, 2]);
+    expect([...RECT_TOOLS]).toContain('house');
+    expect([...RECT_TOOLS]).toContain('raze');
+  });
+});

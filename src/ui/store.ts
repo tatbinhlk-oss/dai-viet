@@ -48,6 +48,8 @@ export const soundOn = signal(true);
 export const bridge = {
   cmd: (_c: Command) => {},
   select: (_x: number, _y: number) => {},
+  /** QoL: hoàn tác lần xây gần nhất */
+  undo: () => {},
   // M6a: lưu game
   save: () => {},
   load: (_slot: 'auto' | 'manual') => {},

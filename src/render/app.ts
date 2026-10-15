@@ -6,7 +6,7 @@ import { ChunkLayer } from './chunks';
 import { FigureLayer } from './figures';
 import { loadSheets } from './sheets';
 import { HALF_H, HALF_W, TILE_H, tileToWorld, worldToTile, ZOOM_LEVELS } from './iso';
-import { linePath } from './line';
+import { linePath, rectPath } from './line';
 
 export interface RenderApp {
   app: Application;
@@ -20,6 +20,12 @@ export interface RenderApp {
   ghostSize: number;
   /** công cụ hiện tại là loại kéo dài (đường, đê, cống, thành) */
   lineTool: boolean;
+  /** công cụ kéo theo vùng chữ nhật (lều, vườn, phá) */
+  rectTool: boolean;
+  /** QoL: lý do không đặt được tại ô (null = được) — main đặt theo công cụ; khung đặt tô đỏ / lục */
+  validate: (x: number, y: number) => string | null;
+  /** lưới địa hình render đang giữ (để main kiểm chỗ đặt mà không hỏi worker) */
+  tiles(): { terrain: Uint16Array; elevation: Uint8Array; bType: Uint8Array };
   applySnapshot(snap: Snapshot): void;
   tileBuilding(x: number, y: number): { type: number; level: number } | null;
   /** đưa camera tới ô (x, y) */
@@ -63,6 +69,7 @@ export async function createRenderApp(canvas: HTMLCanvasElement): Promise<Render
   world.addChild(ghost);
   let lineStart: { x: number; y: number } | null = null;
   let lineTiles: [number, number][] = [];
+  let dragRect = false; // đang kéo vùng (rectTool) thay vì đoạn
 
   // Camera: bắt đầu nhìn vào giữa bản đồ
   let zoomIdx = 1;
@@ -117,9 +124,9 @@ export async function createRenderApp(canvas: HTMLCanvasElement): Promise<Render
     }
     downX = lastX = e.clientX; downY = lastY = e.clientY;
     if (e.button === 1 || e.button === 2 || (e.button === 0 && spaceHeld)) { dragging = true; canvas.setPointerCapture(e.pointerId); return; }
-    if (e.button === 0 && result.lineTool) {
+    if (e.button === 0 && (result.lineTool || result.rectTool)) {
       const t = screenToTile(e.clientX, e.clientY);
-      if (inGrid(t.x, t.y)) { lineStart = t; updateLine(t.x, t.y); canvas.setPointerCapture(e.pointerId); }
+      if (inGrid(t.x, t.y)) { lineStart = t; dragRect = result.rectTool; updateLine(t.x, t.y); canvas.setPointerCapture(e.pointerId); }
     }
   });
   canvas.addEventListener('pointermove', (e) => {
@@ -151,8 +158,7 @@ export async function createRenderApp(canvas: HTMLCanvasElement): Promise<Render
     if (t.x !== hoverX || t.y !== hoverY) { hoverX = t.x; hoverY = t.y; result.onTileHover(t.x, t.y); }
     drawHover();
     if (lineStart) { updateLine(t.x, t.y); return; }
-    // Kéo chuột trái khi không dời camera = đặt liên tục (công trình 1×1 không phải loại kéo dài)
-    if (!dragging && (e.buttons & 1) && !spaceHeld && result.ghostSize === 1 && !result.lineTool) result.onTileClick(t.x, t.y, 0);
+    // công trình khác: mỗi lần bấm đặt một cái (không còn đặt theo vệt chuột)
   });
   const endTouch = (e: PointerEvent) => {
     if (!touches.has(e.pointerId)) return;
@@ -204,17 +210,21 @@ export async function createRenderApp(canvas: HTMLCanvasElement): Promise<Render
   function updateLine(x: number, y: number) {
     if (!lineStart) return;
     const cx = Math.max(0, Math.min(GRID_SIZE - 1, x)), cy = Math.max(0, Math.min(GRID_SIZE - 1, y));
-    lineTiles = linePath(lineStart.x, lineStart.y, cx, cy);
+    lineTiles = dragRect ? rectPath(lineStart.x, lineStart.y, cx, cy) : linePath(lineStart.x, lineStart.y, cx, cy);
     ghost.clear();
+    let ok = 0;
     for (const [tx, ty] of lineTiles) {
       const { wx, wy } = tileToWorld(tx, ty);
-      ghost.poly([wx, wy, wx + HALF_W, wy + HALF_H, wx, wy + TILE_H, wx - HALF_W, wy + HALF_H]).fill({ color: 0xfff2a8, alpha: 0.35 }).stroke({ color: 0xfff2a8, width: 1, alpha: 0.8 });
+      const bad = result.validate(tx, ty) !== null;
+      if (!bad) ok++;
+      const color = bad ? 0xe05040 : 0xfff2a8;
+      ghost.poly([wx, wy, wx + HALF_W, wy + HALF_H, wx, wy + TILE_H, wx - HALF_W, wy + HALF_H]).fill({ color, alpha: bad ? 0.25 : 0.35 }).stroke({ color, width: 1, alpha: 0.8 });
     }
-    result.onLinePreview(lineTiles.length);
+    result.onLinePreview(ok);
   }
   function cancelLine() {
     if (!lineStart) return;
-    lineStart = null; lineTiles = [];
+    lineStart = null; lineTiles = []; dragRect = false;
     ghost.clear();
     result.onLinePreview(0);
   }
@@ -222,16 +232,19 @@ export async function createRenderApp(canvas: HTMLCanvasElement): Promise<Render
     hover.clear();
     const n = result.ghostSize;
     if (hoverX < 0 || hoverY < 0 || hoverX + n > GRID_SIZE || hoverY + n > GRID_SIZE) return;
+    const bad = result.validate(hoverX, hoverY) !== null; // QoL: khung đặt đỏ khi không đặt được, lục khi được
+    const color = bad ? 0xe05040 : 0x8fe08a;
     for (let dy = 0; dy < n; dy++) {
       for (let dx = 0; dx < n; dx++) {
         const { wx, wy } = tileToWorld(hoverX + dx, hoverY + dy);
-        hover.poly([wx, wy, wx + HALF_W, wy + HALF_H, wx, wy + TILE_H, wx - HALF_W, wy + HALF_H]).stroke({ color: 0xfff2a8, width: 2 });
+        hover.poly([wx, wy, wx + HALF_W, wy + HALF_H, wx, wy + TILE_H, wx - HALF_W, wy + HALF_H]).fill({ color, alpha: 0.18 }).stroke({ color, width: 2 });
       }
     }
   }
 
   app.ticker.add(() => { chunks.flush(); figures.update(); });
 
+  /** vẽ lại khung đặt khi công cụ đổi (main gọi) */
   const result: RenderApp = {
     app,
     onTileClick: () => {},
@@ -240,6 +253,9 @@ export async function createRenderApp(canvas: HTMLCanvasElement): Promise<Render
     onLinePreview: () => {},
     ghostSize: 1,
     lineTool: true,
+    rectTool: false,
+    validate: () => null,
+    tiles: () => chunks.tiles(),
     applySnapshot(snap) {
       if (snap.full) chunks.setFull(snap.full.terrain, snap.full.elevation, snap.full.bType, snap.full.bLevel);
       if (snap.changed) chunks.applyChanges(snap.changed.offsets, snap.changed.terrain, snap.changed.bType, snap.changed.bLevel);
