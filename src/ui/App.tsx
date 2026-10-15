@@ -2,6 +2,7 @@ import { TopBar } from './TopBar';
 import { BuildBar } from './BuildBar';
 import { InfoPanel } from './InfoPanel';
 import { Advisors } from './Advisors';
+import { Minimap } from './Minimap';
 import { bridge, briefing, campaign, hoverText, ui } from './store';
 import { num } from './format';
 import { SCENARIOS } from '../sim/scenario/list';
@@ -48,6 +49,7 @@ export function App() {
       </div>
       <InfoPanel />
       <Advisors />
+      <Minimap />
       {briefing.value && ui.value && ui.value.city.scenario.key !== 'sandbox' && <Briefing />}
       {ui.value?.city.scenario.gameOver && (
         <div class="gameover">

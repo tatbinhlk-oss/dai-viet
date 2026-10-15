@@ -7,7 +7,9 @@ import { BuildingType, isDike } from './sim/state';
 import type { WorkerIn, WorkerOut } from './worker/sim.worker';
 import { App } from './ui/App';
 import { toolSize } from './ui/BuildBar';
-import { bridge, briefing, campaign, fps, hoverText, overlay, recordWin, showNames, soundOn, tool, ui } from './ui/store';
+import { bridge, briefing, campaign, fps, hoverText, overlay, panel, recordWin, settings, showNames, soundOn, tool, ui, updateSettings } from './ui/store';
+import { hotkeyAction, panVector } from './ui/hotkeys';
+import { OVERLAY_MODES } from './sim/overlay';
 import { Audio, soundForEvent } from './render/audio';
 import { LINE_TOOLS, RECT_TOOLS } from './render/line';
 import { placementCheck } from './sim';
@@ -33,7 +35,37 @@ async function main() {
   bridge.select = (x, y) => send({ type: 'select', x, y });
   bridge.undo = () => send({ type: 'undo' });
   bridge.lookAt = (x, y) => render.lookAt(x, y);
-  window.addEventListener('keydown', (e) => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); bridge.undo(); } });
+  bridge.tiles = () => render.tiles();
+  bridge.view = () => render.view();
+  // QoL: cài đặt — âm lượng, cỡ chữ
+  settings.subscribe((st) => { audio.setVolume(st.volume); document.documentElement.style.setProperty('--ui-scale', String(st.uiScale)); });
+  // QoL: phím tắt (không bắt khi đang gõ vào ô nhập)
+  const held = new Set<string>();
+  const typing = (e: KeyboardEvent) => { const t = e.target as HTMLElement | null; return !!t && (t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.tagName === 'TEXTAREA'); };
+  window.addEventListener('keydown', (e) => {
+    if (typing(e)) return;
+    if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key) || ['a', 'd', 'w', 's'].includes(e.key.toLowerCase())) { held.add(e.key.length === 1 ? e.key.toLowerCase() : e.key); e.preventDefault(); return; }
+    if (e.key === 'Escape') { panel.value = null; return; }
+    const a = hotkeyAction(e.key, e.ctrlKey || e.metaKey);
+    if (!a) return;
+    e.preventDefault();
+    const s = latest;
+    switch (a.kind) {
+      case 'pause': if (s) bridge.cmd({ type: 'setSpeed', speed: s.speed === 0 ? 1 : 0 }); break;
+      case 'speed': if (s) bridge.cmd({ type: 'setSpeed', speed: Math.max(0, Math.min(3, s.speed + a.delta)) as 0 | 1 | 2 | 3 }); break;
+      case 'overlay': overlay.value = overlay.value === OVERLAY_MODES[a.index].key ? '' : OVERLAY_MODES[a.index].key; break;
+      case 'overlayOff': overlay.value = ''; break;
+      case 'minimap': updateSettings({ minimap: !settings.value.minimap }); break;
+      case 'names': showNames.value = !showNames.value; break;
+      case 'tool': tool.value = a.tool; break;
+      case 'panel': panel.value = panel.value === a.panel ? null : (a.panel as typeof panel.value); break;
+      case 'help': panel.value = panel.value === 'settings' ? null : 'settings'; break;
+      case 'undo': bridge.undo(); break;
+    }
+  });
+  window.addEventListener('keyup', (e) => { held.delete(e.key.length === 1 ? e.key.toLowerCase() : e.key); });
+  window.addEventListener('blur', () => held.clear());
+  render.app.ticker.add(() => { if (held.size) { const [dx, dy] = panVector(held); if (dx || dy) render.pan(dx, dy); } });
   bridge.save = () => send({ type: 'save' });
   bridge.load = (slot) => send({ type: 'load', slot });
   bridge.exportFile = () => send({ type: 'export' });
