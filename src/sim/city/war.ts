@@ -2,6 +2,7 @@
 // quân phương Bắc từ bắc. Báo trước 2 tháng; đến ngày thì giặc xuất hiện ở mép bản đồ, đi tới công trình gần nhất và đốt.
 // Trại lính biến vũ khí thành lính; thành đất / thành đá chặn đường giặc.
 import { BuildingType, FigureType, type Building, type GameState, type Invasion, type InvasionSource, type WarState } from '../state';
+import { logEvent } from '../log';
 import { GRID_SIZE, gridOffset, isLand, T_WATER } from '../map/grid';
 import { trade } from './trade';
 import { createFigure } from '../figures/figure';
@@ -47,7 +48,7 @@ function spawnEnemies(s: GameState, inv: Invasion): void {
     n++;
   }
   s.war.enemiesAlive += n;
-  s.events.push(`Giặc tới: ${inv.size} tên ${SOURCE_TEXT[inv.source]}!`);
+  logEvent(s, `Giặc tới: ${inv.size} tên ${SOURCE_TEXT[inv.source]}!`, at);
 }
 
 /** Mỗi ngày (tick 27). */
@@ -56,7 +57,7 @@ export function updateWar(s: GameState): void {
   for (const inv of s.war.invasions) {
     if (inv.done) continue;
     const absMonth = (inv.year - 1) * 12 + (inv.month - 1), now = s.time.year * 12 + s.time.month;
-    if (!inv.warned && now >= absMonth - WAR.warningMonths) { inv.warned = true; s.events.push(`Tin báo: ${SOURCE_TEXT[inv.source]} sẽ tới trong ${absMonth - now} tháng, ${inv.size} tên`); }
+    if (!inv.warned && now >= absMonth - WAR.warningMonths) { inv.warned = true; logEvent(s, `Tin báo: ${SOURCE_TEXT[inv.source]} sẽ tới trong ${absMonth - now} tháng, ${inv.size} tên`); }
     if (now >= absMonth) { inv.done = true; spawnEnemies(s, inv); }
   }
   spawnMilitia(s);

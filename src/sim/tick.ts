@@ -48,7 +48,7 @@ export function tick(s: GameState): void {
     case 49:
       if (day === 0) updateCulture(s); // M5: Văn hiến theo tháng
       checkVictory(s);
-      if (s.events.length > MAX_EVENTS) s.events.splice(0, s.events.length - MAX_EVENTS);
+      if (s.events.length > MAX_EVENTS) { const n = s.events.length - MAX_EVENTS; s.events.splice(0, n); s.eventAt.splice(0, n); }
       break;
     default: break;
   }

@@ -2,6 +2,7 @@
 // Người chơi vẽ tuyến đê (height 0, targetHeight 1); phu đê từ đình làng tới đắp từng mức.
 // Vẽ lại lên đoạn đê có sẵn = tôn cao thêm một mức. Vỡ đê → ô đất trũng, nước tràn.
 import { BuildingType, isDike, type Building, type GameState } from '../state';
+import { logEvent } from '../log';
 import { gridOffset, inBounds, T_BUILDING, T_FLOODPLAIN, T_ROAD, T_SUNKEN, T_WATER } from '../map/grid';
 import { flood } from './defs';
 import { anchorOffset, placeBuilding, removeBuilding } from './spawn';
@@ -85,7 +86,7 @@ export function breachDike(s: GameState, b: Building): void {
   s.flood.breachesThisYear++;
   s.ratings.breachesThisYear++; // M5: Trị an
   s.flood.breachMoodPeriods = flood.consequences.breachMoodPeriods;
-  s.events.push(`Vỡ đê tại (${b.x}, ${b.y})!`);
+  logEvent(s, `Vỡ đê tại (${b.x}, ${b.y})!`, gridOffset(b.x, b.y));
 }
 
 export function setSluice(s: GameState, b: Building, open: boolean): void {

@@ -1,6 +1,7 @@
 // Sự kiện kịch bản (thiết kế phần 5/6): "Thượng nguồn mưa lớn" ép mực lũ +1 năm đó; "Hà đê sứ đến thanh tra" kiểm tra độ bền đê;
 // "Triều đình lệnh đắp đê" thành chiếu chỉ loại đê (N đoạn cao 2 trong 24 tháng, Ân sủng +10); "giặc" (M6a) → war.ts.
 import { BuildingType, Resource, type GameState, type InvasionSource } from '../state';
+import { logEvent } from '../log';
 import { flood } from '../buildings/defs';
 import { dikeInspection, scheduleEdict } from '../city/court';
 import { scheduleInvasion } from '../city/war';
@@ -32,7 +33,7 @@ export function updateScenarioEvents(s: GameState): void {
       const F = s.flood;
       if (F.nextPeak > 0) F.nextPeak = Math.min(flood.peakChances.byLevel.length, F.nextPeak + 1);
       else s.worship.floodLevelMod += 1;
-      s.events.push('Thượng nguồn mưa lớn: lũ năm nay dữ hơn một mức');
+      logEvent(s, 'Thượng nguồn mưa lớn: lũ năm nay dữ hơn một mức');
     } else if (ev.kind === 'inspector') {
       dikeInspection(s);
     }

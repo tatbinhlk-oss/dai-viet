@@ -476,6 +476,8 @@ export interface GameState {
   war: WarState;
   /** sự kiện gần đây cho UI (cháy, sập, trộm…), tối đa 8 dòng */
   events: string[];
+  /** QoL: offset ô của từng sự kiện (−1 = không có chỗ), song song với events */
+  eventAt: number[];
   dirty: Set<number>; // offset ô đã đổi kể từ snapshot trước
 }
 

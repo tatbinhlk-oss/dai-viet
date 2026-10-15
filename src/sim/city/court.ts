@@ -2,6 +2,7 @@
 // cống nạp hằng năm (tribute), phẩm hàm và bổng lộc (rank/salary), tiến cống (gift), khoa cử (thay hippodrome),
 // ≤ 10 Ân sủng thì bị cách chức sau 192 ngày.
 import { BuildingType, DAYS_PER_MONTH, FigureType, HOUSE_TIER_MANDARIN, isDike, Resource, type Building, type CourtState, type Edict, type EdictType, type GameState, type KingKind } from '../state';
+import { logEvent } from '../log';
 import { BUILDING_DEFS, BUILDING_KEYS, court, HOUSE_LEVELS, RESOURCES, UNITS_PER_LOAD } from '../buildings/defs';
 import { roadAccess, setHouseLevel } from '../buildings/spawn';
 import { anchorOffset } from '../buildings/spawn';
@@ -50,8 +51,8 @@ export function kingYearly(s: GameState): void {
   const have = s.buildings.filter((b) => b.type === type && (b.numWorkers > 0 || BUILDING_DEFS[type].workers === 0)).length;
   const need = Math.ceil(s.population / k.yearly.perPop);
   const name = BUILDING_DEFS[type].name.toLowerCase();
-  if (have >= need) { addFavor(s, k.yearly.bonus); s.events.push(`Vua ${k.name} hài lòng: đủ ${name} (Ân sủng +${k.yearly.bonus})`); }
-  else { addFavor(s, k.yearly.penalty); s.events.push(`Vua ${k.name} phật ý: cần ${need} ${name} có người làm, mới có ${have} (Ân sủng ${k.yearly.penalty})`); }
+  if (have >= need) { addFavor(s, k.yearly.bonus); logEvent(s, `Vua ${k.name} hài lòng: đủ ${name} (Ân sủng +${k.yearly.bonus})`); }
+  else { addFavor(s, k.yearly.penalty); logEvent(s, `Vua ${k.name} phật ý: cần ${need} ${name} có người làm, mới có ${have} (Ân sủng ${k.yearly.penalty})`); }
 }
 
 /** Mô tả ngắn chiếu chỉ cho sự kiện / UI. */
@@ -85,7 +86,7 @@ export function deliverEdict(s: GameState, e: Edict): void {
   if (e.state !== 'coming') return;
   e.state = 'active';
   e.deadlineDay = s.time.totalDays + e.deadlineMonths * DAYS_PER_MONTH;
-  s.events.push(`Chiếu chỉ: ${e.title} trong ${e.deadlineMonths} tháng`);
+  logEvent(s, `Chiếu chỉ: ${e.title} trong ${e.deadlineMonths} tháng`);
 }
 
 function spawnMessenger(s: GameState, e: Edict): void {
@@ -95,15 +96,15 @@ function spawnMessenger(s: GameState, e: Edict): void {
   if (!f) { deliverEdict(s, e); return; }
   f.loads = e.id;
   if (!setWalkPath(s, f, anchorOffset(yamen.x, yamen.y, 1), false)) { removeFigure(s, f.id); deliverEdict(s, e); }
-  else s.events.push('Sứ giả triều đình đang tới nha môn');
+  else logEvent(s, 'Sứ giả triều đình đang tới nha môn');
 }
 
 export function completeEdict(s: GameState, e: Edict): void {
   const bonus = kingDef(s.scenario.king)?.edictBonus[e.type] ?? 0; // M6b: vua trọng loại chiếu chỉ này
-  if (bonus) { addFavor(s, bonus); s.events.push(`Vua ${kingDef(s.scenario.king)!.name} khen: Ân sủng +${bonus}`); }
+  if (bonus) { addFavor(s, bonus); logEvent(s, `Vua ${kingDef(s.scenario.king)!.name} khen: Ân sủng +${bonus}`); }
   e.state = 'done';
   addFavor(s, e.reward);
-  s.events.push(`Hoàn thành chiếu chỉ: ${e.title} (Ân sủng +${e.reward})`);
+  logEvent(s, `Hoàn thành chiếu chỉ: ${e.title} (Ân sủng +${e.reward})`);
 }
 
 /** Số kiện r trong vựa + kho (kể cả đang tích trữ). */
@@ -186,7 +187,7 @@ export function dispatchEdict(s: GameState, id: number, option = 0): string | nu
     case 'corvee': {
       const pct = court.corvee.pctOptions[Math.max(0, Math.min(court.corvee.pctOptions.length - 1, option))];
       e.corveePct = pct;
-      s.events.push(`Lao dịch: khóa ${pct}% nhân công`);
+      logEvent(s, `Lao dịch: khóa ${pct}% nhân công`);
       return null;
     }
     case 'ritual':
@@ -220,12 +221,12 @@ function checkDeadlines(s: GameState): void {
       e.extended = true;
       e.deadlineDay += F.extensionMonths * DAYS_PER_MONTH;
       addFavor(s, PENALTY[e.type]);
-      s.events.push(`Trễ chiếu chỉ "${e.title}": Ân sủng ${PENALTY[e.type]}, gia hạn ${F.extensionMonths} tháng`);
+      logEvent(s, `Trễ chiếu chỉ "${e.title}": Ân sủng ${PENALTY[e.type]}, gia hạn ${F.extensionMonths} tháng`);
     } else {
       e.state = 'failed';
       e.corveePct = 0;
       addFavor(s, PENALTY[e.type] + F.secondLateExtra);
-      s.events.push(`Bỏ chiếu chỉ "${e.title}": Ân sủng ${PENALTY[e.type] + F.secondLateExtra}`);
+      logEvent(s, `Bỏ chiếu chỉ "${e.title}": Ân sủng ${PENALTY[e.type] + F.secondLateExtra}`);
     }
   }
 }
@@ -264,13 +265,13 @@ function yearly(s: GameState): void {
     const pen = F.tributeMissed[Math.min(F.tributeMissed.length - 1, C.tributeMissedYears)];
     C.tributeMissedYears++;
     addFavor(s, pen);
-    s.events.push(`Không nộp được cống nạp ${C.tributeDue} quan (ngân khố âm): Ân sủng ${pen}`);
+    logEvent(s, `Không nộp được cống nạp ${C.tributeDue} quan (ngân khố âm): Ân sủng ${pen}`);
   } else {
     s.treasury -= C.tributeDue;
     s.thisYear.tribute += C.tributeDue;
     C.tributePaid = true;
     C.tributeMissedYears = 0;
-    s.events.push(`Nộp cống ${C.tributeDue} quan`);
+    logEvent(s, `Nộp cống ${C.tributeDue} quan`);
   }
 }
 
@@ -290,11 +291,11 @@ function milestones(s: GameState): void {
     if (s.population * 100 >= goal * F.milestonePct[i]) {
       s.court.milestonesHit[i] = 1;
       addFavor(s, F.milestoneBonus);
-      s.events.push(`Triều đình hài lòng: dân đạt ${F.milestonePct[i]}% mục tiêu (Ân sủng +${F.milestoneBonus})`);
+      logEvent(s, `Triều đình hài lòng: dân đạt ${F.milestonePct[i]}% mục tiêu (Ân sủng +${F.milestoneBonus})`);
     } else if (s.time.year >= (s.scenario.milestoneYears[i] ?? 99)) {
       s.court.milestonesHit[i] = 2;
       addFavor(s, F.milestoneLatePenalty);
-      s.events.push(`Triều đình sốt ruột: dân chưa đạt ${F.milestonePct[i]}% mục tiêu (Ân sủng ${F.milestoneLatePenalty})`);
+      logEvent(s, `Triều đình sốt ruột: dân chưa đạt ${F.milestonePct[i]}% mục tiêu (Ân sủng ${F.milestoneLatePenalty})`);
     }
   }
 }
@@ -304,11 +305,11 @@ function dismissal(s: GameState): void {
   if (C.favor <= F.dismissAtOrBelow) {
     if (C.dismissalDay < 0) {
       C.dismissalDay = s.time.totalDays + F.dismissWarningDays;
-      s.events.push(`Ân sủng quá thấp: triều đình cử quan khác đến thay sau ${F.dismissWarningDays} ngày!`);
+      logEvent(s, `Ân sủng quá thấp: triều đình cử quan khác đến thay sau ${F.dismissWarningDays} ngày!`);
     }
   } else if (C.dismissalDay >= 0) {
     C.dismissalDay = -1;
-    s.events.push('Triều đình nguôi giận, hoãn thay quan');
+    logEvent(s, 'Triều đình nguôi giận, hoãn thay quan');
   }
 }
 
@@ -318,7 +319,7 @@ function soldiersReturn(s: GameState): void {
     if (e.type !== 'troops' || e.returnDay < 0 || s.time.totalDays < e.returnDay) continue;
     e.returnDay = -1;
     s.migrationQuota = Math.min(20, s.migrationQuota + e.survivors);
-    s.events.push(`${e.survivors}/${e.amount} đinh tráng trở về`);
+    logEvent(s, `${e.survivors}/${e.amount} đinh tráng trở về`);
   }
 }
 
@@ -329,7 +330,7 @@ function exam(s: GameState): void {
   if (s.time.year === 0 || s.time.year % X.everyYears !== 0 || C.lastExamYear === s.time.year) return;
   if (s.time.month !== X.examMonth - 1 || s.time.day !== 0) return;
   C.lastExamYear = s.time.year;
-  if (!s.buildings.some((b) => (b.type === BuildingType.Academy || b.type === BuildingType.QuocTuGiam) && b.numWorkers > 0)) { s.events.push('Không mở được khoa thi: chưa có trường học'); return; }
+  if (!s.buildings.some((b) => (b.type === BuildingType.Academy || b.type === BuildingType.QuocTuGiam) && b.numWorkers > 0)) { logEvent(s, 'Không mở được khoa thi: chưa có trường học'); return; }
   let students = 0;
   for (const b of s.buildings) if (b.type === BuildingType.House && (b.school > 0 || b.academy > 0)) students += b.population;
   const n = Math.floor(students / X.perGraduate);
@@ -346,7 +347,7 @@ function exam(s: GameState): void {
     home.happiness = s.sentiment;
     returned++;
   }
-  s.events.push(n ? `Khoa thi: ${n} người đỗ (Ân sủng +${n * perGrad})${returned ? `, ${returned} vị về làm quan` : ''}` : 'Khoa thi: không ai đỗ');
+  logEvent(s, n ? `Khoa thi: ${n} người đỗ (Ân sủng +${n * perGrad})${returned ? `, ${returned} vị về làm quan` : ''}` : 'Khoa thi: không ai đỗ');
 }
 
 /** Mỗi ngày (tick 27, sau lũ). */
@@ -385,7 +386,7 @@ export function sendGift(s: GameState, size: number): string | null {
   const gain = Math.round((G.favor[size] * Math.max(0, 3 - n)) / 3);
   s.court.giftsInWindow.push(s.time.totalDays);
   addFavor(s, gain);
-  s.events.push(`Tiến cống ${cost} quan: Ân sủng +${gain}`);
+  logEvent(s, `Tiến cống ${cost} quan: Ân sủng +${gain}`);
   return null;
 }
 
@@ -396,6 +397,6 @@ export function setSalary(s: GameState, level: number): void {
 /** Hà đê sứ thanh tra (sự kiện kịch bản): độ bền trung bình < 60 → Ân sủng −5. */
 export function dikeInspection(s: GameState): void {
   const d = dikeSafety(s);
-  if (d.built > 0 && d.safety < 60) { addFavor(s, -5); s.events.push(`Hà đê sứ thanh tra: đê chỉ bền ${d.safety}% — Ân sủng −5`); }
-  else s.events.push(d.built > 0 ? `Hà đê sứ thanh tra: đê bền ${d.safety}%, triều đình hài lòng` : 'Hà đê sứ thanh tra: lộ chưa có đê');
+  if (d.built > 0 && d.safety < 60) { addFavor(s, -5); logEvent(s, `Hà đê sứ thanh tra: đê chỉ bền ${d.safety}% — Ân sủng −5`); }
+  else logEvent(s, d.built > 0 ? `Hà đê sứ thanh tra: đê bền ${d.safety}%, triều đình hài lòng` : 'Hà đê sứ thanh tra: lộ chưa có đê');
 }

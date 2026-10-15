@@ -26,6 +26,7 @@ import { initTrade, PRICES, quotaOf, ROUTES, routeBuys, routeSells } from './cit
 import { initWar, nextInvasion, SOURCE_TEXT, WAR } from './city/war';
 import { figureDialogue, type FigureInfo } from './figures/dialogue';
 import { buildingProblem, computeOverlay, problemAnchors, type OverlayMode } from './overlay';
+import { cityProblems, type CityProblem } from './city/overview';
 export { OVERLAY_MODES, type OverlayMode } from './overlay';
 export { placementError } from './buildings/spawn';
 export { placementCheck, type TileView } from './buildings/placement';
@@ -101,6 +102,7 @@ export function createSim(seed: number, opts: SimOptions = {}): GameState {
     trade: initTrade(),
     war: initWar(),
     events: [],
+    eventAt: [],
     dirty: new Set(),
   };
   updateProtection(s);
@@ -212,6 +214,9 @@ export interface CityStats {
   stockpile: boolean[];
   houseLevels: number[]; // số nhà theo bậc 0..10
   events: string[];
+  /** QoL: offset ô của từng sự kiện (−1 = không), song song với events; danh sách vấn đề (cố vấn tổng quan) */
+  eventAt: number[];
+  problems: CityProblem[];
   /** M4: mùa lũ và đê */
   flood: FloodStats;
   /** M5 */
@@ -358,7 +363,7 @@ export function cityStats(s: GameState): CityStats {
     estTaxes: Math.floor((base.covered * s.taxRate) / 100),
     estUncollected: Math.floor((base.uncovered * s.taxRate) / 100),
     estWages: monthlyWages(s),
-    stored, stockpile: [...s.stockpile], houseLevels, events: [...s.events],
+    stored, stockpile: [...s.stockpile], houseLevels, events: [...s.events], eventAt: [...s.eventAt], problems: cityProblems(s),
     flood: floodStats,
     ratings: { culture: s.ratings.culture, prosperity: s.ratings.prosperity, prosperityCap: prosperityCap(s), peace: s.ratings.peace, health: s.ratings.health, cultureBreakdown: cultureBreakdown(s), yearsCalm: s.ratings.yearsCalm },
     court: courtStats,

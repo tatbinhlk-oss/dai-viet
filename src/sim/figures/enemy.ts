@@ -2,6 +2,7 @@
 // bị thành chặn thì phá thành gần nhất (wallTicks tick mỗi đòn theo độ bền). Phá đủ raidBudget công trình thì rút về mép.
 // Lính: ở cửa trại; có giặc trong engageRange thì tới đánh; đứng cạnh nhau thì cứ hitEveryTicks tick đổi đòn.
 import { BuildingType, FigureMode, FigureType, isWall, type Building, type Figure, type GameState } from '../state';
+import { logEvent } from '../log';
 import { gridOffset, inBounds, isLand, offsetX, offsetY } from '../map/grid';
 import { bfs, passLand, UNREACHABLE } from '../map/routing';
 import { burnBuilding, removeBuilding, roadAccess } from '../buildings/spawn';
@@ -54,9 +55,9 @@ export function updateEnemy(s: GameState, f: Figure): void {
     if (!b || b.type === BuildingType.None || b.type === BuildingType.Ruins || !isAdjacent(f, b)) { enemyRetarget(s, f); return; }
     f.timer++;
     if (isWall(b.type)) {
-      if (f.timer >= WAR.wallTicks) { f.timer = 0; if (--b.integrity <= 0) { removeBuilding(s, b); s.events.push('Giặc phá một đoạn thành'); enemyRetarget(s, f); } }
+      if (f.timer >= WAR.wallTicks) { f.timer = 0; if (--b.integrity <= 0) { removeBuilding(s, b); logEvent(s, 'Giặc phá một đoạn thành', gridOffset(b.x, b.y)); enemyRetarget(s, f); } }
     } else if (f.timer >= WAR.attackTicks) {
-      s.events.push(`Giặc đốt ${b.type === BuildingType.House ? 'nhà' : 'công trình'}`);
+      logEvent(s, `Giặc đốt ${b.type === BuildingType.House ? 'nhà' : 'công trình'}`, gridOffset(b.x, b.y));
       if (b.type !== BuildingType.WatchPost && !(b.type === BuildingType.House && b.level <= 1)) s.ratings.destroyedThisYear++;
       s.war.burnedByEnemies++;
       burnBuilding(s, b, economy.risk.burnDays);
@@ -83,7 +84,7 @@ const nearEnemy = (s: GameState, f: Figure, range: number): Figure | null => {
 };
 
 export function updateMilitia(s: GameState, f: Figure): void {
-  if (f.hp <= 0) { removeFigure(s, f.id); s.events.push('Một lính tử trận'); return; }
+  if (f.hp <= 0) { removeFigure(s, f.id); logEvent(s, 'Một lính tử trận'); return; }
   const foe = nearEnemy(s, f, WAR.engageRange);
   if (foe && Math.max(Math.abs(foe.x - f.x), Math.abs(foe.y - f.y)) <= 1) {
     // giao chiến: đổi đòn mỗi hitEveryTicks tick
@@ -92,7 +93,7 @@ export function updateMilitia(s: GameState, f: Figure): void {
       f.timer = 0;
       foe.hp -= WAR.militiaDamage;
       f.hp -= WAR.enemyDamage;
-      if (foe.hp <= 0) { killEnemy(s, foe); s.events.push('Lính hạ một tên giặc'); }
+      if (foe.hp <= 0) { killEnemy(s, foe); logEvent(s, 'Lính hạ một tên giặc'); }
     }
     return;
   }

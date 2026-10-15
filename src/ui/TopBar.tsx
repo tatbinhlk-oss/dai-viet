@@ -1,11 +1,11 @@
-import { bridge, campaign, fps, panel, resetCampaign, soundOn, ui, type Panel } from './store';
+import { bridge, briefing, campaign, fps, panel, resetCampaign, soundOn, ui, type Panel } from './store';
 import { SCENARIO_LIST } from '../sim/scenario/list';
 import { openScenario } from './App';
 import { MONTHS, num } from './format';
 import { MOOD_CAUSE_TEXT } from '../sim/city/sentiment';
 import type { FloodStats } from '../sim';
 
-const PANELS: [Exclude<Panel, null>, string][] = [['labor', 'Lao động'], ['finance', 'Tài chính'], ['mood', 'Dân tình'], ['storage', 'Kho hàng'], ['flood', 'Thủy lợi'], ['court', 'Nha môn'], ['worship', 'Tín ngưỡng'], ['ratings', 'Chỉ số'], ['trade', 'Thương mại']];
+const PANELS: [Exclude<Panel, null>, string][] = [['overview', 'Tổng quan'], ['labor', 'Lao động'], ['finance', 'Tài chính'], ['mood', 'Dân tình'], ['storage', 'Kho hàng'], ['flood', 'Thủy lợi'], ['court', 'Nha môn'], ['worship', 'Tín ngưỡng'], ['ratings', 'Chỉ số'], ['trade', 'Thương mại']];
 
 /** Dòng lũ trên thanh trên: chỉ hiện từ tháng 4 đến tháng 9. */
 function floodText(f: FloodStats): string {
@@ -69,6 +69,7 @@ export function TopBar() {
       {PANELS.map(([k, label]) => (
         <button class={panel.value === k ? 'active' : ''} onClick={() => (panel.value = panel.value === k ? null : k)}>{label}</button>
       ))}
+      {s && s.city.scenario.key !== 'sandbox' && <button title="Xem lại nhiệm vụ của màn" onClick={() => (briefing.value = true)}>Nhiệm vụ</button>}
       <span class="sep" />
       <button title="Lưu vào trình duyệt (tự lưu mỗi tháng ở khe riêng)" onClick={() => bridge.save()}>Lưu</button>
       <button title="Nạp bản đã bấm Lưu" onClick={() => bridge.load('manual')}>Nạp</button>

@@ -2,6 +2,7 @@
 // Mỗi ngày: damage_risk += damage (+2 khi trúng 1/8), sập khi > 200; fire_risk += fire khi trúng 1/8, cháy khi > 100.
 // Tuần đinh / thợ cả đi qua đặt lại 0. Đống tro cháy 12 ngày, có thể lan sang công trình kề.
 import { BuildingType, type Building, type GameState } from '../state';
+import { logEvent } from '../log';
 import { gridOffset, inBounds } from '../map/grid';
 import { BUILDING_DEFS, economy, HOUSE_LEVELS } from '../buildings/defs';
 import { burnBuilding, removeBuilding } from '../buildings/spawn';
@@ -25,10 +26,10 @@ export function updateRisks(s: GameState): void {
     if (fire > 0 && nextInt(s.rng, 8) === 0) b.fireRisk += fire;
     if (def.damage > 0) b.damageRisk += def.damage + (nextInt(s.rng, 8) === 0 ? 2 : 0);
     if (b.fireRisk > R.fireThreshold) {
-      s.events.push(`Cháy: ${label(b)}`);
+      logEvent(s, `Cháy: ${label(b)}`, gridOffset(b.x, b.y));
       burnBuilding(s, b, R.burnDays);
     } else if (b.damageRisk > R.collapseThreshold) {
-      s.events.push(`Sập: ${label(b)}`);
+      logEvent(s, `Sập: ${label(b)}`, gridOffset(b.x, b.y));
       removeBuilding(s, b);
     }
   }

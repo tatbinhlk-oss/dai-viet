@@ -3,6 +3,8 @@
 // kéo dần về điểm nghỉ 60 nên một nguyên nhân xấu kéo dài làm lòng dân tụt tới mức cân bằng, không tụt mãi.
 // Tội phạm: mỗi tháng nhà bất mãn nhất sinh dân kêu oan (<50), trộm (<30) hoặc loạn dân (≤10).
 import { BuildingType, FigureType, type GameState, type MoodCause } from '../state';
+import { gridOffset } from '../map/grid';
+import { logEvent } from '../log';
 import { court, economy, flood } from '../buildings/defs';
 import { foodTypes } from '../buildings/house';
 import { roadAccess } from '../buildings/spawn';
@@ -80,7 +82,7 @@ export function generateCriminals(s: GameState): void {
   if (!f) return;
   startRoam(f, 48);
   if (type === FigureType.Thief) s.ratings.thievesThisYear++; else if (type === FigureType.Rioter) s.ratings.riotsThisYear++; // M5: Trị an
-  s.events.push(type === FigureType.Rioter ? 'Loạn dân nổi lên!' : type === FigureType.Thief ? 'Có trộm trong thành' : 'Dân kêu oan trước nha môn');
+  logEvent(s, type === FigureType.Rioter ? 'Loạn dân nổi lên!' : type === FigureType.Thief ? 'Có trộm trong thành' : 'Dân kêu oan trước nha môn', gridOffset(f.x, f.y));
 }
 
 export const MOOD_CAUSE_TEXT: Record<MoodCause, string> = {

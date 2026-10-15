@@ -134,3 +134,58 @@ describe('đặt công trình: lý do, khung xanh / đỏ, hoàn tác, kéo vùn
     expect([...RECT_TOOLS]).toContain('raze');
   });
 });
+
+describe('cố vấn tổng quan, sự kiện có vị trí, giới thiệu nhiệm vụ', () => {
+  it('sự kiện ghi kèm ô (cháy, giặc) và cắt bớt song song; bản lưu cũ không có eventAt vẫn nạp', async () => {
+    const { logEvent } = await import('../src/sim/log');
+    const { toJson, fromJson } = await import('../src/sim/save');
+    const s = createScenario('sonNam', 3, true);
+    logEvent(s, 'a'); logEvent(s, 'b', gridOffset(5, 6));
+    expect(s.events).toEqual(['a', 'b']);
+    expect(s.eventAt).toEqual([-1, gridOffset(5, 6)]);
+    for (let i = 0; i < 300; i++) logEvent(s, `x${i}`, i);
+    runDays(s, 1); // tick 49 cắt bớt
+    expect(s.eventAt).toHaveLength(s.events.length);
+    expect(s.eventAt[s.events.indexOf('x299')]).toBe(299);
+    expect(s.events.includes('x0')).toBe(false); // đã cắt bớt
+    const old = JSON.parse(toJson(s)) as { state: Record<string, unknown> };
+    delete old.state.eventAt;
+    const r = fromJson(JSON.stringify(old));
+    expect(r.eventAt).toHaveLength(r.events.length);
+    expect(r.eventAt.every((v) => v === -1)).toBe(true);
+    // cháy ghi vị trí công trình
+    s.treasury = 1e6; buildCourtTown(s);
+    const h = s.buildings.find((b) => b.type === BuildingType.House)!;
+    h.fireRisk = 1000; h.population = 3;
+    runDays(s, 1);
+    const i = s.events.findIndex((e) => e.startsWith('Cháy'));
+    expect(i).toBeGreaterThanOrEqual(0);
+    expect(s.eventAt[i]).toBe(gridOffset(h.x, h.y));
+    const snap = takeSnapshot(s, false);
+    expect(snap.city.eventAt).toEqual(s.eventAt);
+  });
+  it('cityProblems: ngân khố âm, lòng dân thấp, công trình có vấn đề, thần giận, đê yếu; thị trấn ổn thì ít vấn đề', async () => {
+    const { cityProblems } = await import('../src/sim/city/overview');
+    const s = createScenario('sonNam', 3, true);
+    expect(cityProblems(s)).toEqual([]); // bản đồ trống
+    s.treasury = 1e6;
+    applyCommand(s, { type: 'build', kind: 'kiln', x: 110, y: 20 }); // không đường
+    s.treasury = -50; s.population = 200; s.sentiment = 20; s.worship.gods[0].mood = 10;
+    const texts = cityProblems(s).map((p) => p.text);
+    expect(texts.some((t) => t.startsWith('Ngân khố âm'))).toBe(true);
+    expect(texts.some((t) => t.startsWith('Lòng dân thấp'))).toBe(true);
+    expect(texts.some((t) => t.includes('công trình có vấn đề'))).toBe(true);
+    expect(texts.some((t) => t.includes('giận'))).toBe(true);
+    const pr = cityProblems(s).find((p) => p.text.includes('công trình có vấn đề'))!;
+    expect(pr.at).toBe(gridOffset(110, 20));
+    expect(pr.level).toBe('warn');
+    // thị trấn mẫu sau 3 tháng: không có vấn đề "bad" nào ngoài những thứ tự nhiên
+    const t = createScenario('sonNam', 3, true);
+    t.treasury = 1e6; buildCourtTown(t); demoPriorities(t);
+    runDays(t, DAYS_PER_MONTH * 3);
+    const ps = cityProblems(t);
+    console.log('tổng quan thị trấn mẫu tháng 3:', ps.map((p) => `${p.level}: ${p.text}`).join(' | '));
+    expect(ps.filter((p) => p.level === 'bad').length).toBeLessThanOrEqual(2);
+    expect(takeSnapshot(t, false).city.problems.length).toBe(ps.length);
+  });
+});
