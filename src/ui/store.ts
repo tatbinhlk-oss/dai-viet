@@ -1,6 +1,7 @@
 // Trạng thái UI (Preact signals). UI chỉ đọc snapshot và gửi lệnh qua `bridge` — không chạm state sim.
 import { signal } from '@preact/signals';
 import type { Command, OverlayMode, Snapshot } from '../sim';
+import type { SaveMeta } from '../worker/sim.worker';
 
 export type Panel = 'settings' | 'overview' | 'labor' | 'finance' | 'mood' | 'storage' | 'flood' | 'court' | 'worship' | 'ratings' | 'trade' | null;
 
@@ -55,6 +56,9 @@ export function updateSettings(patch: Partial<Settings>): void {
   settings.value = { ...settings.value, ...patch };
   try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings.value)); } catch { /* bỏ qua */ }
 }
+/** QoL: danh sách khe lưu (worker gửi) và hộp Lưu / Nạp */
+export const saves = signal<SaveMeta[]>([]);
+export const savesOpen = signal(false);
 /** QoL: màn giới thiệu nhiệm vụ đang mở */
 export const briefing = signal(false);
 /** M6c: âm thanh bật / tắt (nút 🔊) */
@@ -70,8 +74,9 @@ export const bridge = {
   tiles: (): { terrain: Uint16Array; elevation: Uint8Array; bType: Uint8Array } | null => null,
   view: (): { cx: number; cy: number; corners: [number, number][] } | null => null,
   // M6a: lưu game
-  save: () => {},
-  load: (_slot: 'auto' | 'manual') => {},
+  save: (_slot?: string, _name?: string) => {},
+  load: (_slot?: string) => {},
+  listSaves: () => {},
   exportFile: () => {},
   importFile: async (_f: File) => {},
 };

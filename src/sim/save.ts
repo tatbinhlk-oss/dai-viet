@@ -48,6 +48,8 @@ export function fromJson(json: string): GameState {
     s.enemyEntry = { sea: -1, south: -1, north: -1 };
     Object.assign(s.scenario, { king: '', peakChances: null, promoteTo: 0, next: '', map: '', land: [] });
   }
+  if (!s.history) s.history = { pop: [], treasury: [], favor: [] };
+  for (const b of s.buildings) if (b.mothballed === undefined) b.mothballed = false;
   if (!Array.isArray(s.eventAt) || s.eventAt.length !== s.events.length) s.eventAt = s.events.map(() => -1); // QoL: bản lưu cũ
   s.dirty = new Set();
   return s;

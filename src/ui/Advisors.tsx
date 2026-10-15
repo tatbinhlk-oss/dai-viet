@@ -4,6 +4,7 @@ import { MOOD_CAUSE_TEXT } from '../sim/city/sentiment';
 import { HOUSE_LEVELS, RESOURCES } from '../sim/buildings/defs';
 import { bridge, panel, settings, showNames, soundOn, ui, updateSettings } from './store';
 import { HOTKEYS } from './hotkeys';
+import { Spark } from './Spark';
 import { GRID_SIZE } from '../sim/map/grid';
 
 /** QoL: nút tới chỗ xảy ra sự kiện / vấn đề */
@@ -62,6 +63,12 @@ export function Advisors() {
             </table>
           )}
           {c.scenario.timeLimitYears > 0 && <p class="muted">Hạn: {c.scenario.timeLimitYears} năm · đang năm {s.time.year + 1}</p>}
+          {c.tutorial.length > 0 && (
+            <>
+              <p><strong>Các bước cho người mới</strong> ({c.tutorial.filter((t) => t.done).length}/{c.tutorial.length})</p>
+              <ul class="tutorial">{c.tutorial.map((st) => <li class={st.done ? 'done' : ''}>{st.done ? '☑' : '☐'} {st.text}</li>)}</ul>
+            </>
+          )}
           <p><strong>Vấn đề</strong></p>
           {c.problems.length === 0 ? <p class="muted">Không có gì đáng lo. {c.scenario.goals.population > 0 ? 'Xem mục tiêu phía trên.' : ''}</p> : (
             <ul class="problems">{c.problems.map((pr) => <li class={pr.level}>{pr.text} <GoTo at={pr.at} /></li>)}</ul>
@@ -99,6 +106,8 @@ export function Advisors() {
             <strong> {c.taxRate}% </strong>
             <button onClick={() => bridge.cmd({ type: 'setTax', rate: c.taxRate + 1 })}>+</button>
           </p>
+          <p><strong>Ngân khố theo tháng</strong></p>
+          <Spark values={c.history.treasury} color="#f0d890" zero />
           <p>Tháng tới: thu ~{num(c.estTaxes)} · lương ~{num(c.estWages)}{c.estUncollected > 0 && <span class="bad"> · bỏ sót ~{num(c.estUncollected)} (nhà chưa có lại thu thuế)</span>}</p>
           <table class="mini">
             <thead><tr><th></th><th>Năm nay</th><th>Năm trước</th></tr></thead>
@@ -120,6 +129,8 @@ export function Advisors() {
         <>
           <p>Lòng dân {c.sentiment}/100{c.lowMoodCause !== 'none' && <> · bất mãn nhất vì <strong>{MOOD_CAUSE_TEXT[c.lowMoodCause]}</strong></>}</p>
           <p class="muted">Trên 70 dân kéo đến nhanh, 40–50 đứng yên, dưới 20 bỏ đi. Nhà dưới 50 sinh dân kêu oan, dưới 30 trộm, từ 10 trở xuống loạn dân.</p>
+          <p><strong>Dân số theo tháng</strong></p>
+          <Spark values={c.history.pop} color="#9fd98a" />
           <table class="mini">
             <tbody>
               {c.houseLevels.map((n, lvl) => (n > 0 ? <tr><td>{HOUSE_LEVELS[lvl].name}</td><td>{n}</td></tr> : null))}

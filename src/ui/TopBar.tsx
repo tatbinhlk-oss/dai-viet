@@ -1,4 +1,4 @@
-import { bridge, briefing, campaign, fps, panel, resetCampaign, soundOn, ui, type Panel } from './store';
+import { bridge, briefing, campaign, fps, panel, resetCampaign, savesOpen, soundOn, ui, type Panel } from './store';
 import { SCENARIO_LIST } from '../sim/scenario/list';
 import { openScenario } from './App';
 import { MONTHS, num } from './format';
@@ -71,11 +71,7 @@ export function TopBar() {
       ))}
       {s && s.city.scenario.key !== 'sandbox' && <button title="Xem lại nhiệm vụ của màn" onClick={() => (briefing.value = true)}>Nhiệm vụ</button>}
       <span class="sep" />
-      <button title="Lưu vào trình duyệt (tự lưu mỗi tháng ở khe riêng)" onClick={() => bridge.save()}>Lưu</button>
-      <button title="Nạp bản đã bấm Lưu" onClick={() => bridge.load('manual')}>Nạp</button>
-      <button title="Nạp bản tự lưu tháng gần nhất" onClick={() => bridge.load('auto')}>Nạp tự lưu</button>
-      <button title="Xuất file .dvsav để chia sẻ" onClick={() => bridge.exportFile()}>Xuất</button>
-      <label class="filebtn" title="Nhập file .dvsav">Nhập<input type="file" accept=".dvsav" onChange={(e) => { const f = (e.currentTarget as HTMLInputElement).files?.[0]; if (f) void bridge.importFile(f); (e.currentTarget as HTMLInputElement).value = ''; }} /></label>
+      <button title="Lưu / nạp nhiều khe có tên, xuất / nhập file (L; F5 lưu nhanh, F9 nạp nhanh)" onClick={() => { savesOpen.value = !savesOpen.value; bridge.listSaves(); }}>Lưu / Nạp</button>
       </div>
     </div>
   );

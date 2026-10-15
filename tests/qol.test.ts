@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { applyCommand, takeSnapshot, tick } from '../src/sim';
 import { createScenario } from '../src/sim/scenario/loader';
 import { buildCourtTown, buildStressTown, demoPriorities } from '../src/sim/scenario/demo';
-import { BuildingType, DAYS_PER_MONTH, Resource, TICKS_PER_DAY, type GameState } from '../src/sim/state';
+import { BuildingType, DAYS_PER_MONTH, Resource, StorePolicy, TICKS_PER_DAY, type GameState } from '../src/sim/state';
 import { buildingProblem, computeOverlay, OVERLAY_MODES, problemAnchors } from '../src/sim/overlay';
 import { GRID_SIZE, gridOffset } from '../src/sim/map/grid';
 
@@ -208,4 +208,70 @@ describe('phím tắt', () => {
     expect(panVector(new Set())).toEqual([0, 0]);
     expect(HOTKEYS.length).toBeGreaterThan(8);
   });
+});
+
+describe('kho dọn hết, tạm đóng cửa, lịch sử, hướng dẫn màn đầu', () => {
+  it('chính sách Dọn hết: phu kho chở hàng sang kho khác, kho không nhận thêm', () => {
+    const s = createScenario('sonNam', 3, true);
+    s.treasury = 1e6; buildCourtTown(s); demoPriorities(s); buildStressTown(s);
+    runDays(s, DAYS_PER_MONTH);
+    const whs = s.buildings.filter((b) => b.type === BuildingType.Warehouse);
+    expect(whs.length).toBeGreaterThanOrEqual(2);
+    const [a, b] = whs;
+    a.store[Resource.Pottery] = 800; b.store[Resource.Pottery] = 0;
+    for (const w of whs) w.policy[Resource.Pottery] = StorePolicy.Accept;
+    applyCommand(s, { type: 'setStorePolicy', buildingId: a.id, resource: Resource.Pottery, policy: StorePolicy.Empty });
+    expect(a.policy[Resource.Pottery]).toBe(StorePolicy.Empty);
+    runDays(s, DAYS_PER_MONTH * 2);
+    expect(a.store[Resource.Pottery]).toBeLessThan(800);
+    const elsewhere = whs.slice(1).reduce((n, w) => n + w.store[Resource.Pottery], 0);
+    expect(elsewhere).toBeGreaterThan(0);
+    // vựa không nhận "Dọn hết"
+    const g = s.buildings.find((x) => x.type === BuildingType.Granary)!;
+    applyCommand(s, { type: 'setStorePolicy', buildingId: g.id, resource: Resource.Rice, policy: StorePolicy.Empty });
+    expect(g.policy[Resource.Rice]).not.toBe(StorePolicy.Empty);
+  });
+  it('tạm đóng cửa: không cần người làm (ngành bớt nhu cầu), không bị tính là có vấn đề; mở lại thì chạy', () => {
+    const s = createScenario('sonNam', 3, true);
+    s.treasury = 1e6; buildCourtTown(s); demoPriorities(s); buildStressTown(s);
+    runDays(s, DAYS_PER_MONTH);
+    const kiln = s.buildings.find((b) => b.type === BuildingType.Kiln && b.numWorkers > 0)!;
+    expect(kiln).toBeDefined();
+    applyCommand(s, { type: 'setMothball', buildingId: kiln.id, on: true });
+    runDays(s, 2);
+    expect(kiln.numWorkers).toBe(0);
+    expect(kiln.mothballed).toBe(true);
+    expect(buildingProblem(s, kiln)).toBeNull();
+    expect(takeSnapshot(s, false, kiln.id).selected?.mothballed).toBe(true);
+    applyCommand(s, { type: 'setMothball', buildingId: kiln.id, on: false });
+    runDays(s, 3);
+    expect(kiln.numWorkers).toBeGreaterThan(0);
+    // nhà không tạm đóng được
+    const h = s.buildings.find((b) => b.type === BuildingType.House)!;
+    applyCommand(s, { type: 'setMothball', buildingId: h.id, on: true });
+    expect(h.mothballed).toBe(false);
+  });
+  it('lịch sử theo tháng ghi dân / ngân khố / Ân sủng, tối đa 240; hướng dẫn màn đầu đánh dấu xong theo trạng thái', async () => {
+    const { tutorialSteps } = await import('../src/sim/scenario/tutorial');
+    const s = createScenario('langVenSong', 4, true);
+    expect(tutorialSteps(s).every((t) => !t.done)).toBe(true);
+    runDays(s, DAYS_PER_MONTH * 3 + 1);
+    expect(s.history.pop).toHaveLength(4); // tháng 0 ghi ngay đầu màn, rồi mỗi đầu tháng
+    expect(takeSnapshot(s, false).city.history.favor).toHaveLength(4);
+    s.treasury = 1e6;
+    for (let x = 60; x <= 80; x++) applyCommand(s, { type: 'build', kind: 'road', x, y: 80 });
+    applyCommand(s, { type: 'build', kind: 'well', x: 62, y: 81 });
+    applyCommand(s, { type: 'build', kind: 'dinh', x: 64, y: 81 });
+    const steps = tutorialSteps(s);
+    expect(steps[0].done).toBe(true); // đường
+    expect(steps[2].done).toBe(true); // giếng
+    expect(steps[3].done).toBe(true); // đình
+    expect(steps[1].done).toBe(false); // chưa có lều
+    expect(takeSnapshot(s, false).city.tutorial).toHaveLength(steps.length);
+    expect(tutorialSteps(createScenario('tranLi', 4, true))).toEqual([]); // chỉ màn đầu
+    // 240 tháng
+    for (let i = 0; i < 250; i++) { s.history.pop.push(i); s.history.treasury.push(i); s.history.favor.push(i); }
+    runDays(s, DAYS_PER_MONTH);
+    expect(s.history.pop.length).toBeLessThanOrEqual(240);
+  }, 30000);
 });

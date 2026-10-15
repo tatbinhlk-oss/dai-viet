@@ -1,6 +1,7 @@
 // Bảng nha môn (M5): Ân sủng, phẩm hàm, bổng lộc, tiến cống, cống nạp, chiếu chỉ đang treo — gộp senate và forum của Caesar 3.
 import { bridge, ui } from './store';
 import { num } from './format';
+import { Spark } from './Spark';
 
 const GIFT_NAMES = ['Quà mọn', 'Quà hậu', 'Quà trọng'];
 
@@ -18,6 +19,7 @@ export function YamenPanel() {
       </p>
       <p>Phẩm hàm: <em>{c.rankName}</em> · bổng lộc tích lũy {num(c.personalFunds)} quan</p>
       {sc.king && <p>{sc.kingText}</p>}
+      <Spark values={s.city.history.favor} color="#e0a060" />
       <p>
         Bổng lộc tự đặt:{' '}
         <button onClick={() => bridge.cmd({ type: 'setSalary', level: c.salaryLevel - 1 })}>−</button>

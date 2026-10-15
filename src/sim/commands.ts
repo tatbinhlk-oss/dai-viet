@@ -30,7 +30,9 @@ export type Command =
   | { type: 'holdFestival'; deity: number; size: number }
   /** M6a: mở tuyến buôn (chỉ số trong trade.json), lệnh mua / bán theo mặt hàng (0 không, 1 mua, 2 bán) */
   | { type: 'openRoute'; route: number }
-  | { type: 'setTradeOrder'; resource: Resource; order: TradeOrder };
+  | { type: 'setTradeOrder'; resource: Resource; order: TradeOrder }
+  /** QoL: tạm đóng cửa công trình (không cần người làm, không chạy) */
+  | { type: 'setMothball'; buildingId: number; on: boolean };
 
 export function applyCommand(s: GameState, c: Command): void {
   switch (c.type) {
@@ -65,7 +67,12 @@ export function applyCommand(s: GameState, c: Command): void {
     }
     case 'setStorePolicy': {
       const b = s.buildings[c.buildingId];
-      if (b && (b.type === BuildingType.Warehouse || b.type === BuildingType.Granary)) b.policy[c.resource] = c.policy;
+      if (b && (b.type === BuildingType.Warehouse || b.type === BuildingType.Granary) && (c.policy !== StorePolicy.Empty || b.type === BuildingType.Warehouse)) b.policy[c.resource] = c.policy;
+      break;
+    }
+    case 'setMothball': {
+      const b = s.buildings[c.buildingId];
+      if (b && b.type !== BuildingType.None && b.type !== BuildingType.House && BUILDING_DEFS[b.type].workers > 0) { b.mothballed = c.on; if (c.on) b.numWorkers = 0; }
       break;
     }
     case 'setStockpile':

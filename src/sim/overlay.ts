@@ -33,6 +33,7 @@ export function buildingProblem(s: GameState, b: Building): string | null {
   if (b.type === BuildingType.None || b.type === BuildingType.Ruins || isDike(b.type) || isWall(b.type)) return null;
   const def = BUILDING_DEFS[b.type];
   if (b.flooded) return 'đang ngập';
+  if (b.mothballed) return null;
   if (b.type === BuildingType.House) {
     if (b.population > 0 && b.hungryPeriods >= 2) return 'đói';
     return null;

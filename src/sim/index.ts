@@ -27,6 +27,7 @@ import { initWar, nextInvasion, SOURCE_TEXT, WAR } from './city/war';
 import { figureDialogue, type FigureInfo } from './figures/dialogue';
 import { buildingProblem, computeOverlay, problemAnchors, type OverlayMode } from './overlay';
 import { cityProblems, type CityProblem } from './city/overview';
+import { tutorialSteps, type TutorialStep } from './scenario/tutorial';
 export { OVERLAY_MODES, type OverlayMode } from './overlay';
 export { placementError } from './buildings/spawn';
 export { placementCheck, type TileView } from './buildings/placement';
@@ -102,6 +103,7 @@ export function createSim(seed: number, opts: SimOptions = {}): GameState {
     trade: initTrade(),
     war: initWar(),
     events: [],
+    history: { pop: [], treasury: [], favor: [] },
     eventAt: [],
     dirty: new Set(),
   };
@@ -144,6 +146,9 @@ export interface BuildingInfo {
   hp: number | null;
   /** QoL: vì sao công trình có vấn đề (thiếu người, không kề đường…), null = ổn */
   problem: string | null;
+  mothballed: boolean;
+  /** tầm cấp nước (giếng) để vẽ vùng phục vụ; 0 = không */
+  range: number;
   /** đê/cống */
   dike: { height: number; target: number; integrity: number; workPct: number; sluiceOpen: boolean | null; working: boolean } | null;
   /** ruộng lúa */
@@ -186,6 +191,8 @@ export function inspectBuilding(s: GameState, id: number): BuildingInfo | null {
     pollutedDays: b.pollutedDays,
     hp: isWall(b.type) ? b.integrity : null,
     problem: buildingProblem(s, b),
+    mothballed: b.mothballed,
+    range: def.waterLevel > 0 ? def.waterRange : 0,
   };
 }
 
@@ -217,6 +224,9 @@ export interface CityStats {
   /** QoL: offset ô của từng sự kiện (−1 = không), song song với events; danh sách vấn đề (cố vấn tổng quan) */
   eventAt: number[];
   problems: CityProblem[];
+  /** QoL: biểu đồ theo tháng và các bước hướng dẫn màn đầu */
+  history: GameState['history'];
+  tutorial: TutorialStep[];
   /** M4: mùa lũ và đê */
   flood: FloodStats;
   /** M5 */
@@ -363,7 +373,7 @@ export function cityStats(s: GameState): CityStats {
     estTaxes: Math.floor((base.covered * s.taxRate) / 100),
     estUncollected: Math.floor((base.uncovered * s.taxRate) / 100),
     estWages: monthlyWages(s),
-    stored, stockpile: [...s.stockpile], houseLevels, events: [...s.events], eventAt: [...s.eventAt], problems: cityProblems(s),
+    stored, stockpile: [...s.stockpile], houseLevels, events: [...s.events], eventAt: [...s.eventAt], problems: cityProblems(s), history: s.history, tutorial: tutorialSteps(s),
     flood: floodStats,
     ratings: { culture: s.ratings.culture, prosperity: s.ratings.prosperity, prosperityCap: prosperityCap(s), peace: s.ratings.peace, health: s.ratings.health, cultureBreakdown: cultureBreakdown(s), yearsCalm: s.ratings.yearsCalm },
     court: courtStats,

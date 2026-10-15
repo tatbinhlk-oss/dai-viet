@@ -7,7 +7,7 @@ import { BuildingType, isDike } from './sim/state';
 import type { WorkerIn, WorkerOut } from './worker/sim.worker';
 import { App } from './ui/App';
 import { toolSize } from './ui/BuildBar';
-import { bridge, briefing, campaign, fps, hoverText, overlay, panel, recordWin, settings, showNames, soundOn, tool, ui, updateSettings } from './ui/store';
+import { bridge, briefing, campaign, fps, hoverText, overlay, panel, recordWin, saves, savesOpen, settings, showNames, soundOn, tool, ui, updateSettings } from './ui/store';
 import { hotkeyAction, panVector } from './ui/hotkeys';
 import { OVERLAY_MODES } from './sim/overlay';
 import { Audio, soundForEvent } from './render/audio';
@@ -38,7 +38,7 @@ async function main() {
   bridge.tiles = () => render.tiles();
   bridge.view = () => render.view();
   // QoL: cài đặt — âm lượng, cỡ chữ
-  settings.subscribe((st) => { audio.setVolume(st.volume); document.documentElement.style.setProperty('--ui-scale', String(st.uiScale)); });
+  settings.subscribe((st) => { audio.setVolume(st.volume); document.documentElement.style.setProperty('--ui-scale', String(st.uiScale)); render.setMinimap(st.minimap); });
   // QoL: phím tắt (không bắt khi đang gõ vào ô nhập)
   const held = new Set<string>();
   const typing = (e: KeyboardEvent) => { const t = e.target as HTMLElement | null; return !!t && (t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.tagName === 'TEXTAREA'); };
@@ -61,13 +61,18 @@ async function main() {
       case 'panel': panel.value = panel.value === a.panel ? null : (a.panel as typeof panel.value); break;
       case 'help': panel.value = panel.value === 'settings' ? null : 'settings'; break;
       case 'undo': bridge.undo(); break;
+      case 'quickSave': bridge.save('quick'); break;
+      case 'quickLoad': bridge.load('quick'); break;
+      case 'saves': savesOpen.value = !savesOpen.value; break;
     }
   });
   window.addEventListener('keyup', (e) => { held.delete(e.key.length === 1 ? e.key.toLowerCase() : e.key); });
   window.addEventListener('blur', () => held.clear());
   render.app.ticker.add(() => { if (held.size) { const [dx, dy] = panVector(held); if (dx || dy) render.pan(dx, dy); } });
-  bridge.save = () => send({ type: 'save' });
+  bridge.save = (slot, name) => send({ type: 'save', slot, name });
   bridge.load = (slot) => send({ type: 'load', slot });
+  bridge.listSaves = () => send({ type: 'listSaves' });
+  send({ type: 'listSaves' });
   bridge.exportFile = () => send({ type: 'export' });
   bridge.importFile = async (file) => send({ type: 'import', bytes: new Uint8Array(await file.arrayBuffer()) });
 
@@ -144,6 +149,8 @@ async function main() {
       for (let i = seenEvents; i < ev.length; i++) { const k = soundForEvent(ev[i]); if (k) audio.play(k, 2000); }
       seenEvents = ev.length;
       render.applySnapshot(latest);
+      const sel = latest.selected;
+      render.setRange(sel && sel.range > 0 ? { x: sel.x, y: sel.y, size: (BUILDING_DEFS[sel.type]?.size ?? 1), range: sel.range } : null);
     } else if (e.data.type === 'file') {
       const url = URL.createObjectURL(new Blob([e.data.bytes as BlobPart], { type: 'application/gzip' }));
       const a = Object.assign(document.createElement('a'), { href: url, download: e.data.name });
@@ -151,6 +158,8 @@ async function main() {
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     } else if (e.data.type === 'notice') {
       hoverText.value = e.data.text;
+    } else if (e.data.type === 'saves') {
+      saves.value = e.data.saves;
     }
   };
   setInterval(() => { if (latest) ui.value = latest; }, 250);

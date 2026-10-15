@@ -139,7 +139,7 @@ export enum FigureMode {
 }
 
 /** Chính sách kho cho từng loại hàng. */
-export enum StorePolicy { Accept = 0, Refuse = 1, Get = 2 }
+export enum StorePolicy { Accept = 0, Refuse = 1, Get = 2, /** QoL: dọn hết — phu kho chở sang kho khác, không nhận thêm */ Empty = 3 }
 
 export interface Building {
   id: number;
@@ -178,6 +178,8 @@ export interface Building {
   // lao động
   numWorkers: number;
   housesCovered: number; // >0: người mộ phu đã thấy nhà gần đây
+  /** QoL: tạm đóng cửa (mothball) — không cần người làm, không chạy; vẫn cháy / sập */
+  mothballed: boolean;
   // rủi ro
   fireRisk: number;
   damageRisk: number;
@@ -476,6 +478,8 @@ export interface GameState {
   war: WarState;
   /** sự kiện gần đây cho UI (cháy, sập, trộm…), tối đa 8 dòng */
   events: string[];
+  /** QoL: lịch sử theo tháng (tối đa 240 tháng) cho biểu đồ: dân, ngân khố, Ân sủng */
+  history: { pop: number[]; treasury: number[]; favor: number[] };
   /** QoL: offset ô của từng sự kiện (−1 = không có chỗ), song song với events */
   eventAt: number[];
   dirty: Set<number>; // offset ô đã đổi kể từ snapshot trước
@@ -493,7 +497,7 @@ export function newBuilding(id: number, type: BuildingType, x: number, y: number
     progress: 0, numWorkers: 0, housesCovered: 0,
     fireRisk: 0, damageRisk: 0, burnDays: 0,
     figureId: 0, figureId2: 0, laborSeekerId: 0, spawnCounter: 0,
-    flooded: false, floodedThisSeason: false, silted: false, dryYears: 0, floodMoodPeriods: 0, pollutedDays: 0,
+    flooded: false, floodedThisSeason: false, silted: false, dryYears: 0, floodMoodPeriods: 0, pollutedDays: 0, mothballed: false,
     height: 0, targetHeight: 0, integrity: 0, workDone: 0, earthTaken: false, sluiceOpen: false,
   };
 }

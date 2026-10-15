@@ -7,6 +7,7 @@ import { FigureLayer } from './figures';
 import { loadSheets } from './sheets';
 import { HALF_H, HALF_W, TILE_H, tileToWorld, worldToTile, ZOOM_LEVELS } from './iso';
 import { linePath, rectPath } from './line';
+import { Minimap } from './minimap';
 
 export interface RenderApp {
   app: Application;
@@ -30,8 +31,12 @@ export interface RenderApp {
   tileBuilding(x: number, y: number): { type: number; level: number } | null;
   /** đưa camera tới ô (x, y) */
   lookAt(x: number, y: number): void;
+  /** QoL: vẽ vùng phục vụ (giếng: ô vuông bán kính range quanh móng) của công trình đang chọn; null = tắt */
+  setRange(r: { x: number; y: number; size: number; range: number } | null): void;
   /** QoL: dời camera theo pixel màn hình (phím mũi tên) */
   pan(dx: number, dy: number): void;
+  /** QoL: bật / tắt bản đồ thu nhỏ (vẽ trong Pixi, góc dưới phải) */
+  setMinimap(on: boolean): void;
   /** QoL: vùng đang nhìn (ô tâm và bốn góc màn hình theo ô) cho bản đồ thu nhỏ */
   view(): { cx: number; cy: number; corners: [number, number][] };
   /** lớp phủ: 'flood' tô theo cờ địa hình (M4); các chế độ khác lấy dữ liệu từ snapshot (QoL); '' tắt */
@@ -68,6 +73,16 @@ export async function createRenderApp(canvas: HTMLCanvasElement): Promise<Render
   const hover = new Graphics();
   hover.zIndex = 2;
   world.addChild(hover);
+  // QoL: HUD trong Pixi (bản đồ thu nhỏ) — không chịu phép biến đổi camera
+  const minimap = new Minimap();
+  app.stage.addChild(minimap.node);
+  minimap.layout(app.screen.width, app.screen.height);
+  let miniDrag = false;
+  let miniTick = 0;
+  const rangeG = new Graphics(); // vùng phục vụ công trình đang chọn
+  rangeG.zIndex = 2;
+  world.addChild(rangeG);
+  let rangeKey = '';
   const ghost = new Graphics(); // đoạn đang kéo (mờ)
   ghost.zIndex = 2;
   world.addChild(ghost);
@@ -118,6 +133,8 @@ export async function createRenderApp(canvas: HTMLCanvasElement): Promise<Render
   window.addEventListener('keyup', (e) => { if (e.code === 'Space') spaceHeld = false; });
   canvas.addEventListener('contextmenu', (e) => e.preventDefault());
   canvas.addEventListener('pointerdown', (e) => {
+    const mh = minimap.hit(e.clientX, e.clientY);
+    if (mh && (e.button === 0 || e.pointerType === 'touch')) { result.lookAt(mh.x, mh.y); miniDrag = true; try { canvas.setPointerCapture(e.pointerId); } catch { /* giả lập */ } return; }
     if (e.pointerType === 'touch') {
       try { canvas.setPointerCapture(e.pointerId); } catch { /* sự kiện giả lập không có con trỏ thật */ }
       touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -134,6 +151,7 @@ export async function createRenderApp(canvas: HTMLCanvasElement): Promise<Render
     }
   });
   canvas.addEventListener('pointermove', (e) => {
+    if (miniDrag) { const mh = minimap.hit(e.clientX, e.clientY); if (mh) result.lookAt(mh.x, mh.y); return; }
     if (e.pointerType === 'touch') {
       if (!touches.has(e.pointerId)) return;
       touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -177,6 +195,7 @@ export async function createRenderApp(canvas: HTMLCanvasElement): Promise<Render
     if (touches.size < 2) pinchBase = 0;
   };
   canvas.addEventListener('pointerup', (e) => {
+    if (miniDrag) { miniDrag = false; return; }
     if (e.pointerType === 'touch') { endTouch(e); return; }
     if (dragging) { dragging = false; return; }
     if (lineStart && e.button === 0) {
@@ -199,7 +218,7 @@ export async function createRenderApp(canvas: HTMLCanvasElement): Promise<Render
     e.preventDefault();
     setZoom(zoomIdx + (e.deltaY < 0 ? 1 : -1), e.clientX, e.clientY);
   }, { passive: false });
-  window.addEventListener('resize', applyCamera);
+  window.addEventListener('resize', () => { applyCamera(); minimap.layout(app.screen.width, app.screen.height); });
 
   function screenToWorld(sx: number, sy: number) {
     const z = ZOOM_LEVELS[zoomIdx];
@@ -246,7 +265,10 @@ export async function createRenderApp(canvas: HTMLCanvasElement): Promise<Render
     }
   }
 
-  app.ticker.add(() => { chunks.flush(); figures.update(); });
+  app.ticker.add(() => {
+    chunks.flush(); figures.update();
+    if (minimap.node.visible && ++miniTick % 15 === 0) minimap.update(chunks.tiles(), result.view().corners); // ~4 lần/giây
+  });
 
   /** vẽ lại khung đặt khi công cụ đổi (main gọi) */
   const result: RenderApp = {
@@ -272,6 +294,17 @@ export async function createRenderApp(canvas: HTMLCanvasElement): Promise<Render
       const p = tileToWorld(x, y);
       camera.x = p.wx; camera.y = p.wy;
       applyCamera();
+    },
+    setMinimap(on) { minimap.node.visible = on; if (on) minimap.update(chunks.tiles(), result.view().corners); },
+    setRange(r) {
+      const key = r ? `${r.x},${r.y},${r.size},${r.range}` : '';
+      if (key === rangeKey) return;
+      rangeKey = key;
+      rangeG.clear();
+      if (!r) return;
+      const x0 = Math.max(0, r.x - r.range), y0 = Math.max(0, r.y - r.range), x1 = Math.min(GRID_SIZE - 1, r.x + r.size - 1 + r.range), y1 = Math.min(GRID_SIZE - 1, r.y + r.size - 1 + r.range);
+      const a = tileToWorld(x0, y0), b = tileToWorld(x1 + 1, y0), c = tileToWorld(x1 + 1, y1 + 1), d = tileToWorld(x0, y1 + 1);
+      rangeG.poly([a.wx, a.wy, b.wx, b.wy, c.wx, c.wy, d.wx, d.wy]).fill({ color: 0x60b8ff, alpha: 0.12 }).stroke({ color: 0x8fd0ff, width: 2, alpha: 0.9 });
     },
     pan(dx, dy) { const z = ZOOM_LEVELS[zoomIdx]; camera.x += dx / z; camera.y += dy / z; applyCamera(); },
     view() {

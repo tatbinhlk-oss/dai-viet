@@ -23,7 +23,7 @@ export function updateLabor(s: GameState): void {
     const def = BUILDING_DEFS[b.type];
     eligible[b.id] = false;
     if (!def || def.workers === 0 || def.labor < 0) continue;
-    if (b.housesCovered <= 0 || roadAccess(s.grid, b) < 0) { b.numWorkers = 0; continue; }
+    if (b.mothballed || b.housesCovered <= 0 || roadAccess(s.grid, b) < 0) { b.numWorkers = 0; continue; } // QoL: tạm đóng cửa
     eligible[b.id] = true;
     needed[def.labor] += def.workers;
   }

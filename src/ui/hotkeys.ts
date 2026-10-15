@@ -3,7 +3,8 @@ import { OVERLAY_MODES } from '../sim/overlay';
 
 export type HotkeyAction =
   | { kind: 'pause' } | { kind: 'speed'; delta: number } | { kind: 'overlay'; index: number } | { kind: 'overlayOff' }
-  | { kind: 'minimap' } | { kind: 'names' } | { kind: 'panel'; panel: string } | { kind: 'tool'; tool: string } | { kind: 'undo' } | { kind: 'help' };
+  | { kind: 'minimap' } | { kind: 'names' } | { kind: 'panel'; panel: string } | { kind: 'tool'; tool: string } | { kind: 'undo' } | { kind: 'help' }
+  | { kind: 'quickSave' } | { kind: 'quickLoad' } | { kind: 'saves' };
 
 export const HOTKEYS: { keys: string; text: string }[] = [
   { keys: '← ↑ → ↓ / W A S D', text: 'dời bản đồ' },
@@ -18,6 +19,8 @@ export const HOTKEYS: { keys: string; text: string }[] = [
   { keys: 'Ctrl+Z', text: 'hoàn tác lần xây gần nhất' },
   { keys: 'Esc', text: 'bỏ đoạn đang kéo, đóng bảng' },
   { keys: 'F1', text: 'bảng Cài đặt và phím tắt' },
+  { keys: 'F5 / F9', text: 'lưu nhanh / nạp bản lưu nhanh' },
+  { keys: 'L', text: 'hộp Lưu / Nạp (khe có tên)' },
 ];
 
 /** Ánh xạ một phím (KeyboardEvent.key) không kèm Ctrl / Meta → hành động; null = không phải phím tắt. */
@@ -37,6 +40,9 @@ export function hotkeyAction(key: string, ctrl: boolean): HotkeyAction | null {
   if (k === 'q') return { kind: 'tool', tool: 'inspect' };
   if (k === 't') return { kind: 'panel', panel: 'overview' };
   if (k === 'F1') return { kind: 'help' };
+  if (k === 'F5') return { kind: 'quickSave' };
+  if (k === 'F9') return { kind: 'quickLoad' };
+  if (k === 'l') return { kind: 'saves' };
   return null;
 }
 

@@ -31,6 +31,7 @@ export function tick(s: GameState): void {
     case 0:
       if (day === 0) { updateFinance(s); consumeGoods(s); if (s.time.month === 0 && s.time.totalDays > 0) { updateYearlyRatings(s); yearlyTrade(s); } } // theo tháng; đầu năm: Thịnh vượng, Trị an (M5), hạn ngạch buôn (M6a)
       if (day === 0 || day === 8) consumeFood(s);
+      if (day === 0) { const h = s.history; h.pop.push(s.population); h.treasury.push(s.treasury); h.favor.push(s.court.favor); while (h.pop.length > 240) { h.pop.shift(); h.treasury.shift(); h.favor.shift(); } } // QoL: biểu đồ
       break;
     case 1: evolveHouses(s); break;
     case 2: decayServices(s); break;
