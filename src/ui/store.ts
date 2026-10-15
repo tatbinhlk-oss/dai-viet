@@ -2,7 +2,7 @@
 import { signal } from '@preact/signals';
 import type { Command, OverlayMode, Snapshot } from '../sim';
 
-export type Panel = 'overview' | 'labor' | 'finance' | 'mood' | 'storage' | 'flood' | 'court' | 'worship' | 'ratings' | 'trade' | null;
+export type Panel = 'settings' | 'overview' | 'labor' | 'finance' | 'mood' | 'storage' | 'flood' | 'court' | 'worship' | 'ratings' | 'trade' | null;
 
 /** Snapshot mới nhất, cập nhật ~4 lần/giây cho bảng biểu (render vẫn nhận mọi snapshot). */
 export const ui = signal<Snapshot | null>(null);
@@ -42,6 +42,19 @@ export function resetCampaign(): void {
   try { localStorage.removeItem(CAMPAIGN_KEY); } catch { /* bỏ qua */ }
 }
 
+/** QoL: cài đặt (localStorage): âm lượng, cỡ chữ, bản đồ thu nhỏ */
+export interface Settings { volume: number; uiScale: number; minimap: boolean }
+const SETTINGS_KEY = 'dai-viet.settings';
+function loadSettings(): Settings {
+  const d: Settings = { volume: 0.8, uiScale: 1, minimap: true };
+  try { const raw = localStorage.getItem(SETTINGS_KEY); if (raw) Object.assign(d, JSON.parse(raw) as Partial<Settings>); } catch { /* bỏ qua */ }
+  return d;
+}
+export const settings = signal<Settings>(loadSettings());
+export function updateSettings(patch: Partial<Settings>): void {
+  settings.value = { ...settings.value, ...patch };
+  try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings.value)); } catch { /* bỏ qua */ }
+}
 /** QoL: màn giới thiệu nhiệm vụ đang mở */
 export const briefing = signal(false);
 /** M6c: âm thanh bật / tắt (nút 🔊) */
@@ -52,8 +65,10 @@ export const bridge = {
   select: (_x: number, _y: number) => {},
   /** QoL: hoàn tác lần xây gần nhất */
   undo: () => {},
-  /** QoL: đưa camera tới ô */
+  /** QoL: đưa camera tới ô; lưới render cho bản đồ thu nhỏ; vùng đang nhìn */
   lookAt: (_x: number, _y: number) => {},
+  tiles: (): { terrain: Uint16Array; elevation: Uint8Array; bType: Uint8Array } | null => null,
+  view: (): { cx: number; cy: number; corners: [number, number][] } | null => null,
   // M6a: lưu game
   save: () => {},
   load: (_slot: 'auto' | 'manual') => {},

@@ -2,7 +2,8 @@
 import { LABOR_NAMES } from '../sim/city/labor';
 import { MOOD_CAUSE_TEXT } from '../sim/city/sentiment';
 import { HOUSE_LEVELS, RESOURCES } from '../sim/buildings/defs';
-import { bridge, panel, ui } from './store';
+import { bridge, panel, settings, showNames, soundOn, ui, updateSettings } from './store';
+import { HOTKEYS } from './hotkeys';
 import { GRID_SIZE } from '../sim/map/grid';
 
 /** QoL: nút tới chỗ xảy ra sự kiện / vấn đề */
@@ -24,9 +25,30 @@ export function Advisors() {
   return (
     <div class="panel advisor">
       <div class="head">
-        <strong>{{ overview: 'Tổng quan — cố vấn', labor: 'Lao động', finance: 'Tài chính', mood: 'Dân tình', storage: 'Kho hàng', flood: 'Thủy lợi', court: 'Nha môn — triều đình', worship: 'Tín ngưỡng', ratings: 'Bốn chỉ số', trade: 'Thương mại' }[p]}</strong>
+        <strong>{{ settings: 'Cài đặt và phím tắt', overview: 'Tổng quan — cố vấn', labor: 'Lao động', finance: 'Tài chính', mood: 'Dân tình', storage: 'Kho hàng', flood: 'Thủy lợi', court: 'Nha môn — triều đình', worship: 'Tín ngưỡng', ratings: 'Bốn chỉ số', trade: 'Thương mại' }[p]}</strong>
         <button onClick={() => (panel.value = null)}>✕</button>
       </div>
+      {p === 'settings' && (
+        <>
+          <p>
+            <label>Âm lượng {Math.round(settings.value.volume * 100)}% <input type="range" min={0} max={100} value={Math.round(settings.value.volume * 100)} onInput={(e) => updateSettings({ volume: Number((e.currentTarget as HTMLInputElement).value) / 100 })} /></label>{' '}
+            <button class={soundOn.value ? '' : 'active'} onClick={() => (soundOn.value = !soundOn.value)}>{soundOn.value ? 'Tắt tiếng' : 'Bật tiếng'}</button>
+          </p>
+          <p>
+            Cỡ chữ:{' '}
+            {([['Nhỏ', 0.9], ['Vừa', 1], ['Lớn', 1.15], ['Rất lớn', 1.3]] as [string, number][]).map(([n, v]) => (
+              <button class={Math.abs(settings.value.uiScale - v) < 0.01 ? 'active' : ''} onClick={() => updateSettings({ uiScale: v })}>{n}</button>
+            ))}
+          </p>
+          <p>
+            <button class={settings.value.minimap ? 'active' : ''} onClick={() => updateSettings({ minimap: !settings.value.minimap })}>Bản đồ thu nhỏ</button>{' '}
+            <button class={showNames.value ? 'active' : ''} onClick={() => (showNames.value = !showNames.value)}>Hiện tên công trình</button>
+          </p>
+          <p class="muted">Âm thanh thật chưa có; thả file vào public/sounds/ là phát (xem README). Cài đặt ghi trong trình duyệt.</p>
+          <p><strong>Phím tắt</strong></p>
+          <table class="mini"><tbody>{HOTKEYS.map((h) => <tr><td><em>{h.keys}</em></td><td>{h.text}</td></tr>)}</tbody></table>
+        </>
+      )}
       {p === 'overview' && (
         <>
           {c.scenario.goals.population > 0 && (

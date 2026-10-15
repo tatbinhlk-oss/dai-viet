@@ -30,6 +30,10 @@ export interface RenderApp {
   tileBuilding(x: number, y: number): { type: number; level: number } | null;
   /** đưa camera tới ô (x, y) */
   lookAt(x: number, y: number): void;
+  /** QoL: dời camera theo pixel màn hình (phím mũi tên) */
+  pan(dx: number, dy: number): void;
+  /** QoL: vùng đang nhìn (ô tâm và bốn góc màn hình theo ô) cho bản đồ thu nhỏ */
+  view(): { cx: number; cy: number; corners: [number, number][] };
   /** lớp phủ: 'flood' tô theo cờ địa hình (M4); các chế độ khác lấy dữ liệu từ snapshot (QoL); '' tắt */
   setOverlay(mode: string): void;
   /** M6-0: nhãn tên Pixi đè lên công trình có hình thật */
@@ -268,6 +272,13 @@ export async function createRenderApp(canvas: HTMLCanvasElement): Promise<Render
       const p = tileToWorld(x, y);
       camera.x = p.wx; camera.y = p.wy;
       applyCamera();
+    },
+    pan(dx, dy) { const z = ZOOM_LEVELS[zoomIdx]; camera.x += dx / z; camera.y += dy / z; applyCamera(); },
+    view() {
+      const c = worldToTile(camera.x, camera.y);
+      const w = app.screen.width, h = app.screen.height;
+      const corner = (sx: number, sy: number): [number, number] => { const t = screenToTile(sx, sy); return [t.x, t.y]; };
+      return { cx: c.x, cy: c.y, corners: [corner(0, 0), corner(w, 0), corner(w, h), corner(0, h)] };
     },
     setOverlay(mode) { chunks.setOverlay(mode === 'flood'); if (!mode || mode === 'flood') chunks.setOverlayData(null); },
     setShowNames(on) { chunks.setShowNames(on); },

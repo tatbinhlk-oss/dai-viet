@@ -189,3 +189,23 @@ describe('cố vấn tổng quan, sự kiện có vị trí, giới thiệu nhi�
     expect(takeSnapshot(t, false).city.problems.length).toBe(ps.length);
   });
 });
+
+describe('phím tắt', () => {
+  it('ánh xạ phím → hành động; mũi tên / WASD dời bản đồ', async () => {
+    const { hotkeyAction, panVector, HOTKEYS } = await import('../src/ui/hotkeys');
+    expect(hotkeyAction('p', false)).toEqual({ kind: 'pause' });
+    expect(hotkeyAction('P', false)).toEqual({ kind: 'pause' });
+    expect(hotkeyAction('+', false)).toEqual({ kind: 'speed', delta: 1 });
+    expect(hotkeyAction('-', false)).toEqual({ kind: 'speed', delta: -1 });
+    expect(hotkeyAction('1', false)).toEqual({ kind: 'overlay', index: 1 });
+    expect(hotkeyAction('0', false)).toEqual({ kind: 'overlayOff' });
+    expect(hotkeyAction('z', true)).toEqual({ kind: 'undo' });
+    expect(hotkeyAction('z', false)).toBeNull();
+    expect(hotkeyAction('F1', false)).toEqual({ kind: 'help' });
+    expect(hotkeyAction('r', false)).toEqual({ kind: 'tool', tool: 'road' });
+    expect(panVector(new Set(['ArrowLeft', 'w']))).toEqual([-12, -12]);
+    expect(panVector(new Set(['d', 'ArrowDown']), 5)).toEqual([5, 5]);
+    expect(panVector(new Set())).toEqual([0, 0]);
+    expect(HOTKEYS.length).toBeGreaterThan(8);
+  });
+});

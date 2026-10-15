@@ -7,6 +7,8 @@ const MUTE_KEY = 'dai-viet.muted';
 
 export class Audio {
   private ctx: AudioContext | null = null;
+  private master: GainNode | null = null;
+  volume = 1;
   private buffers = new Map<string, Promise<AudioBuffer | null>>();
   private ambient: AudioBufferSourceNode | null = null;
   private lastPlay = new Map<string, number>();
@@ -20,6 +22,9 @@ export class Audio {
     window.addEventListener('keydown', unlock);
   }
 
+  /** âm lượng chung 0..1 */
+  setVolume(v: number): void { this.volume = Math.max(0, Math.min(1, v)); if (this.master) this.master.gain.value = this.volume; }
+
   setMuted(m: boolean): void {
     this.muted = m;
     try { localStorage.setItem(MUTE_KEY, m ? '1' : '0'); } catch { /* bỏ qua */ }
@@ -27,7 +32,7 @@ export class Audio {
   }
 
   private ensure(): AudioContext | null {
-    if (!this.ctx && typeof AudioContext !== 'undefined') { this.ctx = new AudioContext(); void this.startAmbient(); }
+    if (!this.ctx && typeof AudioContext !== 'undefined') { this.ctx = new AudioContext(); this.master = this.ctx.createGain(); this.master.gain.value = this.volume; this.master.connect(this.ctx.destination); void this.startAmbient(); }
     if (this.ctx?.state === 'suspended') void this.ctx.resume();
     return this.ctx;
   }
@@ -64,7 +69,7 @@ export class Audio {
       if (!buf || this.muted) return;
       const src = ctx.createBufferSource();
       src.buffer = buf;
-      src.connect(ctx.destination);
+      src.connect(this.master ?? ctx.destination);
       src.start();
     });
   }
@@ -76,7 +81,7 @@ export class Audio {
     const src = this.ctx.createBufferSource();
     src.buffer = buf; src.loop = true;
     const gain = this.ctx.createGain(); gain.gain.value = 0.5;
-    src.connect(gain).connect(this.ctx.destination);
+    src.connect(gain).connect(this.master ?? this.ctx.destination);
     src.start();
     this.ambient = src;
   }
