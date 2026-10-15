@@ -109,6 +109,8 @@ export async function createRenderApp(canvas: HTMLCanvasElement): Promise<Render
   // M6c: cảm ứng — một ngón kéo dời bản đồ, hai ngón chụm zoom, chạm (không kéo) để đặt / xem
   const touches = new Map<number, { x: number; y: number }>();
   let touchDownAt = 0, pinchBase = 0, pinchZoomIdx = 1, pinched = false;
+  let touchDrawTimer = 0; // giữ một ngón ≥ 450 ms không nhúc nhích → vẽ đoạn / vùng thay vì dời bản đồ
+  let touchDrawing = false;
   const setZoom = (next: number, sx: number, sy: number) => {
     next = Math.max(0, Math.min(ZOOM_LEVELS.length - 1, next));
     if (next === zoomIdx) return;
@@ -138,7 +140,17 @@ export async function createRenderApp(canvas: HTMLCanvasElement): Promise<Render
     if (e.pointerType === 'touch') {
       try { canvas.setPointerCapture(e.pointerId); } catch { /* sự kiện giả lập không có con trỏ thật */ }
       touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
-      if (touches.size === 1) { downX = e.clientX; downY = e.clientY; touchDownAt = performance.now(); pinched = false; }
+      if (touches.size === 1) {
+        downX = e.clientX; downY = e.clientY; touchDownAt = performance.now(); pinched = false; touchDrawing = false;
+        clearTimeout(touchDrawTimer);
+        if (result.lineTool || result.rectTool) touchDrawTimer = window.setTimeout(() => {
+          const p = touches.get(e.pointerId);
+          if (!p || touches.size !== 1 || Math.hypot(p.x - downX, p.y - downY) >= 10) return;
+          const t = screenToTile(p.x, p.y);
+          if (!inGrid(t.x, t.y)) return;
+          touchDrawing = true; lineStart = t; dragRect = result.rectTool; updateLine(t.x, t.y);
+        }, 450);
+      }
       if (touches.size === 2) { pinchBase = touchSpan(); pinchZoomIdx = zoomIdx; pinched = true; }
       const c = touchCenter(); lastX = c.x; lastY = c.y;
       return;
@@ -155,6 +167,8 @@ export async function createRenderApp(canvas: HTMLCanvasElement): Promise<Render
     if (e.pointerType === 'touch') {
       if (!touches.has(e.pointerId)) return;
       touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (touchDrawing) { const t = screenToTile(e.clientX, e.clientY); updateLine(t.x, t.y); return; }
+      if (Math.hypot(e.clientX - downX, e.clientY - downY) >= 10) clearTimeout(touchDrawTimer);
       const c = touchCenter();
       const z = ZOOM_LEVELS[zoomIdx];
       camera.x -= (c.x - lastX) / z;
@@ -185,6 +199,12 @@ export async function createRenderApp(canvas: HTMLCanvasElement): Promise<Render
   const endTouch = (e: PointerEvent) => {
     if (!touches.has(e.pointerId)) return;
     touches.delete(e.pointerId);
+    clearTimeout(touchDrawTimer);
+    if (touchDrawing) {
+      touchDrawing = false;
+      if (e.type === 'pointerup') { const t = screenToTile(e.clientX, e.clientY); updateLine(t.x, t.y); const tiles = lineTiles; cancelLine(); if (tiles.length) result.onLine(tiles); } else cancelLine();
+      return;
+    }
     // chạm nhanh, không kéo, không chụm → đặt / xem tại ô
     if (touches.size === 0 && !pinched && e.type === 'pointerup' && performance.now() - touchDownAt < 500 && Math.hypot(e.clientX - downX, e.clientY - downY) < 10) {
       const t = screenToTile(e.clientX, e.clientY);

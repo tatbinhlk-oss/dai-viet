@@ -60,6 +60,17 @@
       ul.tutorial { margin: 4px 0; padding-left: 4px; list-style: none; }
       ul.tutorial li.done { color: var(--muted); text-decoration: line-through; }
       .spark svg { display: block; }
+      .gameover.start { max-width: 520px; text-align: left; }
+      .gameover.start h2 { margin: 2px 0 12px; font-size: 26px; color: #f0d890; letter-spacing: 0.06em; }
+      .gameover.start .menu { display: flex; flex-direction: column; gap: 8px; }
+      .gameover.start .menu button { text-align: left; padding: 8px 12px; font-size: 15px; }
+      .toasts { position: absolute; right: 10px; top: 130px; display: flex; flex-direction: column; gap: 6px; max-width: 360px; }
+      .toast { background: var(--bg); border: 1px solid var(--line); border-left-width: 4px; padding: 6px 10px; display: flex; gap: 6px; align-items: center; font-size: 13px; }
+      .toast.bad { border-left-color: var(--bad); }
+      .toast.warn { border-left-color: #f0d890; }
+      .toast.info { border-left-color: #9fd98a; }
+      .toast span { flex: 1; }
+      @media (max-width: 700px), (max-height: 520px) { .toasts { top: auto; bottom: 30px; left: 10px; right: auto; max-width: 60%; } }
       .gameover .actions { margin-top: 10px; display: flex; gap: 8px; align-items: center; justify-content: center; flex-wrap: wrap; }
       .overlaypick select { background: var(--btn); color: var(--ink); border: 1px solid var(--line); font: inherit; padding: 2px 4px; }
       .overlaypick select.active { background: var(--on); color: #111; }

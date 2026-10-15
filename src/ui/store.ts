@@ -44,10 +44,10 @@ export function resetCampaign(): void {
 }
 
 /** QoL: cài đặt (localStorage): âm lượng, cỡ chữ, bản đồ thu nhỏ */
-export interface Settings { volume: number; uiScale: number; minimap: boolean }
+export interface Settings { volume: number; uiScale: number; minimap: boolean; /** tự tạm dừng khi có tin quan trọng (giặc, vỡ đê, chiếu chỉ, cách chức) */ pauseOnEvent: boolean }
 const SETTINGS_KEY = 'dai-viet.settings';
 function loadSettings(): Settings {
-  const d: Settings = { volume: 0.8, uiScale: 1, minimap: true };
+  const d: Settings = { volume: 0.8, uiScale: 1, minimap: true, pauseOnEvent: true };
   try { const raw = localStorage.getItem(SETTINGS_KEY); if (raw) Object.assign(d, JSON.parse(raw) as Partial<Settings>); } catch { /* bỏ qua */ }
   return d;
 }
@@ -59,6 +59,16 @@ export function updateSettings(patch: Partial<Settings>): void {
 /** QoL: danh sách khe lưu (worker gửi) và hộp Lưu / Nạp */
 export const saves = signal<SaveMeta[]>([]);
 export const savesOpen = signal(false);
+/** QoL: hộp tin nổi (giặc tới, vỡ đê, chiếu chỉ, cách chức…) */
+export interface Toast { id: number; text: string; at: number; level: 'bad' | 'warn' | 'info'; born: number }
+export const toasts = signal<Toast[]>([]);
+let toastSeq = 0;
+export function pushToast(text: string, at: number, level: Toast['level']): void {
+  toasts.value = [...toasts.value.slice(-4), { id: ++toastSeq, text, at, level, born: Date.now() }];
+}
+export function dismissToast(id: number): void { toasts.value = toasts.value.filter((t) => t.id !== id); }
+/** QoL: menu bắt đầu đang mở (chưa vào bản đồ) */
+export const startMenu = signal(false);
 /** QoL: màn giới thiệu nhiệm vụ đang mở */
 export const briefing = signal(false);
 /** M6c: âm thanh bật / tắt (nút 🔊) */
@@ -77,6 +87,10 @@ export const bridge = {
   save: (_slot?: string, _name?: string) => {},
   load: (_slot?: string) => {},
   listSaves: () => {},
+  deleteSave: (_slot: string) => {},
+  renameSave: (_slot: string, _name: string) => {},
+  /** menu bắt đầu: vào chơi tự do (seed cố định), hoặc vào rồi nạp khe */
+  start: (_mode: 'sandbox' | 'load', _slot?: string) => {},
   exportFile: () => {},
   importFile: async (_f: File) => {},
 };

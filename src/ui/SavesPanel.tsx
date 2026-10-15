@@ -1,6 +1,6 @@
 // QoL: hộp Lưu / Nạp nhiều khe có tên (như Caesar 3): tự lưu, lưu nhanh, 8 khe đặt tên; cộng Xuất / Nhập file.
 import { useState } from 'preact/hooks';
-import { bridge, saves, savesOpen, ui } from './store';
+import { bridge, saves, savesOpen, startMenu, ui } from './store';
 import { MONTHS } from './format';
 
 const SLOTS = ['auto', 'quick', ...Array.from({ length: 8 }, (_, i) => `slot${i + 1}`)];
@@ -25,7 +25,9 @@ export function SavesPanel() {
                 <td class="muted">{m ? `${m.scenario} · năm ${m.year + 1} tháng ${MONTHS[m.month]} · ${m.population.toLocaleString('vi-VN')} dân · ${new Date(m.savedAt).toLocaleString('vi-VN')}` : 'trống'}</td>
                 <td>
                   {slot !== 'auto' && <button disabled={!s} onClick={() => bridge.save(slot, names[slot] || m?.name)}>Lưu</button>}{' '}
-                  <button disabled={!m} onClick={() => { bridge.load(slot); savesOpen.value = false; }}>Nạp</button>
+                  <button disabled={!m} onClick={() => { savesOpen.value = false; if (startMenu.value) { startMenu.value = false; bridge.start('load', slot); } else bridge.load(slot); }}>Nạp</button>{' '}
+                  {!fixed && m && names[slot] !== undefined && names[slot] !== m.name && <button title="Đổi tên bản lưu" onClick={() => bridge.renameSave(slot, names[slot])}>Đổi tên</button>}{' '}
+                  {m && <button title="Xóa bản lưu này" onClick={() => { if (confirm(`Xóa bản lưu "${m.name}"?`)) bridge.deleteSave(slot); }}>Xóa</button>}
                 </td>
               </tr>
             );

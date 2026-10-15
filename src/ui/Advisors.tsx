@@ -43,6 +43,7 @@ export function Advisors() {
           </p>
           <p>
             <button class={settings.value.minimap ? 'active' : ''} onClick={() => updateSettings({ minimap: !settings.value.minimap })}>Bản đồ thu nhỏ</button>{' '}
+            <button class={settings.value.pauseOnEvent ? 'active' : ''} title="Giặc tới, vỡ đê, chiếu chỉ, cách chức thì tự tạm dừng" onClick={() => updateSettings({ pauseOnEvent: !settings.value.pauseOnEvent })}>Tự dừng khi có tin lớn</button>{' '}
             <button class={showNames.value ? 'active' : ''} onClick={() => (showNames.value = !showNames.value)}>Hiện tên công trình</button>
           </p>
           <p class="muted">Âm thanh thật chưa có; thả file vào public/sounds/ là phát (xem README). Cài đặt ghi trong trình duyệt.</p>
