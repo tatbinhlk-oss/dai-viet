@@ -1,0 +1,8 @@
+{
+  "_note": "PNG vẽ bằng scripts/gen-art.ts (hình thật, không phải hình tạm). gen-placeholders.ts bỏ qua các file này.",
+  "files": [
+    "houses/house2_l1.png",
+    "houses/house_l0.png",
+    "houses/house_l1.png"
+  ]
+}

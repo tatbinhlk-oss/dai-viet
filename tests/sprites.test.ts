@@ -8,6 +8,7 @@ import { BuildingType, FigureType, RES_COUNT } from '../src/sim/state';
 import { BUILDING_DEFS, BUILDING_KEYS, HOUSE_LEVELS, RESOURCES } from '../src/sim/buildings/defs';
 import { buildingFrame, dikeFrame } from '../src/render/chunks';
 import type { SheetJson } from '../src/render/sheets';
+import artJson from '../assets/art.json';
 
 const buildings = buildingsJson as unknown as SheetJson, ground = groundJson as unknown as SheetJson, figures = figuresJson as unknown as SheetJson;
 
@@ -60,8 +61,10 @@ describe('spritesheet', () => {
     }
     for (let r = 1; r < RES_COUNT; r++) expect(figures.frames[`cargo_${RESOURCES[r].key}`], RESOURCES[r].key).toBeDefined();
   });
-  it('sheet tạm được đánh dấu placeholder để UI bật "Hiện tên"', () => {
+  it('sheet còn frame tạm được đánh dấu placeholder để UI bật "Hiện tên"; frame vẽ thật (assets/art.json) thì không', () => {
     expect(buildings.placeholder).toBe(true);
-    expect(Object.values(buildings.frames).every((f) => f.placeholder)).toBe(true);
+    const art = new Set((artJson as { files: string[] }).files.map((f) => f.replace(/^.*\//, '').replace(/\.png$/, '')));
+    expect(art.has('house_l1')).toBe(true);
+    for (const [name, f] of Object.entries(buildings.frames)) expect(f.placeholder, name).toBe(!art.has(name));
   });
 });
