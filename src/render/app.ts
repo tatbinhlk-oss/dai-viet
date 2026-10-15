@@ -286,7 +286,7 @@ export async function createRenderApp(canvas: HTMLCanvasElement): Promise<Render
   }
 
   app.ticker.add(() => {
-    chunks.flush(); figures.update();
+    chunks.flush(); figures.update(); chunks.animate(performance.now());
     if (minimap.node.visible && ++miniTick % 15 === 0) minimap.update(chunks.tiles(), result.view().corners); // ~4 lần/giây
   });
 

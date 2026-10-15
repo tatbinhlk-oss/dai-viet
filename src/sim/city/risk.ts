@@ -5,7 +5,7 @@ import { BuildingType, type Building, type GameState } from '../state';
 import { logEvent } from '../log';
 import { gridOffset, inBounds } from '../map/grid';
 import { BUILDING_DEFS, economy, HOUSE_LEVELS } from '../buildings/defs';
-import { burnBuilding, removeBuilding } from '../buildings/spawn';
+import { burnBuilding, collapseBuilding, removeBuilding, ruinStage, RuinStage, setRuinStage } from '../buildings/spawn';
 import { nextInt } from '../rng';
 
 const R = economy.risk;
@@ -30,13 +30,15 @@ export function updateRisks(s: GameState): void {
       burnBuilding(s, b, R.burnDays);
     } else if (b.damageRisk > R.collapseThreshold) {
       logEvent(s, `Sập: ${label(b)}`, gridOffset(b.x, b.y));
-      removeBuilding(s, b);
+      collapseBuilding(s, b, R.collapseDays);
     }
   }
 }
 
 function updateRuins(s: GameState, b: Building): void {
-  if (nextInt(s.rng, 16) < R.spreadChancePer16) {
+  const stage = ruinStage(s.grid.bLevel[gridOffset(b.x + b.size - 1, b.y + b.size - 1)]);
+  if (stage === RuinStage.Burning && b.burnDays <= R.burnDays / 2) setRuinStage(s, b, RuinStage.Ash); // nửa sau: lửa tắt, còn tro
+  if (stage === RuinStage.Burning && nextInt(s.rng, 16) < R.spreadChancePer16) {
     // lan sang một ô kề ngẫu nhiên
     const side = nextInt(s.rng, 4);
     const k = nextInt(s.rng, b.size);

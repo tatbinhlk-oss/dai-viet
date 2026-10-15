@@ -1,5 +1,6 @@
 // Kiểm tra từng cơ chế M3 trên bản đồ phẳng nhỏ.
 import { describe, expect, it } from 'vitest';
+import { ruinStage, RuinStage } from '../src/sim/buildings/spawn';
 import { applyCommand, createSim, tick } from '../src/sim';
 import { BuildingType, LaborCat, Resource, StorePolicy, TICKS_PER_DAY, type GameState } from '../src/sim/state';
 import { BUILDING_DEFS, BUILDING_KEYS, HOUSE_LEVELS, UNITS_PER_LOAD } from '../src/sim/buildings/defs';
@@ -180,8 +181,27 @@ describe('cháy và sập', () => {
     updateRisks(s);
     expect(k.type).toBe(BuildingType.Ruins);
     expect(s.events.at(-1)).toContain('Cháy');
-    for (let i = 0; i < 20; i++) updateRisks(s);
+    const a = gridOffset(k.x + k.size - 1, k.y + k.size - 1);
+    expect(ruinStage(s.grid.bLevel[a])).toBe(RuinStage.Burning);
+    expect(s.grid.bLevel[a] & 15).toBe(2); // cỡ móng ở 4 bit thấp
+    for (let i = 0; i < 6; i++) updateRisks(s);
+    expect(ruinStage(s.grid.bLevel[a])).toBe(RuinStage.Ash); // nửa sau: tro nguội, hết lửa
+    for (let i = 0; i < 14; i++) updateRisks(s);
     expect(k.type).toBe(BuildingType.None);
+  });
+  it('sập thành đống gạch vụn vài ngày rồi dọn, không cháy lan', () => {
+    const s = createSim(1, { flat: true });
+    const k = build(s, 'kiln', 20, 20);
+    const h = build(s, 'house', 22, 20); h.level = 3; h.population = 5;
+    k.damageRisk = 201;
+    updateRisks(s);
+    expect(k.type).toBe(BuildingType.Ruins);
+    expect(s.events.at(-1)).toContain('Sập');
+    const a = gridOffset(k.x + k.size - 1, k.y + k.size - 1);
+    expect(ruinStage(s.grid.bLevel[a])).toBe(RuinStage.Rubble);
+    for (let i = 0; i < economy.risk.collapseDays; i++) updateRisks(s);
+    expect(k.type).toBe(BuildingType.None);
+    expect(h.fireRisk).toBe(0);
   });
   it('tuần đinh đi qua đặt fire_risk về 0', () => {
     const s = createSim(1, { flat: true });

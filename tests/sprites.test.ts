@@ -37,7 +37,11 @@ describe('spritesheet', () => {
       expect(f, `nhà bậc ${l}`).toBeDefined();
       expect([f.w, f.footprint, f.anchor]).toEqual([64 * SC, 1, [0.5, 1]]);
     }
-    for (let n = 1; n <= 3; n++) expect(buildings.frames[buildingFrame(BuildingType.Ruins, n)]?.w).toBe(n * 64 * SC);
+    for (let n = 1; n <= 3; n++) {
+      expect(buildings.frames[buildingFrame(BuildingType.Ruins, n)]?.w).toBe(n * 64 * SC);
+      for (const [stage, name] of [[1, 'ash'], [2, 'rubble']] as [number, string][]) expect(buildingFrame(BuildingType.Ruins, n | (stage << 4))).toBe(`${name}_${n}`); // giai đoạn ở bit 4–5
+      for (const key of [`ash_${n}`, `rubble_${n}`, `fire_${n}_0`, `fire_${n}_3`]) expect(buildings.frames[key]?.footprint, key).toBe(n);
+    }
   });
   it('đất nền: cỏ theo cao độ, bãi bồi, nước, đường, ngập, đất trũng, đê 0–4 (có/không đường), cống đóng/mở', () => {
     for (const k of ['grass0', 'grass1', 'grass2', 'grass3', 'grass4', 'floodplain', 'water', 'road', 'floor', 'sunken', 'flooded', 'overlay_unprotected', 'overlay_protected', 'tree']) expect(ground.frames[k], k).toBeDefined();

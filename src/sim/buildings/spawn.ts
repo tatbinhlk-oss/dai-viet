@@ -151,8 +151,16 @@ export function removeBuilding(s: GameState, b: Building): void {
   b.store.fill(0);
 }
 
-/** Công trình bốc cháy: thành đống tro cùng kích thước, dân và hàng mất hết. */
-export function burnBuilding(s: GameState, b: Building, days: number): void {
+/** Giai đoạn đống tro (ghi ở bit 4–5 của bLevel, kích thước ở 4 bit thấp): 0 đang cháy, 1 tro nguội, 2 gạch vụn (sập). */
+export const enum RuinStage { Burning = 0, Ash = 1, Rubble = 2 }
+export const ruinStage = (bLevel: number): RuinStage => ((bLevel >> 4) & 3) as RuinStage;
+export function setRuinStage(s: GameState, b: Building, stage: RuinStage): void {
+  const a = anchorOffset(b.x, b.y, b.size);
+  s.grid.bLevel[a] = b.size | (stage << 4);
+  s.dirty.add(a);
+}
+
+function toRuins(s: GameState, b: Building, days: number, stage: RuinStage): void {
   releaseFigures(s, b);
   b.population = 0;
   b.level = 0;
@@ -162,8 +170,12 @@ export function burnBuilding(s: GameState, b: Building, days: number): void {
   b.fireRisk = 0;
   b.damageRisk = 0;
   setBuildingType(s, b, BuildingType.Ruins);
-  s.grid.bLevel[anchorOffset(b.x, b.y, b.size)] = b.size; // đống tro: render đọc kích thước từ bLevel
+  setRuinStage(s, b, stage); // render đọc kích thước và giai đoạn từ bLevel
 }
+/** Công trình bốc cháy: thành đống tro cùng kích thước, dân và hàng mất hết; cháy `days` ngày rồi dọn. */
+export const burnBuilding = (s: GameState, b: Building, days: number): void => toRuins(s, b, days, RuinStage.Burning);
+/** Công trình sập: thành đống gạch vụn `days` ngày rồi dọn (không cháy lan). */
+export const collapseBuilding = (s: GameState, b: Building, days: number): void => toRuins(s, b, days, RuinStage.Rubble);
 
 /** Phá ô (x, y): đường thì xóa đường; công trình thì xóa cả công trình. */
 export function raze(s: GameState, x: number, y: number): boolean {
