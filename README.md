@@ -129,7 +129,7 @@ Giữ đúng thiết kế: Ân sủng −2/năm, chiếu chỉ trễ lần đầ
 - **Thương mại**: hai tuyến trong `trade.json` — bộ lên miền núi (đoàn buôn tới kho, 8 kiện/chuyến, 48 ngày một chuyến; lái buôn mua muối, vải; bán quặng đồng, quặng sắt, gỗ) và sông ra biển (thuyền buôn tới bến cảng, 12 kiện, 64 ngày; mua lụa, gốm, trà; bán đồ đồng). Hương liệu, trâu, gỗ quý chưa có trong bảng hàng (không có nhà / xưởng dùng) — để M6b/M6c nếu cần. Mở tuyến tốn tiền một lần (400 / 800); hạn ngạch mỗi mặt hàng bắt đầu mức 15, đầu năm mua bán đủ 80% thì lên 25 rồi 40. Giá theo tỉ lệ Caesar 3 (lụa 215/160, gốm 180/140, gạo 28/22…). Lệnh Mua / Bán theo mặt hàng ở bảng Thương mại; lái buôn mua bán tại kho có người làm gần nhất (thuyền: kho gần bến cảng nhất theo đường bộ), hàng vào thẳng kho. Màn Sơn Nam mở được cả hai tuyến; chơi tự do cũng vậy.
 - **Giặc giã**: sự kiện kịch bản `invasion` (sea / south / north, số tên), báo trước 2 tháng. Giặc là walker người ngoài: tới công trình gần nhất (không qua thành), đứng 40 tick thì đốt (thành đống tro), mỗi tên phá tối đa 3 công trình rồi rút về mép; bị thành chặn thì phá thành (thành đất 3 đòn, thành đá 8 đòn, 80 tick một đòn). Trại lính là xưởng nhận vũ khí (xe bò chở tới như nguyên liệu): mỗi kiện một lính, tối đa 4; lính đứng ở cửa trại, giặc trong tầm 30 ô thì tới đánh, đứng cạnh nhau thì cứ 10 tick đổi đòn (lính 15, giặc 10, máu 100). Không có đội hình, tường thành không có cổng (chừa lỗ hổng). Trị an đếm công trình giặc đốt (không tính lều, điếm canh). Quân "cách chức" của M5 chưa dùng cơ chế này.
 - **Lưu game**: `src/sim/save.ts` chuyển state thành JSON (TypedArray mã hóa base64, Set `dirty` không lưu) rồi gzip bằng CompressionStream; worker lưu IndexedDB khe `auto` mỗi tháng game và khe `manual` khi bấm Lưu; Xuất / Nhập file `.dvsav` (gzip JSON). Sự kiện kịch bản chuyển vào state (`scenarioEvents`) để lưu được. `tests/m6a.test.ts`: lưu → nạp → chạy 1 năm cho kết quả y hệt.
-- **Gộp nhà 2×2 / 3×3**: chưa làm (để M6b).
+- **Gộp nhà 2×2 / 3×3**: làm sau M6c, xem Ghi chú gộp nhà.
 
 ## Ghi chú M6b (chỗ khác hoặc rút gọn so với thiết kế)
 
@@ -154,6 +154,15 @@ Giữ đúng thiết kế: Ân sủng −2/năm, chiếu chỉ trễ lần đầ
 - **Hiệu năng**: `tests/m6c.test.ts` dựng thị trấn thử tải (thị trấn mẫu + dải phố, 1.657 công trình, tới ~830 walker, 4.000 dân): sim ≈ 0,9 ms/tick trên máy test (ngân sách 50 ms ở 1×, 16 ms ở 3×). FPS vẽ phải xem trên máy thật (`?stress=1`); Chromium headless không GPU ở máy test chỉ 14–18 fps nên không kết luận được.
 - **Kéo vẽ đường / đê / cống / thành** (`render/line.ts`) kiểu Caesar 3: bấm giữ chuột trái ở điểm đầu, kéo thì hiện mờ đoạn từ điểm đầu tới con trỏ — đi thẳng theo trục lệch nhiều hơn rồi gấp khúc đúng một lần — thả chuột mới xây (một gói lệnh `cmds`, một snapshot), Esc để bỏ. Không còn đặt liên tục theo vệt chuột với các loại này (công trình 1×1 khác như lều, giếng vẫn đặt theo vệt kéo). Trên cảm ứng, một ngón kéo vẫn là dời bản đồ nên đường / đê đặt từng ô bằng chạm.
 - **Phát hành**: GitHub Pages như đã chốt; chưa có itch.io / tên miền riêng.
+
+## Ghi chú gộp nhà (theo Caesar 3, `src/sim/buildings/merge.ts`)
+
+- **Gộp**: bốn nhà 1×1 cùng bậc (1–8), có dân, chưa gộp, xếp vuông lấy nhà làm góc trên trái → một nhà 2×2 "đã gộp" cùng bậc, sức chứa ×4 (bậc 7–8 là 96 / 112 như bảng nhà), dân và hàng cộng dồn, dịch vụ lấy mức cao nhất. Như C3, 5/8 số ô cho gộp và 3/8 không bao giờ: dùng băm (ô, seed) thay `map_random`, không tiêu RNG chung. Xét mỗi ngày trong `evolveHouses`. Người chơi điều khiển bằng cách xếp nhà: muốn gộp thì đặt thành khối vuông, không muốn thì xen đường / vườn.
+- **Nở rộng**: bậc 9 (Tư dinh) chỉ có cỡ 2×2, bậc 10 (Phủ đệ) 3×3. Đủ điều kiện lên bậc thì thử đặt khối N×N chứa nhà ở mọi vị trí có thể; ô được nhận nếu là chính nhà, nhà khác bậc thấp hơn hoặc bằng nằm trọn trong khối, đất trống xây được (không nước, đường, đất chưa cấp), hay vườn; ba vòng ưu tiên chỉ nhà → thêm đất trống → thêm vườn. Không có chỗ thì nhà đứng ở bậc hiện tại, bảng Xem ghi "chỗ nở rộng". Nhà nở nuốt dân và hàng của nhà bị nuốt, xóa vườn.
+- **Tụt bậc**: Phủ đệ 3×3 xuống Tư dinh thì co về 2×2 ở góc trên trái, năm ô kia thành nhà 1×1 bậc 8 chia nhau dân dư; Tư dinh 2×2 xuống bậc 8 giữ khối 2×2 (coi như đã gộp). Dân vượt sức chứa mới thì bỏ đi.
+- **Render**: `bLevel` ở ô neo ghi bậc ở 4 bit thấp và cỡ (1–3) ở bit 4–5; frame `house2_l1..9`, `house3_l10` sinh tự động (hình tạm có dấu ⊞). Bảng Xem ghi "2×2 (gộp)".
+- **Chợ**: nhà gộp ăn gấp bốn nên lương thực luôn thiếu; người gánh chợ cứ chuyến lẻ ưu tiên hàng hóa đang có nhu cầu (trước đây luôn đi vựa, không bao giờ lấy gốm / muối / vải ở kho).
+- **Hệ quả cân bằng**: nhà lên bậc nhanh hơn (dịch vụ và hàng hóa tính theo nhà, không theo dân), dân đông hơn, thất nghiệp cao hơn trên thị trấn mẫu. Cổng M3 nay xét bậc nhà cao nhất từng đạt trong 10 năm (một đám cháy lan ngẫu nhiên có thể kéo cả xóm tụt bậc ở cuối kỳ).
 
 ## Ghi chú QoL (tiện ích theo Caesar 3, sau M6c)
 

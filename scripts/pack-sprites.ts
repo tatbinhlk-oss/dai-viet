@@ -16,7 +16,7 @@ export interface Frame { x: number; y: number; w: number; h: number; anchor: [nu
 export interface Sheet { image: string; placeholder: boolean; frames: Record<string, Frame> }
 
 function footprintOf(group: string, name: string): number {
-  if (group === 'houses') return 1;
+  if (group === 'houses') { const m = /^house(\d)_/.exec(name); return m ? Number(m[1]) : 1; }
   if (group === 'buildings') {
     const m = /^ruins_(\d)$/.exec(name);
     if (m) return Number(m[1]);

@@ -86,7 +86,7 @@ export const FLAT = new Set<BuildingType>([BuildingType.Paddy, BuildingType.VegG
 const HEIGHT_BY_SIZE = [0, 10, 18, 26];
 /** Chiều cao khối (px) theo loại, kích thước móng và bậc nhà. */
 export function typeHeight(t: BuildingType, size: number, level: number): number {
-  if (t === BuildingType.House) return 10 + Math.min(level, 10) * 1.5;
+  if (t === BuildingType.House) return Math.round((10 + Math.min(level & 15, 10) * 1.5) * (1 + (size - 1) * 0.5));
   if (t === BuildingType.EarthWall) return 14;
   if (t === BuildingType.StoneWall) return 20;
   if (FLAT.has(t)) return t === BuildingType.Garden ? 6 : 2;

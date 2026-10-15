@@ -1,5 +1,6 @@
 // Dân đến / dân bỏ đi — figuretype/migrant.c của Julius. Đi bộ trên đất, không cần đường.
 import { BuildingType, FigureType, type Building, type Figure, type GameState } from '../state';
+import { houseCapacity } from '../buildings/merge';
 import { gridOffset } from '../map/grid';
 import { HOUSE_LEVELS } from '../buildings/defs';
 import { setHouseLevel } from '../buildings/spawn';
@@ -12,7 +13,7 @@ export function updateImmigrant(s: GameState, f: Figure): void {
   if (r === StepResult.Moving || r === StepResult.ArrivedTile) return;
   const house = s.buildings[f.destBuildingId];
   if (r === StepResult.PathDone && house.type === BuildingType.House) {
-    const cap = HOUSE_LEVELS[Math.max(1, house.level)].capacity;
+    const cap = houseCapacity(house);
     const moved = Math.min(Math.max(0, cap - house.population), f.loads);
     if (moved > 0 && house.population === 0) house.happiness = s.sentiment;
     house.population += moved;

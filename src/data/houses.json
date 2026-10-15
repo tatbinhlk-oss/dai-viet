@@ -1,5 +1,5 @@
 {
-  "_note": "Bảng nhà ở (thiết kế phần 2). Yêu cầu ở mỗi bậc là phần THÊM so với bậc trước; code cộng dồn. desirability: [giá trị, bước, Δ, tầm] nhà tỏa ra quanh mình. maxLevel: bậc cao nhất đang mở (M5: 10). prosperity: giá trị thịnh vượng của bậc (trần chỉ số Thịnh vượng = trung bình). academy/puppet/shrine: trường học, rối nước, đền (ông từ). Bậc 9–10 vẫn là nhà 1×1 (chưa gộp nhà) với sức chứa 40/90.",
+  "_note": "Bảng nhà ở (thiết kế phần 2). Yêu cầu ở mỗi bậc là phần THÊM so với bậc trước; code cộng dồn. desirability: [giá trị, bước, Δ, tầm] nhà tỏa ra quanh mình. maxLevel: bậc cao nhất đang mở (M5: 10). prosperity: giá trị thịnh vượng của bậc (trần chỉ số Thịnh vượng = trung bình). academy/puppet/shrine: trường học, rối nước, đền (ông từ). Gộp nhà theo Caesar 3 (src/sim/buildings/merge.ts): bậc 1–8 bốn nhà 1×1 cùng bậc gộp thành 2×2 sức chứa ×4; bậc 9 Tư dinh chỉ có cỡ 2×2 (sức chứa 40), bậc 10 Phủ đệ 3×3 (90) — nhà nở rộng nuốt nhà bậc thấp hơn, đất trống, vườn.",
   "_fire": "fire: cộng khi trúng 1/8 mỗi ngày, như Julius (lều 10, nhà vừa 5, nhà lớn 2; nhà trống 0)",
   "maxLevel": 10,
   "evolveAfterDays": 4,

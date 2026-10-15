@@ -90,7 +90,7 @@ export const anchorOffset = (x: number, y: number, size: number): number => grid
 export function setHouseLevel(s: GameState, b: { x: number; y: number; size: number; level: number }, level: number): void {
   b.level = level;
   const a = anchorOffset(b.x, b.y, b.size);
-  s.grid.bLevel[a] = level;
+  s.grid.bLevel[a] = level | ((b.size - 1) << 4); // render đọc bậc ở 4 bit thấp, cỡ (1–3) ở bit 4–5
   s.dirty.add(a);
 }
 

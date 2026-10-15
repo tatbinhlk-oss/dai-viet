@@ -12,18 +12,25 @@ import { figureOffset, setWalkPath, step, StepResult } from './movement';
 export const marketCap = (r: Resource): number => (isFood(r) ? economy.marketCapFoodLoads : economy.marketCapGoodsLoads) * UNITS_PER_LOAD;
 const buyerLoads = (r: Resource): number => (isFood(r) ? economy.marketBuyerFoodLoads : economy.marketBuyerGoodsLoads);
 
-/** Chợ thiếu hàng gì nhất? Trả danh sách xếp theo tỉ lệ còn/sức chứa tăng dần. */
-function wanted(m: Building): Resource[] {
-  const list: Resource[] = [];
-  for (const r of FOODS) if (m.store[r] < marketCap(r) / 2) list.push(r);
-  for (const r of GOODS) if (m.demand[r] > 0 && m.store[r] < marketCap(r) / 2) list.push(r);
-  return list.sort((a, b) => m.store[a] / marketCap(a) - m.store[b] / marketCap(b));
+/**
+ * Chợ thiếu hàng gì nhất? Trả danh sách xếp theo tỉ lệ còn/sức chứa tăng dần.
+ * Nhà gộp 2×2 ăn gấp bốn nên lương thực hầu như luôn thiếu; nếu chỉ xếp theo tỉ lệ thì người gánh chợ chỉ đi vựa và không bao giờ
+ * lấy hàng hóa ở kho → cứ chuyến lẻ (m.progress đếm chuyến) ưu tiên hàng hóa đang có nhu cầu trước.
+ */
+function wanted(m: Building, goodsFirst = false): Resource[] {
+  const foods: Resource[] = [], goods: Resource[] = [];
+  for (const r of FOODS) if (m.store[r] < marketCap(r) / 2) foods.push(r);
+  for (const r of GOODS) if (m.demand[r] > 0 && m.store[r] < marketCap(r) / 2) goods.push(r);
+  const byRatio = (a: Resource, b: Resource) => m.store[a] / marketCap(a) - m.store[b] / marketCap(b);
+  foods.sort(byRatio); goods.sort(byRatio);
+  return goodsFirst ? [...goods, ...foods] : [...foods, ...goods];
 }
 
 /** Sinh người gánh chợ nếu chợ thiếu hàng và có nguồn trong 40 ô. */
 export function sendMarketBuyer(s: GameState, f: Figure): boolean {
   const m = s.buildings[f.buildingId];
-  const list = wanted(m);
+  m.progress = (m.progress + 1) % 2; // chợ không sản xuất: dùng progress đếm chuyến chẵn / lẻ
+  const list = wanted(m, m.progress === 1);
   if (!list.length) return false;
   const dist = bfs(s.grid, figureOffset(f), passRoad).dist;
   for (const r of list) {

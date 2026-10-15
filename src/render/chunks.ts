@@ -13,12 +13,14 @@ export const CHUNK = 16;
 const CHUNKS_PER_SIDE = GRID_SIZE / CHUNK;
 
 /** Kích thước móng tại ô neo: đống tro ghi kích thước vào bLevel. */
-const sizeOf = (t: number, level: number): number => (t === BuildingType.Ruins ? Math.max(1, level) : BUILDING_DEFS[t]?.size ?? 1);
+const sizeOf = (t: number, level: number): number => (t === BuildingType.Ruins ? Math.max(1, level) : t === BuildingType.House ? ((level >> 4) & 3) + 1 : BUILDING_DEFS[t]?.size ?? 1);
+/** bậc nhà nằm ở 4 bit thấp của bLevel (bit 4–5 là cỡ) */
+export const houseLevelOf = (bLevel: number): number => bLevel & 15;
 const keyOf = (t: BuildingType): string => BUILDING_DEFS[t].key;
 
 /** Tên frame công trình trong sheet buildings. */
 export function buildingFrame(t: BuildingType, level: number): string {
-  if (t === BuildingType.House) return `house_l${Math.min(level, 10)}`;
+  if (t === BuildingType.House) { const n = ((level >> 4) & 3) + 1; return `house${n > 1 ? n : ''}_l${Math.min(level & 15, 10)}`; }
   if (t === BuildingType.Ruins) return `ruins_${Math.max(1, level)}`;
   return keyOf(t);
 }
@@ -168,7 +170,7 @@ export class ChunkLayer {
           if (ax >= GRID_SIZE || ay >= GRID_SIZE) continue;
           const i = ay * GRID_SIZE + ax;
           const t = this.bType[i];
-          if (t && sizeOf(t, this.bLevel[i]) > Math.max(dx, dy)) return { type: t, level: this.bLevel[i] };
+          if (t && sizeOf(t, this.bLevel[i]) > Math.max(dx, dy)) return { type: t, level: t === BuildingType.House ? this.bLevel[i] & 15 : this.bLevel[i] };
         }
       }
     }
@@ -286,7 +288,8 @@ export class ChunkLayer {
     if (mk) { mk.destroy({ children: true }); this.markers.delete(o); }
     let label: Text | null = null;
     if (wantLabel) {
-      const name = bt === BuildingType.House ? (level <= 1 ? `Lều ${level}` : `Nhà ${level}`) : BUILDING_DEFS[bt].short ?? BUILDING_DEFS[bt].name;
+      const lv = level & 15;
+      const name = bt === BuildingType.House ? (lv <= 1 ? `Lều ${lv}` : `Nhà ${lv}`) : BUILDING_DEFS[bt].short ?? BUILDING_DEFS[bt].name;
       label = new Text({ text: name, style: { fontFamily: 'sans-serif', fontSize: 10, fontWeight: 'bold', fill: 0xfff6e0, stroke: { color: 0x14100a, width: 3 } } });
       label.anchor.set(0.5, 0.5);
       label.position.set(px, py - typeHeight(bt, n, level) - n * HALF_H);
