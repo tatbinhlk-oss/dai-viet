@@ -13,6 +13,7 @@ const GoTo = ({ at }: { at: number }) => (at >= 0 ? <button class="goto" title="
 const EventList = ({ events, at }: { events: string[]; at: number[] }) => (events.length ? <ul class="events">{events.map((e, i) => <li>{e} <GoTo at={at[i] ?? -1} /></li>).reverse()}</ul> : null);
 import { loads, num } from './format';
 import { YamenPanel } from './YamenPanel';
+import { Guide } from './Guide';
 
 const FEST_NAMES = ['Lễ nhỏ', 'Lễ vừa', 'Lễ lớn'];
 
@@ -24,11 +25,12 @@ export function Advisors() {
   if (!p || !s) return null;
   const c = s.city;
   return (
-    <div class="panel advisor">
+    <div class={`panel advisor${p === 'guide' ? ' guide-panel' : ''}`}>
       <div class="head">
-        <strong>{{ settings: 'Cài đặt và phím tắt', overview: 'Tổng quan — cố vấn', labor: 'Lao động', finance: 'Tài chính', mood: 'Dân tình', storage: 'Kho hàng', flood: 'Thủy lợi', court: 'Nha môn — triều đình', worship: 'Tín ngưỡng', ratings: 'Bốn chỉ số', trade: 'Thương mại' }[p]}</strong>
+        <strong>{{ settings: 'Cài đặt và phím tắt', overview: 'Tổng quan — cố vấn', labor: 'Lao động', finance: 'Tài chính', mood: 'Dân tình', storage: 'Kho hàng', flood: 'Thủy lợi', court: 'Nha môn — triều đình', worship: 'Tín ngưỡng', ratings: 'Bốn chỉ số', trade: 'Thương mại', guide: 'Sổ tay — công trình' }[p]}</strong>
         <button onClick={() => (panel.value = null)}>✕</button>
       </div>
+      {p === 'guide' && <Guide />}
       {p === 'settings' && (
         <>
           <p>

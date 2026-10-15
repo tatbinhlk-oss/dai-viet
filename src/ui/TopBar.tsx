@@ -70,6 +70,7 @@ export function TopBar() {
         <button class={panel.value === k ? 'active' : ''} onClick={() => (panel.value = panel.value === k ? null : k)}>{label}</button>
       ))}
       {s && s.city.scenario.key !== 'sandbox' && <button title="Xem lại nhiệm vụ của màn" onClick={() => (briefing.value = true)}>Nhiệm vụ</button>}
+      <button class={panel.value === 'guide' ? 'active' : ''} title="Sổ tay: tên, công dụng, yêu cầu của mọi công trình, bậc nhà, đường / cầu" onClick={() => (panel.value = panel.value === 'guide' ? null : 'guide')}>Sổ tay</button>
       <span class="sep" />
       <button title="Lưu / nạp nhiều khe có tên, xuất / nhập file (L; F5 lưu nhanh, F9 nạp nhanh)" onClick={() => { savesOpen.value = !savesOpen.value; bridge.listSaves(); }}>Lưu / Nạp</button>
       </div>
