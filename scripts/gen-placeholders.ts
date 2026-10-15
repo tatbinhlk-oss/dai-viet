@@ -1,7 +1,10 @@
 // M6-0: sinh hình tạm (khối màu có nhãn tên) vào assets/ — chạy bằng `npm run assets:gen` (tsx, @napi-rs/canvas).
 // Khi có hình thật, thả PNG cùng tên vào assets/ và chạy `npm run assets:pack`; file này không cần chạy lại.
 // Kích thước và điểm neo theo 5 điểm kỹ thuật chốt từ M1: ô 64×32, công trình N×N rộng N×64, neo (0.5, 1) = góc dưới hình thoi móng.
-import { createCanvas, GlobalFonts, type SKRSContext2D } from '@napi-rs/canvas';
+import { createCanvas as createCanvas1x, GlobalFonts, type SKRSContext2D } from '@napi-rs/canvas';
+import { ART_SCALE } from './art/lib';
+/** Hình tạm cũng xuất ở mật độ ART_SCALE (cùng sheet với hình thật); tọa độ vẽ vẫn 1×. */
+const createCanvas = (w: number, h: number): ReturnType<typeof createCanvas1x> => { const c = createCanvas1x(w * ART_SCALE, h * ART_SCALE); c.getContext('2d').scale(ART_SCALE, ART_SCALE); return c; };
 import { existsSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { BuildingType, FigureType, Resource } from '../src/sim/state';

@@ -78,12 +78,12 @@ export function roadTile(mask: number, k: number): Canvas {
       }
     }
     // sỏi
-    for (let i = 0; i < 9; i++) {
+    for (let i = 0; i < 16; i++) {
       const u = r(), v = r();
       if (!inRects(core, u, v)) continue;
       const [x, y] = s.p(u, v);
       g.fillStyle = hex(r() < 0.5 ? darken(dirt, 0.3) : lighten(dirt, 0.3));
-      g.fillRect(Math.round(x), Math.round(y), 1, 1);
+      g.fillRect(x, y, 0.8, 0.6);
     }
   });
   // bụi cỏ lấn vào lề (ở dải mòn, ngoài lõi)

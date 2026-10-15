@@ -11,6 +11,7 @@ import type { SheetJson } from '../src/render/sheets';
 import artJson from '../assets/art.json';
 
 const buildings = buildingsJson as unknown as SheetJson, ground = groundJson as unknown as SheetJson, figures = figuresJson as unknown as SheetJson;
+const SC = buildings.scale ?? 1; // mật độ điểm ảnh của sheet (2 = ảnh 128×64 một ô)
 
 describe('spritesheet', () => {
   it('công trình: frame đúng tên, rộng N×64, neo (0.5, 1), footprint N; nhà bậc 0–10; đống tro 1–3', () => {
@@ -20,8 +21,8 @@ describe('spritesheet', () => {
       expect(f, key).toBeDefined();
       expect(f.anchor).toEqual([0.5, 1]);
       expect(f.footprint).toBe(BUILDING_DEFS[t].size);
-      expect(f.w).toBe(BUILDING_DEFS[t].size * 64);
-      expect(f.h).toBeGreaterThan(BUILDING_DEFS[t].size * 32);
+      expect(f.w).toBe(BUILDING_DEFS[t].size * 64 * SC);
+      expect(f.h).toBeGreaterThan(BUILDING_DEFS[t].size * 32 * SC);
     }
     for (let l = 0; l < HOUSE_LEVELS.length; l++) {
       // nhà 2×2 (gộp bậc 1–8, Tư dinh 9) và 3×3 (Phủ đệ 10): bLevel = bậc | (cỡ − 1) << 4
@@ -29,14 +30,14 @@ describe('spritesheet', () => {
         if ((n === 2 && (l < 1 || l > 9)) || (n === 3 && l !== 10)) continue;
         const fr = buildings.frames[buildingFrame(BuildingType.House, l | ((n - 1) << 4))];
         expect(fr, `house${n}_l${l}`).toBeDefined();
-        expect(fr.w).toBe(n * 64);
+        expect(fr.w).toBe(n * 64 * SC);
         expect(fr.footprint).toBe(n);
       }
       const f = buildings.frames[buildingFrame(BuildingType.House, l)];
       expect(f, `nhà bậc ${l}`).toBeDefined();
-      expect([f.w, f.footprint, f.anchor]).toEqual([64, 1, [0.5, 1]]);
+      expect([f.w, f.footprint, f.anchor]).toEqual([64 * SC, 1, [0.5, 1]]);
     }
-    for (let n = 1; n <= 3; n++) expect(buildings.frames[buildingFrame(BuildingType.Ruins, n)]?.w).toBe(n * 64);
+    for (let n = 1; n <= 3; n++) expect(buildings.frames[buildingFrame(BuildingType.Ruins, n)]?.w).toBe(n * 64 * SC);
   });
   it('đất nền: cỏ theo cao độ, bãi bồi, nước, đường, ngập, đất trũng, đê 0–4 (có/không đường), cống đóng/mở', () => {
     for (const k of ['grass0', 'grass1', 'grass2', 'grass3', 'grass4', 'floodplain', 'water', 'road', 'floor', 'sunken', 'flooded', 'overlay_unprotected', 'overlay_protected', 'tree']) expect(ground.frames[k], k).toBeDefined();
@@ -45,7 +46,7 @@ describe('spritesheet', () => {
       expect(ground.frames[dikeFrame(BuildingType.Sluice, h, false)], `cống ${h}`).toBeDefined();
       expect(ground.frames[dikeFrame(BuildingType.Sluice, h + 16, false)], `cống mở ${h}`).toBeDefined();
     }
-    for (const f of Object.values(ground.frames)) { expect(f.w).toBe(64); expect(f.anchor).toEqual([0.5, 1]); }
+    for (const f of Object.values(ground.frames)) { expect(f.w).toBe(64 * SC); expect(f.anchor).toEqual([0.5, 1]); }
   });
   it('walker: mọi loại có 4 hướng × 4 khung; xe bò, phu kho, đoàn xe, thuyền có bản đầy; kiện hàng theo loại', () => {
     const carriers = new Set(['cartPusher', 'warehouseman', 'convoy', 'boat', 'caravan', 'tradeShip']);

@@ -8,12 +8,14 @@ import { join } from 'node:path';
 const ROOT = join(import.meta.dirname, '..');
 const ASSETS = join(ROOT, 'assets');
 const OUT = join(ROOT, 'public', 'sheets');
-const MAX_W = 2048;
+const MAX_W = 4096;
+/** mật độ điểm ảnh của mọi PNG trong assets/ (scripts/art/lib.ts); render chia lại về 1× */
+const SCALE = 2;
 const buildings = JSON.parse(readFileSync(join(ROOT, 'src/data/buildings.json'), 'utf8')) as Record<string, { size: number }>;
 const placeholders = new Set<string>(existsSync(join(ASSETS, 'placeholders.json')) ? (JSON.parse(readFileSync(join(ASSETS, 'placeholders.json'), 'utf8')) as { files: string[] }).files : []);
 
 export interface Frame { x: number; y: number; w: number; h: number; anchor: [number, number]; footprint: number; placeholder: boolean }
-export interface Sheet { image: string; placeholder: boolean; frames: Record<string, Frame> }
+export interface Sheet { image: string; placeholder: boolean; /** điểm ảnh trên một đơn vị 1×; frame ghi theo điểm ảnh */ scale: number; frames: Record<string, Frame> }
 
 function footprintOf(group: string, name: string): number {
   if (group === 'houses') { const m = /^house(\d)_/.exec(name); return m ? Number(m[1]) : 1; }
@@ -60,9 +62,9 @@ async function pack(groups: string[], outName: string): Promise<void> {
   }
   mkdirSync(OUT, { recursive: true });
   writeFileSync(join(OUT, `${outName}.png`), c.toBuffer('image/png'));
-  const sheet: Sheet = { image: `${outName}.png`, placeholder: anyPlaceholder, frames };
+  const sheet: Sheet = { image: `${outName}.png`, placeholder: anyPlaceholder, scale: SCALE, frames };
   writeFileSync(join(OUT, `${outName}.json`), JSON.stringify(sheet) + '\n');
-  console.log(`${outName}: ${items.length} frame, ${sheetW}×${sheetH}`);
+  console.log(`${outName}: ${items.length} frame, ${sheetW}×${sheetH} (${SCALE}×)`);
 }
 
 await pack(['buildings', 'houses'], 'buildings');

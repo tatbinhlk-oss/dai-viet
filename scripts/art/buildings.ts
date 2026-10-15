@@ -9,10 +9,10 @@ const TILE = 0x8a4a3a, TILE_DARK = 0x5a2a22, TILE_LIGHT = 0xa86050;
 const MUD = 0x7a7a46, RICE = 0x6aa838, RICE_DARK = 0x4a8028, RICE_LIGHT = 0x9ad050, BUND = 0x8a7046;
 
 /** Cột gỗ đứng tại (u, v) cao h. */
-const post = (s: Scene, u: number, v: number, h: number, z0 = 0, w = 1.5): void => line(s.g, s.p(u, v, z0), s.p(u, v, z0 + h), hex(WOOD_DARK), w);
+export const post = (s: Scene, u: number, v: number, h: number, z0 = 0, w = 1.5): void => line(s.g, s.p(u, v, z0), s.p(u, v, z0 + h), hex(WOOD_DARK), w);
 
 /** Vách ván gỗ đứng từ a tới b, cao h, chân ở z0. */
-function plankWall(s: Scene, a: [number, number], b: [number, number], h: number, z0: number, base: number, seed: number): void {
+export function plankWall(s: Scene, a: [number, number], b: [number, number], h: number, z0: number, base: number, seed: number): void {
   const pts: [number, number][] = [s.p(a[0], a[1], z0), s.p(b[0], b[1], z0), s.p(b[0], b[1], z0 + h), s.p(a[0], a[1], z0 + h)];
   poly(s.g, pts, hex(base));
   const r = rng(seed);
@@ -22,7 +22,7 @@ function plankWall(s: Scene, a: [number, number], b: [number, number], h: number
 }
 
 /** Mái ngói một mặt (tứ giác ridge a→b, eave b→a): hàng ngói ngang + rãnh dọc; mặt sáng / tối theo `base`. */
-function tilePlane(s: Scene, ridgeA: [number, number, number], ridgeB: [number, number, number], eaveB: [number, number, number], eaveA: [number, number, number], base: number): void {
+export function tilePlane(s: Scene, ridgeA: [number, number, number], ridgeB: [number, number, number], eaveB: [number, number, number], eaveA: [number, number, number], base: number): void {
   const pts = [ridgeA, ridgeB, eaveB, eaveA].map(([u, v, z]) => s.p(u, v, z));
   poly(s.g, pts, hex(base));
   const lerp = (a: [number, number, number], b: [number, number, number], t: number): [number, number, number] => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];

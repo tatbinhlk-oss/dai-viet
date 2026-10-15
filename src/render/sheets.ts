@@ -3,7 +3,7 @@
 import { Assets, Rectangle, Texture } from 'pixi.js';
 
 export interface FrameInfo { x: number; y: number; w: number; h: number; anchor: [number, number]; footprint: number; placeholder: boolean }
-export interface SheetJson { image: string; placeholder: boolean; frames: Record<string, FrameInfo> }
+export interface SheetJson { image: string; placeholder: boolean; /** mật độ điểm ảnh (2 = ảnh 128×64 cho một ô, hiện ở 64×32) */ scale?: number; frames: Record<string, FrameInfo> }
 
 export interface Sheet {
   base: Texture;
@@ -18,11 +18,13 @@ async function loadSheet(name: string): Promise<Sheet> {
   const base = `${import.meta.env.BASE_URL}sheets/`;
   const json = (await (await fetch(`${base}${name}.json`)).json()) as SheetJson;
   const tex = (await Assets.load<Texture>(`${base}${json.image}`)) as Texture;
-  tex.source.scaleMode = 'nearest';
+  const scale = json.scale ?? 1;
+  tex.source.scaleMode = scale > 1 ? 'linear' : 'nearest'; // hình 2×: lọc tuyến tính khi thu về 1× cho mịn; mip-map tắt
   tex.source.autoGenerateMipmaps = false;
+  tex.source.resolution = scale; // frame ghi theo điểm ảnh → chia về đơn vị 1× (Pixi tính uv theo source.width = pixelWidth / resolution)
   const frames = new Map<string, { texture: Texture; info: FrameInfo }>();
   for (const [key, f] of Object.entries(json.frames)) {
-    frames.set(key, { texture: new Texture({ source: tex.source, frame: new Rectangle(f.x, f.y, f.w, f.h) }), info: f });
+    frames.set(key, { texture: new Texture({ source: tex.source, frame: new Rectangle(f.x / scale, f.y / scale, f.w / scale, f.h / scale) }), info: f });
   }
   return { base: tex, frames, placeholder: json.placeholder };
 }

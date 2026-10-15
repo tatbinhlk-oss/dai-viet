@@ -7,6 +7,15 @@ export const TILE_W = 64, TILE_H = 32, HALF_W = 32, HALF_H = 16;
 export type Canvas = ReturnType<typeof createCanvas>;
 export type Ctx = SKRSContext2D;
 
+/** Mật độ điểm ảnh của hình: ảnh xuất ra to gấp ART_SCALE lần, render hiện ở cỡ 1× (sheet ghi `scale`, Pixi đặt resolution). */
+export const ART_SCALE = 2;
+/** Canvas w×h đơn vị 1× nhưng điểm ảnh gấp ART_SCALE; mọi lệnh vẽ vẫn theo tọa độ 1× (được phép dùng số lẻ, nét 0,5 px). */
+export function canvas(w: number, h: number): Canvas {
+  const c = createCanvas(w * ART_SCALE, h * ART_SCALE);
+  c.getContext('2d').scale(ART_SCALE, ART_SCALE);
+  return c;
+}
+
 /** RNG xác định (mulberry32) để nét rơm / vân gỗ giống nhau mỗi lần sinh. */
 export function rng(seed: number): () => number {
   let a = seed >>> 0;
@@ -24,7 +33,7 @@ export interface Scene { c: Canvas; g: Ctx; n: number; W: number; H: number; /**
 /** Ảnh cho móng N×N với phần nhô lên `extra` px trên đỉnh hình thoi. */
 export function scene(n: number, extra: number): Scene {
   const W = n * TILE_W, H = n * TILE_H + extra;
-  const c = createCanvas(W, H);
+  const c = canvas(W, H);
   const g = c.getContext('2d');
   const p = (u: number, v: number, z = 0): [number, number] => [W / 2 + (u - v) * HALF_W, H - n * TILE_H + (u + v) * HALF_H - z];
   return { c, g, n, W, H, p };
