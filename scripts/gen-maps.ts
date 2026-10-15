@@ -46,11 +46,18 @@ class Canvas {
       this.elev[i] = Math.max(0, Math.min(4, Math.round(e)));
     }
   }
-  /** cây rải trên đất cao 2–3 với mật độ pct % (nhiễu tất định) */
+  /** Cây trên đất cao 2–3, mật độ chung pct %, mọc thành cụm (bụi tre): tâm cụm thưa (nhiễu tất định), quanh tâm trong bán kính 2
+   * xác suất giảm theo khoảng cách (1 / 0,7 / 0,3 → một cụm ≈ 11 ô), không rải lẻ. */
   trees(pct: number): void {
-    for (let i = 0; i < N * N; i++) {
-      const e = this.elev[i];
-      if (!this.water[i] && (e === 2 || e === 3) && hash(i % N, (i / N) | 0) % 100 < pct) this.tree[i] = 1;
+    const ok = (x: number, y: number): boolean => { if (x < 0 || y < 0 || x >= N || y >= N) return false; const i = y * N + x; return !this.water[i] && (this.elev[i] === 2 || this.elev[i] === 3); };
+    const centerPerMille = Math.max(1, Math.round((pct * 10) / 11.4));
+    const P = [1000, 700, 300];
+    for (let cy = 0; cy < N; cy++) for (let cx = 0; cx < N; cx++) {
+      if (!ok(cx, cy) || hash(cx, cy) % 1000 >= centerPerMille) continue;
+      for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+        const x = cx + dx, y = cy + dy, d = Math.max(Math.abs(dx), Math.abs(dy));
+        if (ok(x, y) && hash(x * 7 + 3, y * 5 + 1) % 1000 < P[d]) this.tree[y * N + x] = 1;
+      }
     }
   }
   rows(): string[] {

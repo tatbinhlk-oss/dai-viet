@@ -67,8 +67,14 @@ export function generateTerrain(g: Grid, rng: Rng, opts: TerrainOptions = {}): v
       }
     }
   }
-  // 4. Cây rải rác trên đất cao
-  for (let i = 0; i < n * n; i++) {
-    if (g.terrain[i] === 0 && g.elevation[i] >= 2 && nextInt(rng, 100) < 7) g.terrain[i] |= T_TREE;
+  // 4. Cây trên đất cao mọc thành cụm (bụi tre): tâm cụm ~0,6 % ô, quanh tâm bán kính 2 với xác suất giảm theo khoảng cách
+  const treeOk = (x: number, y: number): boolean => inBounds(x, y) && g.terrain[gridOffset(x, y)] === 0 && g.elevation[gridOffset(x, y)] >= 2;
+  const P = [100, 70, 30];
+  for (let cy = 0; cy < n; cy++) for (let cx = 0; cx < n; cx++) {
+    if (!treeOk(cx, cy) || nextInt(rng, 1000) >= 6) continue;
+    for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+      const x = cx + dx, y = cy + dy, d = Math.max(Math.abs(dx), Math.abs(dy));
+      if (treeOk(x, y) && nextInt(rng, 100) < P[d]) g.terrain[gridOffset(x, y)] |= T_TREE;
+    }
   }
 }

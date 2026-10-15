@@ -41,7 +41,7 @@ export function grassTile(e: number, k: number): Canvas {
 export function floodplainTile(k: number): Canvas {
   const base = COLOR.floodplain;
   return tile(hex(base), (g, r) => {
-    for (let i = 0; i < 1 + (k % 3); i++) { const [x, y] = inTile(r); g.fillStyle = hex(darken(base, 0.06 + r() * 0.06)); g.beginPath(); g.ellipse(x, y, 9 + r() * 12, 3 + r() * 3, 0, 0, Math.PI * 2); g.fill(); } // vệt bùn
+    for (let i = 0; i < (k % 2); i++) { const [x, y] = inTile(r); g.fillStyle = hex(darken(base, 0.035 + r() * 0.035)); g.beginPath(); g.ellipse(x, y, 10 + r() * 12, 3 + r() * 3, 0, 0, Math.PI * 2); g.fill(); } // vệt bùn (nhẹ, chỉ ở nửa số biến thể)
     for (let i = 0; i < 2; i++) { const [x, y] = inTile(r); g.fillStyle = 'rgba(170,190,205,0.25)'; g.beginPath(); g.ellipse(x, y, 4 + r() * 4, 1.2 + r(), 0, 0, Math.PI * 2); g.fill(); } // ánh nước
     for (let i = 0; i < 6 + k * 2; i++) { const [x, y] = inTile(r); const col = hex(r() < 0.5 ? darken(base, 0.25) : lighten(base, 0.18)); line(g, [x, y], [x - 0.6, y - 1.5 - r()], col, 0.6); line(g, [x, y], [x + 0.8, y - 1.8 - r()], col, 0.6); }
   }, 1100 + k);
