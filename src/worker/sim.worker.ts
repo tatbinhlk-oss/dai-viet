@@ -9,6 +9,8 @@ export type WorkerIn =
   /** demo: bản đồ phẳng + thị trấn mẫu của test cổng M3/M4/M5; scenario: khóa màn chơi (M5), không có = chơi tự do */
   | { type: 'init'; seed: number; demo?: boolean; scenario?: string; rank?: number; stress?: boolean }
   | { type: 'cmd'; cmd: Command }
+  /** nhiều lệnh một lúc (kéo vẽ đoạn đường / đê): một snapshot sau tất cả */
+  | { type: 'cmds'; cmds: Command[] }
   /** chọn công trình tại ô để xem chi tiết; x < 0 = bỏ chọn */
   | { type: 'select'; x: number; y: number }
   /** M6a: lưu game — IndexedDB (khe 'auto' tự lưu mỗi tháng, 'manual' khi bấm Lưu), xuất / nhập file .dvsav */
@@ -128,6 +130,9 @@ self.onmessage = (e: MessageEvent<WorkerIn>) => {
     if (sentFull) post(false);
   } else if (m.type === 'cmd' && state) {
     applyCommand(state, m.cmd);
+    if (sentFull) post(false);
+  } else if (m.type === 'cmds' && state) {
+    for (const c of m.cmds) applyCommand(state, c);
     if (sentFull) post(false);
   } else if (m.type === 'save') {
     void saveTo('manual');

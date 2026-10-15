@@ -6,13 +6,20 @@ import { ChunkLayer } from './chunks';
 import { FigureLayer } from './figures';
 import { loadSheets } from './sheets';
 import { HALF_H, HALF_W, TILE_H, tileToWorld, worldToTile, ZOOM_LEVELS } from './iso';
+import { linePath } from './line';
 
 export interface RenderApp {
   app: Application;
   onTileClick: (x: number, y: number, button: number) => void;
   onTileHover: (x: number, y: number) => void;
+  /** công trình kéo dài (đường, đê, thành): bấm điểm đầu, kéo tới điểm cuối, thả → gọi với các ô theo đoạn gấp khúc một lần */
+  onLine: (tiles: [number, number][]) => void;
+  /** đang kéo đoạn: số ô hiện trong mờ (để UI hiện) */
+  onLinePreview: (count: number) => void;
   /** kích thước khung đặt công trình hiện tại (1 = ô đơn) */
   ghostSize: number;
+  /** công cụ hiện tại là loại kéo dài (đường, đê, cống, thành) */
+  lineTool: boolean;
   applySnapshot(snap: Snapshot): void;
   tileBuilding(x: number, y: number): { type: number; level: number } | null;
   /** đưa camera tới ô (x, y) */
@@ -51,6 +58,11 @@ export async function createRenderApp(canvas: HTMLCanvasElement): Promise<Render
   const hover = new Graphics();
   hover.zIndex = 2;
   world.addChild(hover);
+  const ghost = new Graphics(); // đoạn đang kéo (mờ)
+  ghost.zIndex = 2;
+  world.addChild(ghost);
+  let lineStart: { x: number; y: number } | null = null;
+  let lineTiles: [number, number][] = [];
 
   // Camera: bắt đầu nhìn vào giữa bản đồ
   let zoomIdx = 1;
@@ -104,7 +116,11 @@ export async function createRenderApp(canvas: HTMLCanvasElement): Promise<Render
       return;
     }
     downX = lastX = e.clientX; downY = lastY = e.clientY;
-    if (e.button === 1 || e.button === 2 || (e.button === 0 && spaceHeld)) { dragging = true; canvas.setPointerCapture(e.pointerId); }
+    if (e.button === 1 || e.button === 2 || (e.button === 0 && spaceHeld)) { dragging = true; canvas.setPointerCapture(e.pointerId); return; }
+    if (e.button === 0 && result.lineTool) {
+      const t = screenToTile(e.clientX, e.clientY);
+      if (inGrid(t.x, t.y)) { lineStart = t; updateLine(t.x, t.y); canvas.setPointerCapture(e.pointerId); }
+    }
   });
   canvas.addEventListener('pointermove', (e) => {
     if (e.pointerType === 'touch') {
@@ -134,8 +150,9 @@ export async function createRenderApp(canvas: HTMLCanvasElement): Promise<Render
     const t = screenToTile(e.clientX, e.clientY);
     if (t.x !== hoverX || t.y !== hoverY) { hoverX = t.x; hoverY = t.y; result.onTileHover(t.x, t.y); }
     drawHover();
-    // Kéo chuột trái khi không dời camera = đặt liên tục (vẽ đường)
-    if (!dragging && (e.buttons & 1) && !spaceHeld && result.ghostSize === 1) result.onTileClick(t.x, t.y, 0);
+    if (lineStart) { updateLine(t.x, t.y); return; }
+    // Kéo chuột trái khi không dời camera = đặt liên tục (công trình 1×1 không phải loại kéo dài)
+    if (!dragging && (e.buttons & 1) && !spaceHeld && result.ghostSize === 1 && !result.lineTool) result.onTileClick(t.x, t.y, 0);
   });
   const endTouch = (e: PointerEvent) => {
     if (!touches.has(e.pointerId)) return;
@@ -152,12 +169,22 @@ export async function createRenderApp(canvas: HTMLCanvasElement): Promise<Render
   canvas.addEventListener('pointerup', (e) => {
     if (e.pointerType === 'touch') { endTouch(e); return; }
     if (dragging) { dragging = false; return; }
+    if (lineStart && e.button === 0) {
+      const t = screenToTile(e.clientX, e.clientY);
+      updateLine(t.x, t.y);
+      const tiles = lineTiles;
+      cancelLine();
+      if (tiles.length) result.onLine(tiles);
+      return;
+    }
     if (e.button === 0 && Math.hypot(e.clientX - downX, e.clientY - downY) < 4) {
       const t = screenToTile(e.clientX, e.clientY);
       result.onTileClick(t.x, t.y, 0);
     }
   });
-  canvas.addEventListener('pointercancel', (e) => { if (e.pointerType === 'touch') endTouch(e); else dragging = false; });
+  canvas.addEventListener('pointercancel', (e) => { if (e.pointerType === 'touch') endTouch(e); else { dragging = false; cancelLine(); } });
+  window.addEventListener('keydown', (e) => { if (e.key === 'Escape') cancelLine(); });
+  window.addEventListener('blur', cancelLine);
   canvas.addEventListener('wheel', (e) => {
     e.preventDefault();
     setZoom(zoomIdx + (e.deltaY < 0 ? 1 : -1), e.clientX, e.clientY);
@@ -171,6 +198,25 @@ export async function createRenderApp(canvas: HTMLCanvasElement): Promise<Render
   function screenToTile(sx: number, sy: number) {
     const { wx, wy } = screenToWorld(sx, sy);
     return worldToTile(wx, wy);
+  }
+  const inGrid = (x: number, y: number) => x >= 0 && y >= 0 && x < GRID_SIZE && y < GRID_SIZE;
+  /** tính lại đoạn mờ từ điểm đầu tới ô (x, y) (kẹp vào lưới) và vẽ */
+  function updateLine(x: number, y: number) {
+    if (!lineStart) return;
+    const cx = Math.max(0, Math.min(GRID_SIZE - 1, x)), cy = Math.max(0, Math.min(GRID_SIZE - 1, y));
+    lineTiles = linePath(lineStart.x, lineStart.y, cx, cy);
+    ghost.clear();
+    for (const [tx, ty] of lineTiles) {
+      const { wx, wy } = tileToWorld(tx, ty);
+      ghost.poly([wx, wy, wx + HALF_W, wy + HALF_H, wx, wy + TILE_H, wx - HALF_W, wy + HALF_H]).fill({ color: 0xfff2a8, alpha: 0.35 }).stroke({ color: 0xfff2a8, width: 1, alpha: 0.8 });
+    }
+    result.onLinePreview(lineTiles.length);
+  }
+  function cancelLine() {
+    if (!lineStart) return;
+    lineStart = null; lineTiles = [];
+    ghost.clear();
+    result.onLinePreview(0);
   }
   function drawHover() {
     hover.clear();
@@ -190,7 +236,10 @@ export async function createRenderApp(canvas: HTMLCanvasElement): Promise<Render
     app,
     onTileClick: () => {},
     onTileHover: () => {},
+    onLine: () => {},
+    onLinePreview: () => {},
     ghostSize: 1,
+    lineTool: true,
     applySnapshot(snap) {
       if (snap.full) chunks.setFull(snap.full.terrain, snap.full.elevation, snap.full.bType, snap.full.bLevel);
       if (snap.changed) chunks.applyChanges(snap.changed.offsets, snap.changed.terrain, snap.changed.bType, snap.changed.bLevel);

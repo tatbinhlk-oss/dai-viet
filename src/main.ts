@@ -1,7 +1,7 @@
 // Nối worker ↔ render ↔ UI (Preact). Render nhận mọi snapshot; UI đọc bản mới nhất ~4 lần/giây.
 import { render as renderUI, h } from 'preact';
 import { createRenderApp } from './render/app';
-import type { Snapshot } from './sim';
+import type { Command, Snapshot } from './sim';
 import { BUILDING_DEFS, HOUSE_LEVELS } from './sim/buildings/defs';
 import { BuildingType, isDike } from './sim/state';
 import type { WorkerIn, WorkerOut } from './worker/sim.worker';
@@ -9,9 +9,10 @@ import { App } from './ui/App';
 import { toolSize } from './ui/BuildBar';
 import { bridge, campaign, fps, hoverText, overlay, recordWin, showNames, soundOn, tool, ui } from './ui/store';
 import { Audio, soundForEvent } from './render/audio';
+import { LINE_TOOLS } from './render/line';
 import { registerSW } from 'virtual:pwa-register';
 
-const HINT = 'Chuột phải kéo để dời · lăn để zoom · chuột trái để đặt. Công trình cần đường kề; công trình có người làm cần nhà ở gần để người mộ phu tìm được nhân công. Lũ về tháng Sáu: vẽ đê (Đê điều) để đình làng cử phu đi đắp.';
+const HINT = 'Chuột phải kéo để dời · lăn để zoom · chuột trái để đặt; đường / đê / thành: bấm giữ rồi kéo, thả để xây. Công trình cần đường kề; công trình có người làm cần nhà ở gần để người mộ phu tìm được nhân công. Lũ về tháng Sáu: vẽ đê (Đê điều) để đình làng cử phu đi đắp.';
 
 async function main() {
   const canvas = document.getElementById('game') as HTMLCanvasElement;
@@ -39,7 +40,15 @@ async function main() {
     else if (t === 'raze') bridge.cmd({ type: 'raze', x, y });
     else bridge.cmd({ type: 'build', kind: t, x, y });
   };
-  tool.subscribe((t) => { render.ghostSize = toolSize(t); });
+  // kéo vẽ đoạn (đường, đê, cống, thành): thả chuột mới xây, gửi một gói lệnh
+  render.onLine = (tiles) => {
+    const kind = tool.value;
+    if (!LINE_TOOLS.has(kind)) return;
+    send({ type: 'cmds', cmds: tiles.map(([x, y]) => ({ type: 'build', kind, x, y }) as Command) });
+    audio.play('click');
+  };
+  render.onLinePreview = (n) => { if (n > 0) hoverText.value = `${n} ô — thả chuột để xây, Esc để bỏ`; else if (hoverText.value.endsWith('Esc để bỏ')) hoverText.value = HINT; };
+  tool.subscribe((t) => { render.ghostSize = toolSize(t); render.lineTool = LINE_TOOLS.has(t); });
   overlay.subscribe((on) => render.setOverlay(on));
   showNames.value = render.placeholderArt; // còn hình tạm thì bật (nhãn Pixi chỉ vẽ lên frame có hình thật)
   showNames.subscribe((on) => render.setShowNames(on));
