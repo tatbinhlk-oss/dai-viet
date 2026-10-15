@@ -7,7 +7,7 @@ import { BuildingType, isDike } from './sim/state';
 import type { WorkerIn, WorkerOut } from './worker/sim.worker';
 import { App } from './ui/App';
 import { toolSize } from './ui/BuildBar';
-import { bridge, briefing, campaign, fps, hoverText, overlay, panel, pushToast, recordWin, saves, savesOpen, settings, showNames, soundOn, startMenu, tool, ui, updateSettings } from './ui/store';
+import { bridge, briefing, campaign, fps, hoverText, linePending, overlay, panel, pushToast, recordWin, saves, savesOpen, settings, showNames, soundOn, startMenu, tool, ui, updateSettings } from './ui/store';
 import { pausesGame, toastLevel } from './ui/Toasts';
 import { hotkeyAction, panVector } from './ui/hotkeys';
 import { OVERLAY_MODES } from './sim/overlay';
@@ -17,7 +17,9 @@ import { placementCheck } from './sim';
 import { GRID_SIZE, T_BUILDING, T_ROAD } from './sim/map/grid';
 import { registerSW } from 'virtual:pwa-register';
 
-const HINT = 'Chuột phải kéo để dời · lăn để zoom · chuột trái để đặt; đường / đê / thành: bấm giữ rồi kéo, thả để xây. Công trình cần đường kề; công trình có người làm cần nhà ở gần để người mộ phu tìm được nhân công. Lũ về tháng Sáu: vẽ đê (Đê điều) để đình làng cử phu đi đắp.';
+const touchUI = matchMedia('(pointer: coarse)').matches;
+const HINT = touchUI ? 'Một ngón kéo để dời · hai ngón chụm để zoom · chạm để đặt; đường / đê / thành / lều: chạm ô đầu rồi chạm ô cuối, bấm ✓ Xây (hoặc giữ rồi kéo). Công trình cần đường kề; lũ về tháng Sáu: vẽ đê để đình làng cử phu đi đắp.'
+  : 'Chuột phải kéo để dời · lăn để zoom · chuột trái để đặt; đường / đê / thành: bấm giữ rồi kéo, thả để xây. Công trình cần đường kề; công trình có người làm cần nhà ở gần để người mộ phu tìm được nhân công. Lũ về tháng Sáu: vẽ đê (Đê điều) để đình làng cử phu đi đắp.';
 
 async function main() {
   const canvas = document.getElementById('game') as HTMLCanvasElement;
@@ -107,9 +109,14 @@ async function main() {
   };
   const toolCost = (kind: string): number => { if (kind === 'bridge') return economy.bridgeCost; const ty = BUILDING_KEYS.get(kind); return ty ? BUILDING_DEFS[ty].cost : 0; };
   render.onLinePreview = (n) => {
-    if (n > 0) { const c = toolCost(tool.value) * n; hoverText.value = `${n} ô${c ? ` · ${c} quan` : ''}${latest && c > latest.treasury ? ' — không đủ tiền' : ''} — thả chuột để ${tool.value === 'raze' ? 'phá' : 'xây'}, Esc để bỏ`; }
+    if (n > 0) { const c = toolCost(tool.value) * n; hoverText.value = `${n} ô${c ? ` · ${c} quan` : ''}${latest && c > latest.treasury ? ' — không đủ tiền' : ''} — thả ${touchUI ? 'ngón' : 'chuột'} để ${tool.value === 'raze' ? 'phá' : 'xây'}, Esc để bỏ`; }
     else if (hoverText.value.endsWith('Esc để bỏ')) hoverText.value = HINT;
   };
+  // Điện thoại: chạm hai điểm rồi ✓ — thanh xác nhận (App.tsx LineBar) đọc linePending; giá tính ở đây
+  render.onLinePending = (p) => { const c = p ? toolCost(tool.value) * p.ok : 0; linePending.value = p && { ...p, cost: c, enough: !latest || c <= latest.treasury }; };
+  bridge.confirmLine = () => render.confirmLine();
+  bridge.flipLine = () => render.flipLine();
+  bridge.cancelLine = () => render.cancelLine();
   // QoL: khung đặt xanh / đỏ và lý do — kiểm ngay trên lưới render, không hỏi worker
   render.validate = (x, y) => {
     const kind = tool.value;
@@ -127,7 +134,7 @@ async function main() {
     }
     return placementCheck(v, kind, ty, x, y);
   };
-  tool.subscribe((t) => { render.ghostSize = toolSize(t); render.lineTool = LINE_TOOLS.has(t); render.rectTool = RECT_TOOLS.has(t); });
+  tool.subscribe((t) => { render.ghostSize = toolSize(t); render.lineTool = LINE_TOOLS.has(t); render.rectTool = RECT_TOOLS.has(t); render.cancelLine(); });
   overlay.subscribe((mode) => { render.setOverlay(mode); send({ type: 'overlay', mode }); });
   showNames.value = render.placeholderArt; // còn hình tạm thì bật (nhãn Pixi chỉ vẽ lên frame có hình thật)
   showNames.subscribe((on) => render.setShowNames(on));

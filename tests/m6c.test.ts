@@ -104,3 +104,35 @@ describe('kéo vẽ đoạn (đường, đê, thành)', () => {
     expect([...LINE_TOOLS]).toEqual(['road', 'bridge', 'dike', 'sluice', 'earthWall', 'stoneWall']);
   });
 });
+
+describe('điện thoại: chạm hai điểm (đổi chiều gấp khúc, bắt dính đầu đường)', () => {
+  it('linePath với flip đi theo trục kia trước — chỗ rẽ sang góc đối diện, vẫn kề 4 hướng', async () => {
+    const { linePath } = await import('../src/render/line');
+    const a = linePath(2, 2, 7, 4), b = linePath(2, 2, 7, 4, true);
+    expect(b).toHaveLength(a.length); expect(b[0]).toEqual([2, 2]); expect(b.at(-1)).toEqual([7, 4]);
+    expect(b.slice(0, 3).every(([x]) => x === 2)).toBe(true); // xuống y trước
+    expect(b.slice(2).every(([, y]) => y === 4)).toBe(true);
+    expect(b).not.toEqual(a);
+    for (let i = 1; i < b.length; i++) expect(Math.abs(b[i][0] - b[i - 1][0]) + Math.abs(b[i][1] - b[i - 1][1])).toBe(1);
+    expect(linePath(3, 3, 3, 3, true)).toEqual([[3, 3]]);
+    expect(linePath(0, 0, 4, 0, true)).toEqual(linePath(0, 0, 4, 0)); // thẳng một trục: flip không đổi gì
+  });
+  it('snapRoadStart: chạm gần ô nối tiếp một đầu đường cụt thì điểm đầu nhảy tới ô đó; không có đầu cụt / chạm lên đường thì giữ nguyên', async () => {
+    const { snapRoadStart } = await import('../src/render/line');
+    const n = 16, T_ROAD = 1 << 1;
+    const terrain = new Uint16Array(n * n);
+    for (let x = 2; x <= 6; x++) terrain[5 * n + x] |= T_ROAD; // đường ngang (2..6, 5): hai đầu cụt (2,5) và (6,5)
+    expect(snapRoadStart(terrain, n, 7, 5)).toEqual([7, 5]); // đúng ô nối tiếp
+    expect(snapRoadStart(terrain, n, 8, 6)).toEqual([7, 5]); // chéo cách 1 ô
+    expect(snapRoadStart(terrain, n, 7, 4)).toEqual([7, 5]);
+    expect(snapRoadStart(terrain, n, 1, 5)).toEqual([1, 5]); expect(snapRoadStart(terrain, n, 0, 6)).toEqual([1, 5]);
+    expect(snapRoadStart(terrain, n, 9, 5)).toEqual([9, 5]); // xa quá 1 ô
+    expect(snapRoadStart(terrain, n, 4, 6)).toEqual([4, 6]); // kề giữa đường (không phải đầu cụt)
+    expect(snapRoadStart(terrain, n, 4, 5)).toEqual([4, 5]); // chạm lên đường: giữ
+    terrain[5 * n + 7] |= T_ROAD; // đường dài thêm một ô: đầu cụt mới là (7,5), ô nối tiếp (8,5)
+    expect(snapRoadStart(terrain, n, 8, 4)).toEqual([8, 5]);
+    expect(snapRoadStart(terrain, n, 10, 5)).toEqual([10, 5]);
+    const one = new Uint16Array(n * n); one[3 * n + 3] |= T_ROAD; // ô đường lẻ: không có hướng
+    expect(snapRoadStart(one, n, 4, 3)).toEqual([4, 3]);
+  });
+});

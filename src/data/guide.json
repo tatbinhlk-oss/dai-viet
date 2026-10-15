@@ -48,7 +48,7 @@
   "stoneWall": { "use": "Thành đá bền hơn thành đất (8 đòn), cần phẩm hàm cao." },
   "gate": { "use": "Cổng thành đặt lên ô đường: dân, xe, lính đi qua bình thường; giặc phải phá (4 đòn)." },
   "quocTuGiam": { "use": "Trường lớn của triều đình, cần phẩm hàm cao. Thầy giáo đi dạo như trường học; tính nhiều vào Văn hiến." },
-  "road": { "use": "Đường đất, miễn phí. Mọi walker có việc (bà bán chợ, lý trưởng, xe bò…) chỉ đi trên đường; công trình phải kề đường mới hoạt động. Bấm giữ rồi kéo để vẽ đoạn.", "tip": "Đường vắt qua được đê. Walker không qua đường đang ngập." },
+  "road": { "use": "Đường đất, miễn phí. Mọi walker có việc (bà bán chợ, lý trưởng, xe bò…) chỉ đi trên đường; công trình phải kề đường mới hoạt động. Bấm giữ rồi kéo để vẽ đoạn; trên điện thoại chạm ô đầu rồi ô cuối, bấm ✓ Xây (↔ đổi chiều gấp khúc).", "tip": "Đường vắt qua được đê. Walker không qua đường đang ngập." },
   "bridge": { "use": "Cầu gỗ bắc qua ô sông, tốn 40 quan mỗi ô. Dân đi như đường, thuyền vẫn chui qua. Kéo để bắc nhiều ô." },
   "raze": { "use": "Phá đường hoặc công trình (hỏi lại khi phá nhiều). Phá cổng thì đường bên dưới còn. Hoàn tác được lần xây gần nhất bằng Ctrl+Z." }
 }
