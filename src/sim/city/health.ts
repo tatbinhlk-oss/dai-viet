@@ -1,6 +1,8 @@
 // Sức khỏe (chỉ số phụ) — thiết kế phần 7: nhà khỏe = có thầy lang + lương thực; tiến ±2 mỗi tháng về tỉ lệ nhà khỏe.
 // Dịch khi < 40 và rand(64) ≤ 40 − health (+15 trong 2 tháng sau khi có giếng ngập) hoặc Phật quở lớn: một nhà mất nửa dân.
 import { BuildingType, type GameState } from '../state';
+import { gridOffset } from '../map/grid';
+import { logEvent } from '../log';
 import { court } from '../buildings/defs';
 import { foodTypes } from '../buildings/house';
 import { setHouseLevel } from '../buildings/spawn';
@@ -40,5 +42,5 @@ function outbreak(s: GameState): void {
   const lost = Math.ceil((h.population * H.plagueLossPct) / 100);
   h.population -= lost;
   if (h.population === 0) setHouseLevel(s, h, 0);
-  s.events.push(`Dịch bệnh: ${lost} người chết ở một nhà`);
+  logEvent(s, `Dịch bệnh: ${lost} người chết ở một nhà`, gridOffset(h.x, h.y));
 }

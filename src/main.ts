@@ -7,7 +7,7 @@ import { BuildingType, isDike } from './sim/state';
 import type { WorkerIn, WorkerOut } from './worker/sim.worker';
 import { App } from './ui/App';
 import { toolSize } from './ui/BuildBar';
-import { bridge, campaign, fps, hoverText, overlay, recordWin, showNames, soundOn, tool, ui } from './ui/store';
+import { bridge, briefing, campaign, fps, hoverText, overlay, recordWin, showNames, soundOn, tool, ui } from './ui/store';
 import { Audio, soundForEvent } from './render/audio';
 import { LINE_TOOLS, RECT_TOOLS } from './render/line';
 import { placementCheck } from './sim';
@@ -32,6 +32,7 @@ async function main() {
   bridge.cmd = (c) => { send({ type: 'cmd', cmd: c }); if (c.type === 'build') audio.play('click'); else if (c.type === 'raze') audio.play('raze'); };
   bridge.select = (x, y) => send({ type: 'select', x, y });
   bridge.undo = () => send({ type: 'undo' });
+  bridge.lookAt = (x, y) => render.lookAt(x, y);
   window.addEventListener('keydown', (e) => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); bridge.undo(); } });
   bridge.save = () => send({ type: 'save' });
   bridge.load = (slot) => send({ type: 'load', slot });
@@ -140,6 +141,7 @@ async function main() {
   // ?stress=1: thị trấn mẫu + dải phố thử tải (M6c, ~1.650 công trình, ~800 walker) trên bản đồ phẳng
   const stress = params.has('stress');
   send({ type: 'init', seed, demo: params.has('demo') || stress, scenario, rank, stress });
+  if (scenario && !params.has('demo') && !stress) { send({ type: 'cmd', cmd: { type: 'setSpeed', speed: 0 } }); briefing.value = true; } // QoL: màn giới thiệu nhiệm vụ, bấm Bắt đầu mới chạy
   if (stress) render.lookAt(100, 90);
   else if (params.has('demo')) render.lookAt(40, 60);
   else if (scenario && !params.has('look')) {

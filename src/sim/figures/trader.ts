@@ -1,6 +1,7 @@
 // Lái buôn (M6a): đoàn buôn đi bộ từ cửa ngõ tới kho, thuyền buôn đi trên sông từ mép bản đồ tới bến cảng (mua bán với kho
 // gần cảng nhất theo đường bộ); xong thì quay về mép và biến mất. Người ngoài: không cần đường.
 import { BuildingType, FigureType, type Figure, type GameState } from '../state';
+import { logEvent } from '../log';
 import { removeFigure } from './figure';
 import { setWalkPath, step, StepResult } from './movement';
 import { roadAccess } from '../buildings/spawn';
@@ -28,7 +29,7 @@ export function updateTrader(s: GameState, f: Figure): void {
   if (w) [sold, bought] = doTrade(s, f.route, w, def.loadsPerTrip);
   if (f.type === FigureType.TradeShip) s.trade.shipsThisYear++; else s.trade.caravansThisYear++;
   const who = f.type === FigureType.TradeShip ? 'Thuyền buôn cập bến' : 'Đoàn buôn tới kho';
-  s.events.push(w ? `${who}: bán ${sold}, mua ${bought} kiện` : `${who} nhưng không có kho để mua bán`);
+  logEvent(s, w ? `${who}: bán ${sold}, mua ${bought} kiện` : `${who} nhưng không có kho để mua bán`);
   f.loads = bought; // chở hàng về (chỉ để nhìn)
   f.resource = 0;
   f.returning = true;

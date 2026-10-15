@@ -1,6 +1,7 @@
 // Thương mại — thiết kế phần 4 (Julius trade): hai tuyến (bộ lên miền núi, sông ra biển), hạn ngạch mỗi năm mỗi mặt hàng
 // 0 → 15 → 25 → 40 kiện, lệnh mua / bán theo mặt hàng, lái buôn tới kho (đoàn buôn 8 kiện) hoặc bến cảng (thuyền 12 kiện).
 import { BuildingType, FigureType, Resource, type Building, type Figure, type GameState, type RouteState, type TradeOrder, type TradeState } from '../state';
+import { logEvent } from '../log';
 import tradeJson from '../../data/trade.json';
 import { RES_COUNT, DAYS_PER_MONTH } from '../state';
 import { RESOURCES, UNITS_PER_LOAD } from '../buildings/defs';
@@ -45,7 +46,7 @@ export function openRoute(s: GameState, i: number): string | null {
   rs.open = true;
   for (const r of [...routeSells(i), ...routeBuys(i)]) rs.quotaLevel[r] = Math.max(rs.quotaLevel[r], 1);
   rs.nextTripDay = s.time.totalDays + DAYS_PER_MONTH;
-  s.events.push(`Mở ${def.name.toLowerCase()} (${def.openCost} quan)`);
+  logEvent(s, `Mở ${def.name.toLowerCase()} (${def.openCost} quan)`);
   return null;
 }
 
@@ -61,7 +62,7 @@ export function yearlyTrade(s: GameState): void {
       const q = quotaOf(rs, r);
       if (rs.open && q > 0 && rs.tradedThisYear[r] * 100 >= q * trade.raisePct && rs.quotaLevel[r] < QUOTA_LEVELS.length - 1) {
         rs.quotaLevel[r]++;
-        s.events.push(`${ROUTES[i].name}: hạn ngạch ${RESOURCES[r].name.toLowerCase()} lên ${quotaOf(rs, r)} kiện/năm`);
+        logEvent(s, `${ROUTES[i].name}: hạn ngạch ${RESOURCES[r].name.toLowerCase()} lên ${quotaOf(rs, r)} kiện/năm`);
       }
       rs.tradedLastYear[r] = rs.tradedThisYear[r];
       rs.tradedThisYear[r] = 0;

@@ -2,6 +2,7 @@
 // Đỉnh lũ 1–4 quay theo xác suất 45/35/15/5. Từ tháng 4 nha môn (có người làm) báo trước, đúng 70%.
 // Mực nước lên 24 ngày, giữ đỉnh 16 ngày, rút 24 ngày. Mỗi ngày trong mùa: flood-fill, hậu quả, độ bền đê.
 import { BuildingType, type GameState } from '../state';
+import { logEvent } from '../log';
 import { flood } from '../buildings/defs';
 import { nextInt } from '../rng';
 import { applyFlood, updateProtection } from './floodFill';
@@ -44,7 +45,7 @@ export function updateFlood(s: GameState): void {
       let f = F.nextPeak;
       if (nextInt(s.rng, 100) >= S.forecastAccuracy) { f = 1 + nextInt(s.rng, 3); if (f >= F.nextPeak) f++; }
       F.forecast = f;
-      s.events.push(`Nha môn báo: nước thượng nguồn lên, dự báo lũ ${LEVEL_NAMES[f]} (mức ${f})`);
+      logEvent(s, `Nha môn báo: nước thượng nguồn lên, dự báo lũ ${LEVEL_NAMES[f]} (mức ${f})`);
     }
   }
   // ngày 1 tháng 6: lũ về
@@ -54,7 +55,7 @@ export function updateFlood(s: GameState): void {
     F.nextPeak = 0;
     F.dayInSeason = 0;
     F.breachesThisYear = 0;
-    s.events.push(`Lũ về: ${LEVEL_NAMES[F.peak]} (mức ${F.peak})`);
+    logEvent(s, `Lũ về: ${LEVEL_NAMES[F.peak]} (mức ${F.peak})`);
   }
 
   const inSeason = F.dayInSeason >= 0;
@@ -65,7 +66,7 @@ export function updateFlood(s: GameState): void {
     if (F.dikesChanged) { updateProtection(s); F.dikesChanged = false; }
     F.floodedTiles = applyFlood(s, F.level);
     const newly = updateFloodedBuildings(s);
-    if (newly > 0 && F.dayInSeason > 0 && F.level >= 2) s.events.push(`Nước ngập ${newly} công trình`);
+    if (newly > 0 && F.dayInSeason > 0 && F.level >= 2) logEvent(s, `Nước ngập ${newly} công trình`);
     if (++F.dayInSeason >= SEASON_DAYS) {
       // hết mùa: nước rút hẳn, ghi phù sa
       F.dayInSeason = -1;
@@ -75,7 +76,7 @@ export function updateFlood(s: GameState): void {
       F.floodedTiles = applyFlood(s, 0);
       updateFloodedBuildings(s);
       const { silted } = endOfSeason(s);
-      s.events.push(silted ? `Nước rút, ${silted} ruộng được phù sa` : 'Nước rút');
+      logEvent(s, silted ? `Nước rút, ${silted} ruộng được phù sa` : 'Nước rút');
     }
   } else {
     updateDikes(s, 0, false);

@@ -1,5 +1,6 @@
 // Lệnh từ UI vào sim. Đây là đường DUY NHẤT để thay đổi state từ ngoài, nên replay/undo làm được.
 import { BuildingType, isDike, isWall, LABOR_CATS, LaborCat, StorePolicy, type GameState, type Resource, type TradeOrder } from './state';
+import { logEvent } from './log';
 import { dispatchEdict, sendGift, setSalary } from './city/court';
 import { holdFestival } from './city/worship';
 import { openRoute, ROUTES, setTradeOrder } from './city/trade';
@@ -75,11 +76,11 @@ export function applyCommand(s: GameState, c: Command): void {
       if (b && b.type === BuildingType.Sluice) setSluice(s, b, c.open);
       break;
     }
-    case 'sendGift': { const why = sendGift(s, c.size); if (why) s.events.push(`Không tiến cống được: ${why}`); break; }
-    case 'dispatchEdict': { const why = dispatchEdict(s, c.id, c.option ?? 0); if (why) s.events.push(`Chưa thi hành được: ${why}`); break; }
+    case 'sendGift': { const why = sendGift(s, c.size); if (why) logEvent(s, `Không tiến cống được: ${why}`); break; }
+    case 'dispatchEdict': { const why = dispatchEdict(s, c.id, c.option ?? 0); if (why) logEvent(s, `Chưa thi hành được: ${why}`); break; }
     case 'setSalary': setSalary(s, c.level); break;
-    case 'holdFestival': { const why = holdFestival(s, c.deity, c.size); if (why) s.events.push(`Không mở lễ được: ${why}`); break; }
-    case 'openRoute': { if (!s.scenario.routes.includes((s.trade.routes[c.route] && ROUTE_KEY(c.route)) ?? '')) { s.events.push('Màn này không có tuyến buôn đó'); break; } const why = openRoute(s, c.route); if (why) s.events.push(`Không mở tuyến được: ${why}`); break; }
+    case 'holdFestival': { const why = holdFestival(s, c.deity, c.size); if (why) logEvent(s, `Không mở lễ được: ${why}`); break; }
+    case 'openRoute': { if (!s.scenario.routes.includes((s.trade.routes[c.route] && ROUTE_KEY(c.route)) ?? '')) { logEvent(s, 'Màn này không có tuyến buôn đó'); break; } const why = openRoute(s, c.route); if (why) logEvent(s, `Không mở tuyến được: ${why}`); break; }
     case 'setTradeOrder': setTradeOrder(s, c.resource, c.order); break;
   }
 }

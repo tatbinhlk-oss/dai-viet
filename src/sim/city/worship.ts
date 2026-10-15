@@ -2,6 +2,7 @@
 // Thành hoàng (đình), Phật (chùa), Thủy thần (miếu ven sông), Tiên nông (đàn tế). Tâm trạng ±1/ngày về mục tiêu
 // = % nhà được phủ + (12 − tháng từ lễ) + nhiều đền nhất +50 / ít nhất −25. Sét giận tích theo tháng: 20 quở nhỏ, 50 quở lớn.
 import { BuildingType, DEITIES, Deity, FigureType, type Building, type DeityState, type GameState, type WorshipState } from '../state';
+import { logEvent } from '../log';
 import { BUILDING_DEFS, court, flood } from '../buildings/defs';
 import { roadAccess } from '../buildings/spawn';
 import { createFigure, removeFigure } from '../figures/figure';
@@ -63,19 +64,19 @@ function blessing(s: GameState, d: Deity): void {
   switch (d) {
     case Deity.ThanhHoang:
       for (const b of s.buildings) if (b.type === BuildingType.House) b.happiness = Math.min(100, b.happiness + B.sentiment);
-      s.events.push(`Thành hoàng phù hộ: lòng dân +${B.sentiment}`);
+      logEvent(s, `Thành hoàng phù hộ: lòng dân +${B.sentiment}`);
       break;
     case Deity.Phat:
       s.worship.healthBonusMonths = B.healthBonusMonths;
-      s.events.push(`Phật phù hộ: sức khỏe +${B.healthBonus} trong ${B.healthBonusMonths} tháng`);
+      logEvent(s, `Phật phù hộ: sức khỏe +${B.healthBonus} trong ${B.healthBonusMonths} tháng`);
       break;
     case Deity.ThuyThan:
       adjustFlood(s, -1);
-      s.events.push('Thủy thần phù hộ: lũ năm nay nhỏ hơn một mức');
+      logEvent(s, 'Thủy thần phù hộ: lũ năm nay nhỏ hơn một mức');
       break;
     case Deity.TienNong:
       for (const b of s.buildings) if (b.type === BuildingType.Paddy && !b.flooded) b.progress = BUILDING_DEFS[b.type].progressMax;
-      s.events.push('Tiên nông phù hộ: ruộng lúa chín rộ');
+      logEvent(s, 'Tiên nông phù hộ: ruộng lúa chín rộ');
       break;
   }
 }
@@ -83,18 +84,18 @@ function blessing(s: GameState, d: Deity): void {
 function smallWrath(s: GameState, d: Deity): void {
   const R = W.wrath;
   switch (d) {
-    case Deity.ThanhHoang: spawnCriminals(s, FigureType.Thief, R.thieves); s.events.push('Thành hoàng quở: trộm cắp nổi lên'); break;
-    case Deity.Phat: s.worship.healersOffDays = R.healersOffDays; s.events.push('Phật quở: thầy lang nghỉ một tháng'); break;
+    case Deity.ThanhHoang: spawnCriminals(s, FigureType.Thief, R.thieves); logEvent(s, 'Thành hoàng quở: trộm cắp nổi lên'); break;
+    case Deity.Phat: s.worship.healersOffDays = R.healersOffDays; logEvent(s, 'Phật quở: thầy lang nghỉ một tháng'); break;
     case Deity.ThuyThan: {
       const boat = s.figures.find((f) => f.type === FigureType.Boat);
       if (boat) removeFigure(s, boat.id);
-      s.events.push(boat ? 'Thủy thần quở: thuyền nan chìm' : 'Thủy thần quở: sóng dữ trên sông');
+      logEvent(s, boat ? 'Thủy thần quở: thuyền nan chìm' : 'Thủy thần quở: sóng dữ trên sông');
       break;
     }
     case Deity.TienNong:
       for (const b of s.buildings) if (b.type === BuildingType.Paddy) b.progress = 0;
       s.worship.paddyFreezeDays = R.paddyFreezeSmallDays;
-      s.events.push('Tiên nông quở: ruộng lúa lép');
+      logEvent(s, 'Tiên nông quở: ruộng lúa lép');
       break;
   }
 }
@@ -102,19 +103,19 @@ function smallWrath(s: GameState, d: Deity): void {
 function bigWrath(s: GameState, d: Deity): void {
   const R = W.wrath;
   switch (d) {
-    case Deity.ThanhHoang: spawnCriminals(s, FigureType.Rioter, R.riotHouses); s.events.push('Thành hoàng quở lớn: loạn dân!'); break;
-    case Deity.Phat: s.ratings.plaguePending = true; s.events.push('Phật quở lớn: dịch bệnh'); break;
+    case Deity.ThanhHoang: spawnCriminals(s, FigureType.Rioter, R.riotHouses); logEvent(s, 'Thành hoàng quở lớn: loạn dân!'); break;
+    case Deity.Phat: s.ratings.plaguePending = true; logEvent(s, 'Phật quở lớn: dịch bệnh'); break;
     case Deity.ThuyThan: {
       adjustFlood(s, 1);
       const dikes = s.buildings.filter((b) => isDike(b.type) && b.height > 0);
       if (dikes.length) dikes[nextInt(s.rng, dikes.length)].integrity = R.dikeIntegrity;
-      s.events.push('Thủy thần quở lớn: lũ dữ hơn, một đoạn đê rạn nứt');
+      logEvent(s, 'Thủy thần quở lớn: lũ dữ hơn, một đoạn đê rạn nứt');
       break;
     }
     case Deity.TienNong:
       for (const b of s.buildings) if (b.type === BuildingType.Paddy) b.progress = 0;
       s.worship.paddyFreezeDays = R.paddyFreezeBigDays;
-      s.events.push('Tiên nông quở lớn: mất mùa');
+      logEvent(s, 'Tiên nông quở lớn: mất mùa');
       break;
   }
 }
@@ -165,7 +166,7 @@ export function updateWorshipMonthly(s: GameState): void {
     s.treasury -= cost;
     s.thisYear.festivals += cost;
     for (const b of s.buildings) if (b.type === BuildingType.House) b.happiness = Math.min(100, b.happiness + W.tet.sentiment);
-    s.events.push(`Tết Nguyên đán: ${cost} quan, lòng dân +${W.tet.sentiment}`);
+    logEvent(s, `Tết Nguyên đán: ${cost} quan, lòng dân +${W.tet.sentiment}`);
   }
 }
 
@@ -183,6 +184,6 @@ export function holdFestival(s: GameState, deity: number, size: number): string 
   s.treasury -= cost;
   s.thisYear.festivals += cost;
   s.worship.gods[deity].monthsSinceFestival = 0;
-  s.events.push(`Lễ hội ${['nhỏ', 'vừa', 'lớn'][size]} thờ ${DEITY_NAMES[deity]}: ${cost} quan`);
+  logEvent(s, `Lễ hội ${['nhỏ', 'vừa', 'lớn'][size]} thờ ${DEITY_NAMES[deity]}: ${cost} quan`);
   return null;
 }

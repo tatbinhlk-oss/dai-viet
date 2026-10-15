@@ -3,6 +3,12 @@ import { LABOR_NAMES } from '../sim/city/labor';
 import { MOOD_CAUSE_TEXT } from '../sim/city/sentiment';
 import { HOUSE_LEVELS, RESOURCES } from '../sim/buildings/defs';
 import { bridge, panel, ui } from './store';
+import { GRID_SIZE } from '../sim/map/grid';
+
+/** QoL: nút tới chỗ xảy ra sự kiện / vấn đề */
+const GoTo = ({ at }: { at: number }) => (at >= 0 ? <button class="goto" title="Tới chỗ đó" onClick={() => bridge.lookAt(at % GRID_SIZE, Math.floor(at / GRID_SIZE))}>→</button> : null);
+/** danh sách sự kiện mới nhất trước, có nút tới chỗ */
+const EventList = ({ events, at }: { events: string[]; at: number[] }) => (events.length ? <ul class="events">{events.map((e, i) => <li>{e} <GoTo at={at[i] ?? -1} /></li>).reverse()}</ul> : null);
 import { loads, num } from './format';
 import { YamenPanel } from './YamenPanel';
 
@@ -18,9 +24,30 @@ export function Advisors() {
   return (
     <div class="panel advisor">
       <div class="head">
-        <strong>{{ labor: 'Lao động', finance: 'Tài chính', mood: 'Dân tình', storage: 'Kho hàng', flood: 'Thủy lợi', court: 'Nha môn — triều đình', worship: 'Tín ngưỡng', ratings: 'Bốn chỉ số', trade: 'Thương mại' }[p]}</strong>
+        <strong>{{ overview: 'Tổng quan — cố vấn', labor: 'Lao động', finance: 'Tài chính', mood: 'Dân tình', storage: 'Kho hàng', flood: 'Thủy lợi', court: 'Nha môn — triều đình', worship: 'Tín ngưỡng', ratings: 'Bốn chỉ số', trade: 'Thương mại' }[p]}</strong>
         <button onClick={() => (panel.value = null)}>✕</button>
       </div>
+      {p === 'overview' && (
+        <>
+          {c.scenario.goals.population > 0 && (
+            <table class="mini">
+              <thead><tr><th>Mục tiêu {c.scenario.name}</th><th>Hiện</th><th>Cần</th></tr></thead>
+              <tbody>
+                {([['Dân', 'population'], ['Văn hiến', 'culture'], ['Thịnh vượng', 'prosperity'], ['Trị an', 'peace'], ['Ân sủng', 'favor']] as [string, keyof typeof c.scenario.goals][]).map(([n, k]) => (
+                  <tr class={c.scenario.current[k] >= c.scenario.goals[k] ? 'ok' : ''}><td>{n}</td><td>{num(c.scenario.current[k])}</td><td>{num(c.scenario.goals[k])}</td></tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          {c.scenario.timeLimitYears > 0 && <p class="muted">Hạn: {c.scenario.timeLimitYears} năm · đang năm {s.time.year + 1}</p>}
+          <p><strong>Vấn đề</strong></p>
+          {c.problems.length === 0 ? <p class="muted">Không có gì đáng lo. {c.scenario.goals.population > 0 ? 'Xem mục tiêu phía trên.' : ''}</p> : (
+            <ul class="problems">{c.problems.map((pr) => <li class={pr.level}>{pr.text} <GoTo at={pr.at} /></li>)}</ul>
+          )}
+          <p><strong>Tin mới</strong></p>
+          <EventList events={c.events.slice(-12)} at={c.eventAt.slice(-12)} />
+        </>
+      )}
       {p === 'labor' && (
         <>
           <p>Nhân công {num(c.employed)} / {num(c.workforce)} · thất nghiệp {c.unemploymentPct}%</p>
@@ -76,7 +103,7 @@ export function Advisors() {
               {c.houseLevels.map((n, lvl) => (n > 0 ? <tr><td>{HOUSE_LEVELS[lvl].name}</td><td>{n}</td></tr> : null))}
             </tbody>
           </table>
-          {c.events.length > 0 && <ul class="events">{[...c.events].reverse().map((e) => <li>{e}</li>)}</ul>}
+          <EventList events={c.events} at={c.eventAt} />
         </>
       )}
       {p === 'flood' && (
@@ -108,7 +135,7 @@ export function Advisors() {
               </tbody>
             </table>
           )}
-          {c.events.length > 0 && <ul class="events">{[...c.events].reverse().map((e) => <li>{e}</li>)}</ul>}
+          <EventList events={c.events} at={c.eventAt} />
         </>
       )}
       {p === 'court' && <YamenPanel />}

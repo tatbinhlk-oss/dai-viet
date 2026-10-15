@@ -2,7 +2,7 @@
 import { signal } from '@preact/signals';
 import type { Command, OverlayMode, Snapshot } from '../sim';
 
-export type Panel = 'labor' | 'finance' | 'mood' | 'storage' | 'flood' | 'court' | 'worship' | 'ratings' | 'trade' | null;
+export type Panel = 'overview' | 'labor' | 'finance' | 'mood' | 'storage' | 'flood' | 'court' | 'worship' | 'ratings' | 'trade' | null;
 
 /** Snapshot mới nhất, cập nhật ~4 lần/giây cho bảng biểu (render vẫn nhận mọi snapshot). */
 export const ui = signal<Snapshot | null>(null);
@@ -42,6 +42,8 @@ export function resetCampaign(): void {
   try { localStorage.removeItem(CAMPAIGN_KEY); } catch { /* bỏ qua */ }
 }
 
+/** QoL: màn giới thiệu nhiệm vụ đang mở */
+export const briefing = signal(false);
 /** M6c: âm thanh bật / tắt (nút 🔊) */
 export const soundOn = signal(true);
 
@@ -50,6 +52,8 @@ export const bridge = {
   select: (_x: number, _y: number) => {},
   /** QoL: hoàn tác lần xây gần nhất */
   undo: () => {},
+  /** QoL: đưa camera tới ô */
+  lookAt: (_x: number, _y: number) => {},
   // M6a: lưu game
   save: () => {},
   load: (_slot: 'auto' | 'manual') => {},

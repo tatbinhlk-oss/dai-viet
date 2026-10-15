@@ -1,6 +1,7 @@
 // Walker đi dạo (roamer): dịch vụ, người mộ phu, tuần đinh, thợ cả, lại thu thuế, tội phạm.
 // Mỗi ô đặt chân lên, tác dụng phủ 5×5 quanh mình — figuretype/service.c của Julius.
 import { BuildingType, FigureType, isDike, type Building, type Figure, type GameState } from '../state';
+import { logEvent } from '../log';
 import { gridOffset, inBounds } from '../map/grid';
 import { economy, flood, SERVICE_MAX, SERVICE_RANGE } from '../buildings/defs';
 import { removeBuilding, roadAccess } from '../buildings/spawn';
@@ -78,7 +79,7 @@ function applyService(s: GameState, f: Figure): void {
       for (const c of s.figures) {
         if (!isCriminal(c.type)) continue;
         if (Math.abs(c.x - f.x) <= R && Math.abs(c.y - f.y) <= R) {
-          s.events.push(c.type === FigureType.Thief ? 'Tuần đinh bắt được trộm' : c.type === FigureType.Rioter ? 'Tuần đinh dẹp loạn dân' : 'Tuần đinh giải tán dân kêu oan');
+          logEvent(s, c.type === FigureType.Thief ? 'Tuần đinh bắt được trộm' : c.type === FigureType.Rioter ? 'Tuần đinh dẹp loạn dân' : 'Tuần đinh giải tán dân kêu oan');
           removeFigure(s, c.id);
         }
       }
@@ -106,7 +107,7 @@ function finishCriminal(s: GameState, f: Figure): void {
     if (amount > 0) {
       s.treasury -= amount;
       s.thisYear.stolen += amount;
-      s.events.push(`Trộm lấy ${amount} quan`);
+      logEvent(s, `Trộm lấy ${amount} quan`);
     }
   }
   removeFigure(s, f.id);
