@@ -2,9 +2,8 @@
 // Phương tiện: xe bò (CartPusher, Convoy), xe cút kít (Warehouseman), ngựa thồ (Caravan), kiệu (Mandarin), thuyền nan (Boat), thuyền buôn (TradeShip).
 // Hướng: se = đi +x (xuống phải, vẽ gốc), sw = +y (lật gương se), ne = −y (lên phải, nhìn từ sau), nw = −x (lật gương ne).
 // 4 khung bước. Neo (0.5, 1). Kiện hàng của xe / thuyền là sprite riêng render đè ở (0, −10) (thuyền −12).
-import { createCanvas } from '@napi-rs/canvas';
 import { FigureType } from '../../src/sim/state';
-import { darken, hex, lighten, line, poly, type Canvas, type Ctx } from './lib';
+import { canvas, darken, hex, lighten, line, poly, type Canvas, type Ctx } from './lib';
 
 const SKIN = 0xd8a878, HAT = 0xd8c080, HAT_DARK = 0xa08a48, PANTS = 0x2a2420;
 const OX = 0x7a4a2c, OX_DARK = 0x46281a, OX_LIGHT = 0x9a6a44, HORN = 0xf0e8d0;
@@ -105,7 +104,7 @@ export function person(g: Ctx, x: number, y: number, frame: number, back: boolea
 }
 
 function base(W: number, H: number, dir: string): { c: Canvas; g: Ctx; back: boolean } {
-  const c = createCanvas(W, H);
+  const c = canvas(W, H);
   const g = c.getContext('2d');
   const flip = dir === 'sw' || dir === 'nw';
   const back = dir === 'ne' || dir === 'nw';
@@ -239,7 +238,7 @@ export function boatFrame(dir: string, frame: number, big = false): Canvas {
 
 /** Kiện hàng: bao tải tròn buộc miệng, màu theo loại. 10×6. */
 export function cargoSack(color: number): Canvas {
-  const c = createCanvas(10, 6);
+  const c = canvas(10, 6);
   const g = c.getContext('2d');
   g.fillStyle = hex(darken(color, 0.25)); g.beginPath(); g.ellipse(5, 3.5, 5, 2.5, 0, 0, Math.PI * 2); g.fill();
   g.fillStyle = hex(color); g.beginPath(); g.ellipse(4, 2.5, 3.5, 2, 0, 0, Math.PI * 2); g.fill();

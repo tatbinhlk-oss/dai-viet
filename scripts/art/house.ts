@@ -29,14 +29,14 @@ export function thatchPlane(s: Scene, ridgeA: [number, number, number], ridgeB: 
       const t = k / 5;
       line(s.g, s.p(...lerp(ridgeA, eaveA, t)), s.p(...lerp(ridgeB, eaveB, t)), `rgba(70,50,15,${0.22 + k * 0.04})`, 1);
     }
-    const n = 140;
+    const n = 260;
     for (let i = 0; i < n; i++) {
       const a = r(), t = r();
       const top = lerp(ridgeA, ridgeB, a), bot = lerp(eaveA, eaveB, a);
       const p0 = lerp(top, bot, t), p1 = lerp(top, bot, Math.min(1, t + 0.05 + r() * 0.08));
       const shade = r();
       const col = shade < 0.3 ? darken(base, 0.12 + r() * 0.1) : shade > 0.7 ? lighten(base, 0.14 + r() * 0.1) : mix(base, STRAW_DARK, 0.15);
-      line(s.g, s.p(...p0), s.p(...p1), hex(col), 1);
+      line(s.g, s.p(...p0), s.p(...p1), hex(col), 0.6);
     }
     // sáng ở gần nóc, tối dần về giọt tranh
     const g0 = s.p(...ridgeA), g1 = s.p(...eaveA);
@@ -57,9 +57,9 @@ export function wattleWall(s: Scene, a: [number, number], b: [number, number], h
   clipped(s.g, pts, () => {
     const [x0, y0] = s.p(a[0], a[1], 0), [x1, y1] = s.p(b[0], b[1], 0);
     const len = Math.hypot(x1 - x0, y1 - y0);
-    for (let d = 2; d < len; d += 2.5 + r()) {
+    for (let d = 1.5; d < len; d += 1.6 + r() * 0.6) {
       const t = d / len, x = x0 + (x1 - x0) * t, y = y0 + (y1 - y0) * t;
-      line(s.g, [x, y], [x, y - h], hex(r() < 0.5 ? darken(base, 0.22) : lighten(base, 0.12)), 1);
+      line(s.g, [x, y], [x, y - h], hex(r() < 0.5 ? darken(base, 0.22) : lighten(base, 0.12)), 0.6);
     }
     for (const z of [h * 0.35, h * 0.7]) line(s.g, s.p(a[0], a[1], z), s.p(b[0], b[1], z), hex(darken(base, 0.35)), 1);
   });
