@@ -2,7 +2,7 @@
 // Khi có hình thật, thả PNG cùng tên vào assets/ và chạy `npm run assets:pack`; file này không cần chạy lại.
 // Kích thước và điểm neo theo 5 điểm kỹ thuật chốt từ M1: ô 64×32, công trình N×N rộng N×64, neo (0.5, 1) = góc dưới hình thoi móng.
 import { createCanvas, GlobalFonts, type SKRSContext2D } from '@napi-rs/canvas';
-import { mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { BuildingType, FigureType, Resource } from '../src/sim/state';
 import { blockColors, COLOR, dikeHeightPx, FIG_COLOR, HOUSE_COLORS, RES_COLOR, typeHeight } from '../src/render/palette';
@@ -18,7 +18,10 @@ const resources = JSON.parse(readFileSync(join(ROOT, 'src/data/resources.json'),
 
 const hex = (c: number) => `#${c.toString(16).padStart(6, '0')}`;
 const generated: string[] = [];
+/** Hình thật do scripts/gen-art.ts vẽ: không đè bằng khối màu. */
+const art = new Set<string>(existsSync(join(ASSETS, 'art.json')) ? (JSON.parse(readFileSync(join(ASSETS, 'art.json'), 'utf8')) as { files: string[] }).files : []);
 function save(rel: string, canvas: ReturnType<typeof createCanvas>): void {
+  if (art.has(rel)) return;
   const file = join(ASSETS, rel);
   mkdirSync(join(file, '..'), { recursive: true });
   writeFileSync(file, canvas.toBuffer('image/png'));

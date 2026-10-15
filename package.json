@@ -10,8 +10,9 @@
     "test": "vitest run",
     "assets:gen": "tsx scripts/gen-placeholders.ts",
     "assets:pack": "tsx scripts/pack-sprites.ts",
+    "assets:art": "tsx scripts/gen-art.ts",
     "maps": "tsx scripts/gen-maps.ts",
-    "assets": "npm run assets:gen && npm run assets:pack",
+    "assets": "npm run assets:art && npm run assets:gen && npm run assets:pack",
     "icons": "tsx scripts/gen-icons.ts"
   },
   "dependencies": {
