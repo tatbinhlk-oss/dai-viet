@@ -20,7 +20,9 @@ export interface Sheet { image: string; placeholder: boolean; /** điểm ảnh 
 function footprintOf(group: string, name: string): number {
   if (group === 'houses') { const m = /^house(\d)_/.exec(name); return m ? Number(m[1]) : 1; }
   if (group === 'buildings') {
-    const m = /^(?:ruins|ash|rubble|fire)_(\d)/.exec(name); // đống tro ba giai đoạn + lửa: cỡ ghi trong tên
+    const m = /^(?:ruins|ash|rubble|fire)_(\d)/.exec(name);
+    const sm = /^smoke_(\w+)_\d+$/.exec(name); if (sm) return buildings[sm[1]]?.size ?? 1; // khói: cỡ theo công trình
+    // đống tro ba giai đoạn + lửa: cỡ ghi trong tên
     if (m) return Number(m[1]);
     return buildings[name]?.size ?? 1;
   }

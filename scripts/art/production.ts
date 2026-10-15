@@ -11,6 +11,11 @@ const SOIL = 0x6e5838, LEAF = 0x4a8a2a, LEAF_DARK = 0x356a1e, LEAF_LIGHT = 0x7ab
 
 type Rect = [number, number, number, number];
 
+/** Miệng ống khói của công trình đang vẽ (so với đáy giữa hình) — smoke.ts sinh khung khói bay đè lên. */
+export const CHIMNEYS: Record<string, { dx: number; dy: number; n: number }[]> = {};
+let currentKey = '';
+function chimney(s: Scene, x: number, y: number): void { (CHIMNEYS[currentKey] ??= []).push({ dx: x - s.W / 2, dy: y - s.H, n: s.n }); }
+
 /** Luống đất tơi (sẫm) trong vùng. */
 function bed(s: Scene, [u0, v0, u1, v1]: Rect): void {
   polyUV(s, [[u0, v0, 0], [u1, v0, 0], [u1, v1, 0], [u0, v1, 0]], hex(SOIL));
@@ -54,11 +59,11 @@ function furnace(s: Scene, u: number, v: number, w: number, h: number, dome: boo
   polyUV(s, [[u + w, dm + 0.12, 0], [u + w, dm - 0.12, 0], [u + w, dm - 0.12, h * 0.55], [u + w, dm + 0.12, h * 0.55]], hex(0x1a0a06));
   polyUV(s, [[u + w, dm + 0.08, 0], [u + w, dm - 0.08, 0], [u + w, dm - 0.08, h * 0.35], [u + w, dm + 0.08, h * 0.35]], hex(GLOW));
   polyUV(s, [[u + w, dm + 0.04, 0], [u + w, dm - 0.04, 0], [u + w, dm - 0.04, h * 0.2], [u + w, dm + 0.04, h * 0.2]], hex(0xf8e060));
-  // ống khói + khói
+  // ống khói (khói là frame hoạt ảnh riêng, xem smoke.ts)
   const [kx, ky] = s.p(u + w * 0.3, v + w * 0.3, h + (dome ? w * 20 : 0));
   g.fillStyle = hex(BRICK_DARK); g.fillRect(kx - 2, ky - 10, 4, 10);
-  g.fillStyle = 'rgba(200,200,200,0.45)';
-  for (const [dx, dy, r] of [[0, -13, 2.5], [2, -17, 3], [5, -21, 3.5]]) { g.beginPath(); g.ellipse(kx + dx, ky + dy, r, r * 0.8, 0, 0, Math.PI * 2); g.fill(); }
+  g.fillStyle = hex(darken(BRICK_DARK, 0.4)); g.fillRect(kx - 2, ky - 10, 4, 1);
+  chimney(s, kx, ky - 10);
 }
 
 /** Đống gỗ tròn xếp chồng tại (u, v). */
@@ -274,7 +279,7 @@ export function teaHouse(): Canvas {
   earthFloor(s, 0, 0, 2, 2, 201);
   workshopHouse(s, [0.2, 0.2, 1.8, 1.0], 202);
   // ống khói sao chè
-  const [kx, ky] = s.p(0.5, 0.3, 26); s.g.fillStyle = hex(BRICK_DARK); s.g.fillRect(kx - 2, ky - 8, 4, 8); s.g.fillStyle = 'rgba(200,200,200,0.45)'; for (const [dx, dy, r] of [[0, -11, 2.5], [2, -15, 3]]) { s.g.beginPath(); s.g.ellipse(kx + dx, ky + dy, r, r * 0.8, 0, 0, Math.PI * 2); s.g.fill(); }
+  const [kx, ky] = s.p(0.5, 0.3, 26); s.g.fillStyle = hex(BRICK_DARK); s.g.fillRect(kx - 2, ky - 8, 4, 8); chimney(s, kx, ky - 8);
   // nong phơi chè
   for (const [u, v] of [[0.4, 1.4], [0.9, 1.5], [1.4, 1.4], [0.65, 1.8], [1.15, 1.85]] as [number, number][]) { const [x, y] = s.p(u, v); s.g.fillStyle = hex(0xb89a5a); s.g.beginPath(); s.g.ellipse(x, y, 8, 4, 0, 0, Math.PI * 2); s.g.fill(); s.g.fillStyle = hex(LEAF_DARK); s.g.beginPath(); s.g.ellipse(x, y - 0.5, 6, 2.8, 0, 0, Math.PI * 2); s.g.fill(); }
   return s.c;
@@ -325,7 +330,8 @@ export function productionFrames(): Record<string, Canvas> {
     ['kiln', kiln], ['loom', loom], ['teaHouse', teaHouse], ['silkWorkshop', silkWorkshop], ['foundry', foundry], ['smithy', smithy],
   ];
   const out: Record<string, Canvas> = {};
-  for (const [k, f] of list) out[`buildings/${k}.png`] = f();
+  for (const [k, f] of list) { currentKey = k; out[`buildings/${k}.png`] = f(); }
+  currentKey = '';
   return out;
 }
 // tránh cảnh báo chưa dùng
