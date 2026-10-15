@@ -18,7 +18,7 @@ export function earthFloor(s: Scene, u0: number, v0: number, u1: number, v1: num
 }
 
 /** Mái rơm một mặt: tứ giác ridge(a→b) tới eave(c→d) theo (u, v, z), tô nền rồi vân rơm theo chiều dốc. */
-function thatchPlane(s: Scene, ridgeA: [number, number, number], ridgeB: [number, number, number], eaveB: [number, number, number], eaveA: [number, number, number], base: number, seed: number): void {
+export function thatchPlane(s: Scene, ridgeA: [number, number, number], ridgeB: [number, number, number], eaveB: [number, number, number], eaveA: [number, number, number], base: number, seed: number): void {
   const pts = [ridgeA, ridgeB, eaveB, eaveA].map(([u, v, z]) => s.p(u, v, z));
   poly(s.g, pts, hex(base));
   const r = rng(seed);
@@ -50,7 +50,7 @@ function thatchPlane(s: Scene, ridgeA: [number, number, number], ridgeB: [number
 }
 
 /** Vách phên tre: tứ giác đứng, tô nền rồi kẻ nan đứng + hai thanh ngang. */
-function wattleWall(s: Scene, a: [number, number], b: [number, number], h: number, base: number, seed: number): void {
+export function wattleWall(s: Scene, a: [number, number], b: [number, number], h: number, base: number, seed: number): void {
   const pts: [number, number][] = [s.p(a[0], a[1], 0), s.p(b[0], b[1], 0), s.p(b[0], b[1], h), s.p(a[0], a[1], h)];
   poly(s.g, pts, hex(base));
   const r = rng(seed);
