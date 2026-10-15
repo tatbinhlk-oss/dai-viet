@@ -98,6 +98,13 @@ COLOR.grass.forEach((c, i) => save(`ground/grass${i}.png`, diamond(hex(c))));
 save('ground/floodplain.png', diamond(hex(COLOR.floodplain)));
 save('ground/water.png', diamond(hex(COLOR.water)));
 save('ground/road.png', diamond(hex(COLOR.road), 1, hex(COLOR.roadEdge)));
+{ // M7: cầu gỗ — nền sông, ván ngang
+  const c = diamond(hex(COLOR.water)); const g = c.getContext('2d');
+  poly(g, [HALF_W, 3, TILE_W - 6, HALF_H, HALF_W, TILE_H - 3, 6, HALF_H], hex(COLOR.bridge));
+  g.strokeStyle = hex(COLOR.bridgeEdge); g.lineWidth = 1;
+  for (let k = -3; k <= 3; k++) { g.beginPath(); g.moveTo(HALF_W + k * 4 - 10, HALF_H + k * 2 - 5); g.lineTo(HALF_W + k * 4 + 10, HALF_H + k * 2 + 5); g.stroke(); }
+  save('ground/bridge.png', c);
+}
 save('ground/floor.png', diamond(hex(COLOR.floor)));
 save('ground/sunken.png', diamond(hex(COLOR.sunken)));
 save('ground/flooded.png', diamond(hex(COLOR.flooded), 0.65));
@@ -152,9 +159,9 @@ function figure(type: FigureType, dir: string, frame: number, full: boolean): Re
     g.fillStyle = '#2a2a2a'; g.beginPath(); g.arc(-4, -2, 2, 0, Math.PI * 2); g.arc(4, -2, 2, 0, Math.PI * 2); g.fill();
     g.fillStyle = '#d0b090'; g.fillRect(9, -12, 3, 3); g.fillStyle = '#3a2a1a'; g.fillRect(9 + step / 2, -9, 3, 8); // người đẩy
     if (full) poly(g, [-5, -15, 5, -15, 5, -10, -5, -10], '#e8dcc0');
-  } else if (type === FigureType.Enemy || type === FigureType.Militia) {
+  } else if (type === FigureType.Enemy || type === FigureType.Militia || type === FigureType.CourtTroops) {
     g.fillStyle = color; g.beginPath(); g.arc(0, -11, 4, 0, Math.PI * 2); g.fill();
-    g.fillStyle = type === FigureType.Enemy ? '#402020' : '#802020'; g.fillRect(-3, -8, 6, 7); // áo giáp
+    g.fillStyle = type === FigureType.Enemy ? '#402020' : type === FigureType.CourtTroops ? '#a07020' : '#802020'; g.fillRect(-3, -8, 6, 7); // áo giáp
     g.fillStyle = '#d0d0d0'; g.fillRect(5, -16, 2, 12); // giáo
     g.fillStyle = '#3a2a1a'; g.fillRect(-3, -1, 2, 1 + Math.abs(step) / 2); g.fillRect(1, -1 - Math.abs(step) / 2, 2, 1 + Math.abs(step) / 2);
   } else if (type === FigureType.LevyWorker || type === FigureType.Soldiers) {

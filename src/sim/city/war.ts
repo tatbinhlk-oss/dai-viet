@@ -51,6 +51,20 @@ function spawnEnemies(s: GameState, inv: Invasion): void {
   logEvent(s, `Giặc tới: ${inv.size} tên ${SOURCE_TEXT[inv.source]}!`, at);
 }
 
+/** M7: quân triều đình đến cách chức — vào từ cửa ngõ, nhắm nha môn theo cơ chế giặc (lính chặn được, thành / cổng phải phá). */
+export function sendCourtTroops(s: GameState): number {
+  const at = s.entryOffset;
+  let n = 0;
+  for (let k = 0; k < WAR.dismissalTroops; k++) {
+    const f = createFigure(s, FigureType.CourtTroops, at, 0);
+    if (!f) break;
+    f.hp = WAR.enemyHp; f.loads = 1; f.boatHome = at; f.destBuildingId = 0;
+    n++;
+  }
+  if (n) logEvent(s, `Quân triều đình (${n} toán) kéo tới nha môn để cách chức!`, at);
+  return n;
+}
+
 /** Mỗi ngày (tick 27). */
 export function updateWar(s: GameState): void {
   if (s.time.day !== 0) { spawnMilitia(s); return; }
@@ -84,7 +98,7 @@ export function nearestTarget(s: GameState, x: number, y: number, walls: boolean
   let best: Building | null = null, bd = 1e9;
   for (const b of s.buildings) {
     if (b.type === BuildingType.None || b.type === BuildingType.Ruins || b.type === BuildingType.Dike || b.type === BuildingType.Sluice) continue;
-    const isW = b.type === BuildingType.EarthWall || b.type === BuildingType.StoneWall;
+    const isW = b.type === BuildingType.EarthWall || b.type === BuildingType.StoneWall || b.type === BuildingType.Gate;
     if (isW !== walls) continue;
     const d = Math.max(Math.abs(b.x + (b.size - 1) / 2 - x), Math.abs(b.y + (b.size - 1) / 2 - y));
     if (d < bd) { bd = d; best = b; }

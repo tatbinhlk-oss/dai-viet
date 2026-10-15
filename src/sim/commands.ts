@@ -6,11 +6,11 @@ import { holdFestival } from './city/worship';
 import { openRoute, ROUTES, setTradeOrder } from './city/trade';
 const ROUTE_KEY = (i: number): string => ROUTES[i]?.key ?? '';
 import { WAR } from './city/war';
-import { placeBuilding, placeRoad, raze } from './buildings/spawn';
+import { placeBridge, placeBuilding, placeRoad, raze } from './buildings/spawn';
 import { BUILDING_DEFS, BUILDING_KEYS } from './buildings/defs';
 import { planDike, setSluice } from './buildings/dike';
 
-/** 'road' hoặc khóa công trình trong buildings.json (house, paddy, kiln, warehouse…). */
+/** 'road', 'bridge' hoặc khóa công trình trong buildings.json (house, paddy, kiln, warehouse…). */
 export type BuildKind = string;
 
 export type Command =
@@ -38,6 +38,7 @@ export function applyCommand(s: GameState, c: Command): void {
   switch (c.type) {
     case 'build': {
       if (c.kind === 'road') { placeRoad(s, c.x, c.y); break; }
+      if (c.kind === 'bridge') { placeBridge(s, c.x, c.y); break; } // M7: cầu gỗ
       const t = BUILDING_KEYS.get(c.kind);
       if (t === undefined || t === BuildingType.None || t === BuildingType.Ruins) break;
       if (BUILDING_DEFS[t].rank > s.court.rank) break; // M6b: công trình cần phẩm hàm cao hơn (Quốc Tử Giám, Văn Miếu, thành đá)

@@ -1,8 +1,8 @@
 // QoL: hoàn tác lần xây gần nhất (như nút Undo của Caesar 3) — bỏ các công trình / đường vừa đặt, trả lại tiền.
 import { BuildingType, isDike, type GameState } from './state';
-import { BUILDING_DEFS } from './buildings/defs';
+import { BUILDING_DEFS, economy } from './buildings/defs';
 import { removeBuilding } from './buildings/spawn';
-import { gridOffset, offsetX, offsetY, T_ROAD } from './map/grid';
+import { gridOffset, offsetX, offsetY, T_ROAD, T_WATER } from './map/grid';
 import { syncDikeTile } from './buildings/dike';
 
 export interface UndoRecord { day: number; buildingIds: number[]; roads: number[]; cost: number }
@@ -35,6 +35,7 @@ export function applyUndo(s: GameState, r: UndoRecord): number {
   }
   for (const o of r.roads) {
     if (!(s.grid.terrain[o] & T_ROAD)) continue;
+    if (s.grid.terrain[o] & T_WATER) refund += economy.bridgeCost; // M7: cầu
     s.grid.terrain[o] &= ~T_ROAD;
     const bid = s.grid.buildingId[o];
     if (bid && isDike(s.buildings[bid].type)) syncDikeTile(s, s.buildings[bid]); // đường vắt qua đê bỏ đi

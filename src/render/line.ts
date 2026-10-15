@@ -1,6 +1,6 @@
 // M6c+: vẽ công trình kéo dài (đường, đê, cống, thành) theo kiểu Caesar 3 — bấm điểm đầu, kéo tới điểm cuối,
 // đoạn đi thẳng theo trục dài hơn trước rồi gấp khúc đúng một lần theo trục kia. Thuần toán, không Pixi (test được).
-export const LINE_TOOLS = new Set(['road', 'dike', 'sluice', 'earthWall', 'stoneWall']);
+export const LINE_TOOLS = new Set(['road', 'bridge', 'dike', 'sluice', 'earthWall', 'stoneWall']);
 /** công cụ kéo theo vùng chữ nhật: lều, vườn, ao sen, phá */
 export const RECT_TOOLS = new Set(['house', 'garden', 'lotusPond', 'raze']);
 

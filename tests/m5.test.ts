@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { applyCommand, createSim, tick } from '../src/sim';
 import { BuildingType, Deity, FigureType, LaborCat, Resource, TICKS_PER_DAY, type GameState } from '../src/sim/state';
 import { BUILDING_DEFS, court, HOUSE_LEVELS, MAX_HOUSE_LEVEL, UNITS_PER_LOAD } from '../src/sim/buildings/defs';
-import { addFavor, deliverEdict, dispatchEdict, scheduleEdict, sendGift, tributeFor, updateCourt } from '../src/sim/city/court';
+import { addFavor, deliverEdict, dispatchEdict, kingExtraEdicts, scheduleEdict, sendGift, tributeFor, updateCourt } from '../src/sim/city/court';
 import { coverage, holdFestival, moodTarget, updateWorshipDaily, updateWorshipMonthly } from '../src/sim/city/worship';
 import { cultureBreakdown, prosperityCap, updateCulture, updateYearlyRatings } from '../src/sim/city/ratings';
 import { updateHealth } from '../src/sim/city/health';
@@ -358,7 +358,7 @@ describe('bốn chỉ số và sức khỏe', () => {
     const s = createScenario('sonNam', 1, true);
     expect(s.court.rank).toBe(3);
     expect(s.treasury).toBe(10000);
-    expect(s.court.edicts.length).toBe(7);
+    expect(s.court.edicts.length).toBe(7 + kingExtraEdicts('confucian', 10, SCENARIOS.sonNam.edicts).length); // M7: vua trọng Nho thêm chiếu chỉ trường học
     expect(s.court.edicts.every((e) => e.month >= 2 && e.month <= 9)).toBe(true);
     checkVictory(s);
     expect(s.gameOver).toBe('');

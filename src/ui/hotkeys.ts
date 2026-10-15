@@ -14,7 +14,7 @@ export const HOTKEYS: { keys: string; text: string }[] = [
   { keys: '1 … 9, 0', text: 'lớp phủ (có vấn đề, vùng ngập, nước, lương thực, cháy, sập, tội phạm, độ hấp dẫn, thuế; 0 tắt)' },
   { keys: 'M', text: 'ẩn / hiện bản đồ thu nhỏ' },
   { keys: 'N', text: 'hiện tên công trình' },
-  { keys: 'R / H / X / Q', text: 'công cụ đường / lều / phá / xem' },
+  { keys: 'R / B / H / X / Q', text: 'công cụ đường / cầu / lều / phá / xem' },
   { keys: 'T', text: 'bảng Tổng quan' },
   { keys: 'Ctrl+Z', text: 'hoàn tác lần xây gần nhất' },
   { keys: 'Esc', text: 'bỏ đoạn đang kéo, đóng bảng' },
@@ -35,6 +35,7 @@ export function hotkeyAction(key: string, ctrl: boolean): HotkeyAction | null {
   if (k === 'm') return { kind: 'minimap' };
   if (k === 'n') return { kind: 'names' };
   if (k === 'r') return { kind: 'tool', tool: 'road' };
+  if (k === 'b') return { kind: 'tool', tool: 'bridge' };
   if (k === 'h') return { kind: 'tool', tool: 'house' };
   if (k === 'x') return { kind: 'tool', tool: 'raze' };
   if (k === 'q') return { kind: 'tool', tool: 'inspect' };

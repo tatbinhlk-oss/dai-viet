@@ -9,11 +9,11 @@ import { applyFlood, computeFlood } from '../src/sim/flood/floodFill';
 import { endOfSeason, paddyYield, updateFloodedBuildings } from '../src/sim/flood/consequences';
 import { rollPeak, SEASON_DAYS, waterLevel } from '../src/sim/flood/season';
 import { breachDike, updateDikes } from '../src/sim/buildings/dike';
-import { chooseCartDestination } from '../src/sim/figures/cartpusher';
+import { chooseCartDestination, waitingForBoat } from '../src/sim/figures/cartpusher';
 import { decayServices } from '../src/sim/buildings/house';
 import { updateDesirability } from '../src/sim/map/desirability';
 import { legacyDike } from '../src/sim/scenario/demo';
-import { flood } from '../src/sim/buildings/defs';
+import { BUILDING_DEFS, flood } from '../src/sim/buildings/defs';
 import { roadAccess } from '../src/sim/buildings/spawn';
 
 const build = (s: GameState, kind: string, x: number, y: number): GameState['buildings'][number] => {
@@ -321,12 +321,23 @@ describe('thuyền nan', () => {
     expect(pick!.boat).toBeGreaterThanOrEqual(0);
     wharf.progress = 200;
     days(s, 1);
+    // M7: xe bò đứng ở cửa chờ kiện thứ hai (thuyền chở 2 kiện), bến cá vẫn sản xuất trong lúc chờ
+    const cart = s.figures.find((f) => f.type === FigureType.CartPusher);
+    expect(cart).toBeDefined();
+    expect(waitingForBoat(cart)).toBe(true);
+    expect(s.figures.some((f) => f.type === FigureType.Boat)).toBe(false);
+    expect(wharf.progress).toBe(0);
+    days(s, 1);
+    expect(wharf.progress).toBeGreaterThan(0);
+    wharf.progress = BUILDING_DEFS[BuildingType.FishWharf].progressMax;
+    days(s, 1);
     const boat = s.figures.find((f) => f.type === FigureType.Boat);
     expect(boat).toBeDefined();
+    expect(boat!.loads).toBe(2);
     expect(boat!.x).toBeLessThan(4); // trên sông
     expect(wharf.figureId).toBe(boat!.id);
     days(s, 25); // ~90 ô × 10 tick = 900 tick = 18 ngày
-    expect(gran.store[Resource.Fish]).toBe(100);
+    expect(gran.store[Resource.Fish]).toBe(200);
     days(s, 25);
     expect(s.figures.some((f) => f.type === FigureType.Boat)).toBe(false);
     expect(wharf.figureId).toBe(0);

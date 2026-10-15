@@ -20,7 +20,7 @@ export function updateFigures(s: GameState): void {
       case FigureType.Emigrant: case FigureType.Convoy: case FigureType.Soldiers: updateEmigrant(s, f); break; // đi ra cửa ngõ rồi biến mất
       case FigureType.Messenger: updateMessenger(s, f); break;
       case FigureType.Caravan: case FigureType.TradeShip: updateTrader(s, f); break;
-      case FigureType.Enemy: updateEnemy(s, f); break;
+      case FigureType.Enemy: case FigureType.CourtTroops: updateEnemy(s, f); break;
       case FigureType.Militia: updateMilitia(s, f); break;
       case FigureType.LevyWorker: updateLevyWorker(s, f); break;
       case FigureType.Boat: updateBoatFigure(s, f); break;

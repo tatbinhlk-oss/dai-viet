@@ -6,7 +6,7 @@ export const GROUPS: [string, string][] = [
   ['store', 'Kho & chợ'], ['service', 'Dịch vụ'], ['admin', 'Quản trị'], ['dike', 'Đê điều'], ['military', 'Quân sự'], ['decor', 'Cảnh quan'],
 ];
 export const TERRAIN_HINT: Record<TerrainRule, string> = {
-  any: '', floodplain: 'chỉ trên bãi bồi ven sông', highland: 'chỉ trên đất cao (không phải bãi bồi)', mountain: 'chỉ trên núi', shore: 'phải kề sông', land: 'mọi ô đất, kể cả lên đường (dốc qua đê)',
+  any: '', floodplain: 'chỉ trên bãi bồi ven sông', highland: 'chỉ trên đất cao (không phải bãi bồi)', mountain: 'chỉ trên núi', shore: 'phải kề sông', land: 'mọi ô đất, kể cả lên đường (dốc qua đê)', road: 'đặt lên ô đường: dân đi qua, giặc phải phá',
 };
 export const resName = (r: number) => RESOURCES[r]?.name ?? '?';
 export const loads = (units: number) => (units / 100).toFixed(units % 100 ? 1 : 0);

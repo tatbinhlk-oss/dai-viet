@@ -64,8 +64,11 @@ export enum BuildingType {
   StoneWall = 47, // thành đá 1×1, cần phẩm hàm 4
   // --- M6b ---
   QuocTuGiam = 48, // Quốc Tử Giám 3×3, cần phẩm hàm cao — thầy giáo / thủ thư đi dạo phủ academy, tính Văn hiến như trường học
+  // --- M7 ---
+  Gate = 49, // cổng thành 1×1 đặt lên ô đường: dân đi qua, giặc phải phá (độ bền như thành)
 }
-export const isWall = (t: BuildingType): boolean => t === BuildingType.EarthWall || t === BuildingType.StoneWall;
+/** Thành và cổng: giặc không qua được, phải phá (integrity). */
+export const isWall = (t: BuildingType): boolean => t === BuildingType.EarthWall || t === BuildingType.StoneWall || t === BuildingType.Gate;
 export const isDike = (t: BuildingType): boolean => t === BuildingType.Dike || t === BuildingType.Sluice;
 /** Bậc nhà quan lại thấp nhất (Tư dinh). */
 export const HOUSE_TIER_MANDARIN = 9;
@@ -130,7 +133,11 @@ export enum FigureType {
   TradeShip = 30, // thuyền buôn (tuyến sông) — từ mép sông tới bến cảng
   Enemy = 31, // giặc — từ mép bản đồ tới công trình gần nhất
   Militia = 32, // lính từ trại lính
+  // M7
+  CourtTroops = 33, // quân triều đình đến cách chức: từ cửa ngõ tới nha môn theo cơ chế giặc (phá thành / cổng, bị lính chặn)
 }
+/** Người ngoài thù địch: không qua cổng thành, lính đánh. */
+export const isHostile = (t: FigureType): boolean => t === FigureType.Enemy || t === FigureType.CourtTroops;
 
 export enum FigureMode {
   Idle = 0,

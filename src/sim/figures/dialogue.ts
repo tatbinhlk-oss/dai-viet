@@ -11,7 +11,7 @@ export const FIGURE_NAMES: Record<number, string> = {
   [FigureType.TaxCollector]: 'Lại thu thuế', [FigureType.Warehouseman]: 'Phu kho', [FigureType.Protester]: 'Dân kêu oan', [FigureType.Thief]: 'Kẻ trộm', [FigureType.Rioter]: 'Loạn dân',
   [FigureType.LevyWorker]: 'Phu đê', [FigureType.Boat]: 'Thuyền nan', [FigureType.Messenger]: 'Sứ giả triều đình', [FigureType.Convoy]: 'Đoàn xe cống nạp', [FigureType.Soldiers]: 'Đinh tráng',
   [FigureType.TempleKeeper]: 'Ông từ', [FigureType.Academic]: 'Thầy giáo', [FigureType.Puppeteer]: 'Phường rối nước', [FigureType.Mandarin]: 'Quan đi kiệu', [FigureType.Caravan]: 'Đoàn buôn',
-  [FigureType.TradeShip]: 'Thuyền buôn', [FigureType.Enemy]: 'Giặc', [FigureType.Militia]: 'Lính',
+  [FigureType.TradeShip]: 'Thuyền buôn', [FigureType.Enemy]: 'Giặc', [FigureType.Militia]: 'Lính', [FigureType.CourtTroops]: 'Quân triều đình',
 };
 
 export interface FigureInfo { id: number; name: string; text: string; x: number; y: number }
@@ -89,7 +89,8 @@ export function figureDialogue(s: GameState, f: Figure): FigureInfo {
       text = 'Đốt hết! Quan trên không lo cho dân thì dân tự lo!';
       break;
     case FigureType.LevyWorker:
-      text = waiting ? 'Phu đê chúng tôi chờ đất đắp.' : f.returning ? 'Đắp xong đoạn đê, chúng tôi về đình.' : `Đình làng cử chúng tôi (${f.loads || 20} người) đi đắp đê.`;
+      text = f.route === -2 ? (f.returning ? 'Hết phiên lao dịch, chúng tôi về đình.' : `Đình cử chúng tôi (${f.loads || 20} người) đi lao dịch cho triều đình.`)
+        : waiting ? 'Phu đê chúng tôi chờ đất đắp.' : f.returning ? 'Đắp xong đoạn đê, chúng tôi về đình.' : `Đình làng cử chúng tôi (${f.loads || 20} người) đi đắp đê.`;
       break;
     case FigureType.Messenger:
       text = 'Có chiếu chỉ! Tôi đem tới nha môn.';
@@ -111,6 +112,9 @@ export function figureDialogue(s: GameState, f: Figure): FigureInfo {
     }
     case FigureType.Enemy:
       text = waiting ? 'Đốt! Đốt sạch!' : f.returning ? 'Rút! Lần sau sẽ quay lại.' : `Giặc đi tới ${dest || 'công trình gần nhất'} để cướp phá.`;
+      break;
+    case FigureType.CourtTroops:
+      text = waiting ? 'Nha môn đây rồi. Quan huyện, hãy giao ấn!' : 'Phụng mệnh triều đình tới cách chức quan huyện. Ai cản thì chém.';
       break;
     case FigureType.Militia:
       text = f.hp < 50 ? 'Tôi bị thương nhưng còn giữ được trại.' : 'Lính trại đây, giặc tới là đánh.';

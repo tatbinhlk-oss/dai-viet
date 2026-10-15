@@ -4,7 +4,7 @@
 //   3. xưởng cùng nguyên liệu đang giữ < 2 kiện (giữ 1 kiện: +20 khoảng cách)  4. kho bất kỳ còn chỗ
 //   5. không ai nhận: về chờ, công trình giữ hàng.
 // Sửa hai lỗi gốc của Julius: xưởng chỉ nhận đúng nguyên liệu; đích đầy khi tới nơi thì chọn lại.
-import { BuildingType, FigureType, isFood, Resource, StorePolicy, type Building, type Figure, type GameState } from '../state';
+import { BuildingType, FigureMode, FigureType, isFood, Resource, StorePolicy, TICKS_PER_DAY, type Building, type Figure, type GameState } from '../state';
 import { BUILDING_DEFS, economy, flood, isRawProducer, isWorkshop, UNITS_PER_LOAD } from '../buildings/defs';
 import { roadAccess } from '../buildings/spawn';
 import { loadsIn, storageAccepts, takeable, warehouseHasRoom, workshopIntake } from '../buildings/storage';
@@ -66,8 +66,31 @@ export function sendCart(s: GameState, f: Figure): boolean {
   const pick = chooseCartDestination(s, figureOffset(f), f.resource, f.destBuildingId, source);
   if (!pick) return false;
   f.destBuildingId = pick.b.id;
-  if (pick.boat >= 0) return launchBoat(s, f, pick.door, pick.boat);
+  if (pick.boat >= 0) {
+    // M7: thuyền nan chở flood.boat.loads kiện — xe bò vừa sinh ở cửa xưởng chờ kiện thứ hai (tối đa waitDays ngày) rồi mới xuống thuyền
+    if (source && f.loads < flood.boat.loads && (isRawProducer(source.type) || isWorkshop(source.type))) {
+      f.mode = FigureMode.Idle; f.waitTicks = flood.boat.waitDays * TICKS_PER_DAY; f.boatHome = pick.door; f.route = pick.boat;
+      return true;
+    }
+    return launchBoat(s, f, pick.door, pick.boat);
+  }
   return setWalkPath(s, f, pick.door, true);
+}
+
+/** M7: xe bò đang đứng ở cửa chờ đủ kiện để đi thuyền (sản xuất vẫn chạy trong lúc chờ). */
+export const waitingForBoat = (f: Figure | undefined): boolean => !!f && f.type === FigureType.CartPusher && f.mode === FigureMode.Idle && f.route >= 0;
+
+function updateWaitingCart(s: GameState, f: Figure): void {
+  const home = s.buildings[f.buildingId];
+  const def = BUILDING_DEFS[home.type];
+  if (home.type === BuildingType.None || home.figureId !== f.id || def.progressMax === 0) { removeFigure(s, f.id); return; }
+  if (home.progress >= def.progressMax && f.loads < flood.boat.loads) { home.progress -= def.progressMax; f.loads++; }
+  if (f.loads < flood.boat.loads && --f.waitTicks > 0) return;
+  const dest = f.route;
+  f.route = -1;
+  if (launchBoat(s, f, f.boatHome, dest)) return;
+  home.progress = def.progressMax; // bến mất: giữ lại hàng, chờ chuyến sau
+  removeFigure(s, f.id);
 }
 
 /** Dỡ hàng vào công trình đích; true nếu nhận. */
@@ -100,6 +123,7 @@ function goHome(s: GameState, f: Figure): void {
 export const updateBoatFigure = (s: GameState, f: Figure): void => updateBoat(s, f, unload);
 
 export function updateCartPusher(s: GameState, f: Figure): void {
+  if (waitingForBoat(f)) { updateWaitingCart(s, f); return; }
   const r = step(s, f);
   if (r === StepResult.Moving || r === StepResult.ArrivedTile) return;
   if (r === StepResult.Blocked) {

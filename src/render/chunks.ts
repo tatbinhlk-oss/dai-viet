@@ -232,7 +232,7 @@ export class ChunkLayer {
         const bt = this.bType[i];
         const dike = bt && isDike(bt as BuildingType);
         let base: string;
-        if (t & T_WATER) base = 'water';
+        if (t & T_WATER) base = t & T_ROAD ? 'bridge' : 'water'; // M7: cầu gỗ
         else if (dike) base = t & T_FLOODPLAIN ? 'floodplain' : `grass${this.elevation[i]}`;
         else if (t & T_ROAD) base = 'road';
         else if (t & T_BUILDING) base = 'floor';
