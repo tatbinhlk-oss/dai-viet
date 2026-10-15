@@ -79,5 +79,5 @@ export function step(s: GameState, f: Figure): StepResult {
 }
 
 function isLandFree(g: Grid, o: number): boolean {
-  return (g.terrain[o] & (T_WATER | T_BUILDING | T_FLOODED)) === 0; // không nước, không công trình, không ngập
+  return (g.terrain[o] & (T_WATER | T_BUILDING)) === 0; // không nước, không công trình; lội được qua ô ngập như tìm đường (isLand) — trước đây chặn ngập nên dân nhập cư sinh ở cửa ngõ đang ngập bị xóa ngay
 }

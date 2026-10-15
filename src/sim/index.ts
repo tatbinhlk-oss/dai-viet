@@ -25,6 +25,7 @@ import { court as courtCfg } from './buildings/defs';
 import { initTrade, PRICES, quotaOf, ROUTES, routeBuys, routeSells } from './city/trade';
 import { initWar, nextInvasion, SOURCE_TEXT, WAR } from './city/war';
 import { figureDialogue, type FigureInfo } from './figures/dialogue';
+import { findExpansion, houseCapacity, houseMinSize } from './buildings/merge';
 import { buildingProblem, computeOverlay, problemAnchors, type OverlayMode } from './overlay';
 import { cityProblems, type CityProblem } from './city/overview';
 import { tutorialSteps, type TutorialStep } from './scenario/tutorial';
@@ -121,6 +122,8 @@ export interface BuildingInfo {
   level: number;
   population: number;
   capacity: number;
+  /** cỡ móng và nhà 2×2 do gộp */
+  size: number; merged: boolean;
   happiness: number;
   /** nhà: thiếu gì để lên bậc kế; null = đang chờ lên / đã tối đa */
   nextLevel: string | null;
@@ -168,10 +171,11 @@ export function inspectBuilding(s: GameState, id: number): BuildingInfo | null {
     id, type: b.type,
     name: isHouse ? lvl.name : def.name,
     isHouse, level: b.level, population: b.population,
-    capacity: isHouse ? HOUSE_LEVELS[Math.max(1, b.level)].capacity : 0,
+    capacity: isHouse ? houseCapacity(b) : 0,
+    size: b.size, merged: b.merged,
     happiness: b.happiness,
     nextLevel: isHouse && b.level < MAX_HOUSE_LEVEL ? HOUSE_LEVELS[b.level + 1].name : null,
-    missing: isHouse && b.level < MAX_HOUSE_LEVEL && b.population > 0 ? missingFor(s, b, b.level + 1) : null,
+    missing: isHouse && b.level < MAX_HOUSE_LEVEL && b.population > 0 ? (missingFor(s, b, b.level + 1) ?? (b.size < houseMinSize(b.level + 1) && !findExpansion(s, b, houseMinSize(b.level + 1)) ? `chỗ nở rộng thành ${houseMinSize(b.level + 1)}×${houseMinSize(b.level + 1)} (đất trống, vườn hay nhà bậc thấp hơn kề bên)` : null)) : null,
     devolving: isHouse && b.population > 0 ? missingFor(s, b, b.level) : null,
     services: { water: b.water, dinh: b.dinh, temple: b.temple, school: b.school, clinic: b.clinic, entertainment: b.entertainment, market: b.marketAccess, tax: b.taxCoverage, academy: b.academy, puppet: b.puppet, shrine: b.shrine, altar: b.altar },
     workers: b.numWorkers, workersNeeded: def.workers,

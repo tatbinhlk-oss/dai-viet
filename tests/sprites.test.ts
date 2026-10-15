@@ -23,6 +23,14 @@ describe('spritesheet', () => {
       expect(f.h).toBeGreaterThan(BUILDING_DEFS[t].size * 32);
     }
     for (let l = 0; l < HOUSE_LEVELS.length; l++) {
+      // nhà 2×2 (gộp bậc 1–8, Tư dinh 9) và 3×3 (Phủ đệ 10): bLevel = bậc | (cỡ − 1) << 4
+      for (const n of [2, 3]) {
+        if ((n === 2 && (l < 1 || l > 9)) || (n === 3 && l !== 10)) continue;
+        const fr = buildings.frames[buildingFrame(BuildingType.House, l | ((n - 1) << 4))];
+        expect(fr, `house${n}_l${l}`).toBeDefined();
+        expect(fr.w).toBe(n * 64);
+        expect(fr.footprint).toBe(n);
+      }
       const f = buildings.frames[buildingFrame(BuildingType.House, l)];
       expect(f, `nhà bậc ${l}`).toBeDefined();
       expect([f.w, f.footprint, f.anchor]).toEqual([64, 1, [0.5, 1]]);

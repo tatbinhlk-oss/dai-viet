@@ -4,6 +4,7 @@ import { BuildingType, FOODS, type Building, type GameState } from '../state';
 import { gridOffset, inBounds } from '../map/grid';
 import { BUILDING_DEFS, DEVOLVE_AFTER_DAYS, economy, EVOLVE_AFTER_DAYS, HOUSE_LEVELS, MAX_HOUSE_LEVEL, RESOURCES } from './defs';
 import { anchorOffset, setHouseLevel } from './spawn';
+import { houseCapacity, houseMinSize, shrinkHouse, tryExpandHouse, tryMergeHouses } from './merge';
 
 export const foodTypes = (b: Building): number => FOODS.reduce((n, r) => n + (b.store[r] > 0 ? 1 : 0), 0);
 
@@ -34,18 +35,27 @@ export function missingFor(s: GameState, b: Building, level: number): string | n
 export function evolveHouses(s: GameState): void {
   for (const b of s.buildings) {
     if (b.type !== BuildingType.House || b.population === 0) continue;
+    tryMergeHouses(s, b); // Caesar 3: bốn nhà 1×1 cùng bậc xếp vuông thì gộp thành 2×2
     if (b.level < MAX_HOUSE_LEVEL && missingFor(s, b, b.level + 1) === null) {
       b.devolveDays = 0;
-      if (++b.evolveDays >= EVOLVE_AFTER_DAYS) {
+      if (b.evolveDays < EVOLVE_AFTER_DAYS) b.evolveDays++;
+      if (b.evolveDays >= EVOLVE_AFTER_DAYS) {
+        // bậc 9 cần 2×2, bậc 10 cần 3×3: không nở được thì đứng ở bậc hiện tại, mai thử lại
+        if (!tryExpandHouse(s, b, houseMinSize(b.level + 1))) continue;
         b.evolveDays = 0;
         setHouseLevel(s, b, b.level + 1);
+        const cap = houseCapacity(b);
+        if (b.population > cap) b.population = cap; // nhà cỡ lớn chứa ít hơn khối gộp: dân dư bỏ đi
       }
     } else if (missingFor(s, b, b.level) !== null) {
       b.evolveDays = 0;
       if (++b.devolveDays >= DEVOLVE_AFTER_DAYS) {
         b.devolveDays = 0;
-        setHouseLevel(s, b, Math.max(1, b.level - 1));
-        const cap = HOUSE_LEVELS[b.level].capacity;
+        const next = Math.max(1, b.level - 1);
+        if (b.size > houseMinSize(next) && b.size === 3) shrinkHouse(s, b, 2, 8); // Phủ đệ 3×3 → Tư dinh 2×2 + 5 nhà bậc 8
+        setHouseLevel(s, b, next);
+        if (next <= 8 && b.size === 2) b.merged = true; // Tư dinh tụt xuống giữ khối 2×2 như nhà gộp
+        const cap = houseCapacity(b);
         if (b.population > cap) b.population = cap; // dân dư bỏ đi
       }
     } else {
@@ -119,7 +129,7 @@ export function updatePopulation(s: GameState): void {
   for (const b of s.buildings) {
     if (b.type !== BuildingType.House) continue;
     pop += b.population;
-    cap += HOUSE_LEVELS[Math.max(1, b.level)].capacity;
+    cap += houseCapacity(b);
   }
   s.population = pop;
   s.housingCapacity = cap;

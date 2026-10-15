@@ -1,6 +1,7 @@
 // Di cư theo lòng dân — city/migration.c + city/population.c của Julius.
 // Lòng dân > 70: 12 người/ngày; 50–70: 6; 40–50: đứng yên; 20–40: 2 người/ngày bỏ đi; < 20: 6 người/ngày bỏ đi.
 import { BuildingType, FigureType, type Building, type GameState } from '../state';
+import { houseCapacity } from '../buildings/merge';
 import { economy, HOUSE_LEVELS } from '../buildings/defs';
 import { setHouseLevel } from '../buildings/spawn';
 import { spawnEmigrants, spawnImmigrants } from '../figures/migrant';
@@ -38,7 +39,7 @@ function immigrate(s: GameState): void {
   let best: Building | null = null, bestRoom = 0;
   for (const b of s.buildings) {
     if (b.type !== BuildingType.House) continue;
-    const room = HOUSE_LEVELS[Math.max(1, b.level)].capacity - b.population - (reserved.get(b.id) ?? 0);
+    const room = houseCapacity(b) - b.population - (reserved.get(b.id) ?? 0);
     if (room <= bestRoom) continue;
     if (!adjacentReachable(r.dist, b.x, b.y)) continue;
     best = b; bestRoom = room;

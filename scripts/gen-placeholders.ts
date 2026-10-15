@@ -81,6 +81,8 @@ for (const n of [1, 2, 3]) save(`buildings/ruins_${n}.png`, block(n, typeHeight(
 houses.levels.forEach((lv, level) => {
   const text = level <= 1 ? `Lều ${level}` : `Nhà ${level}`;
   save(`houses/house_l${level}.png`, block(1, typeHeight(BuildingType.House, 1, level), HOUSE_COLORS[level], text));
+  if (level >= 1 && level <= 9) save(`houses/house2_l${level}.png`, block(2, typeHeight(BuildingType.House, 2, level), HOUSE_COLORS[level], `${text} ⊞`)); // 2×2: gộp (1–8) hoặc Tư dinh (9)
+  if (level === 10) save(`houses/house3_l${level}.png`, block(3, typeHeight(BuildingType.House, 3, level), HOUSE_COLORS[level], text)); // Phủ đệ 3×3
 });
 
 // ---------- đất nền (64×32, neo (0.5, 1) = đỉnh dưới) ----------

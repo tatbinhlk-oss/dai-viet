@@ -25,7 +25,7 @@ export function InfoPanel() {
   return (
     <div class="panel info">
       <div class="head">
-        <strong>{b.name}{b.flooded ? ' — đang ngập' : ''}</strong>
+        <strong>{b.name}{b.isHouse && b.size > 1 ? ` ${b.size}×${b.size}${b.merged ? ' (gộp)' : ''}` : ''}{b.flooded ? ' — đang ngập' : ''}</strong>
         <button onClick={close}>✕</button>
       </div>
       {b.problem && !b.flooded && <p class="bad">⚠ {b.problem[0].toUpperCase() + b.problem.slice(1)}</p>}

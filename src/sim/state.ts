@@ -178,6 +178,8 @@ export interface Building {
   // lao động
   numWorkers: number;
   housesCovered: number; // >0: người mộ phu đã thấy nhà gần đây
+  /** nhà 2×2 do gộp bốn nhà 1×1 cùng bậc (bậc 1–8); nhà bậc 9–10 nở rộng thì false */
+  merged: boolean;
   /** QoL: tạm đóng cửa (mothball) — không cần người làm, không chạy; vẫn cháy / sập */
   mothballed: boolean;
   // rủi ro
@@ -497,7 +499,7 @@ export function newBuilding(id: number, type: BuildingType, x: number, y: number
     progress: 0, numWorkers: 0, housesCovered: 0,
     fireRisk: 0, damageRisk: 0, burnDays: 0,
     figureId: 0, figureId2: 0, laborSeekerId: 0, spawnCounter: 0,
-    flooded: false, floodedThisSeason: false, silted: false, dryYears: 0, floodMoodPeriods: 0, pollutedDays: 0, mothballed: false,
+    flooded: false, floodedThisSeason: false, silted: false, dryYears: 0, floodMoodPeriods: 0, pollutedDays: 0, mothballed: false, merged: false,
     height: 0, targetHeight: 0, integrity: 0, workDone: 0, earthTaken: false, sluiceOpen: false,
   };
 }
