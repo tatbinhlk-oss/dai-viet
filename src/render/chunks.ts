@@ -12,6 +12,10 @@ import { frameOf, isPlaceholder, type Sheets } from './sheets';
 export const CHUNK = 16;
 /** số biến thể mỗi kiểu nối đường trong sheet ground (scripts/art/road.ts) */
 export const ROAD_VARIANTS = 3;
+/** số biến thể cỏ / bãi bồi / nước và cây (scripts/art/ground.ts); thiếu frame thì về frame không số */
+export const GROUND_VARIANTS = 4, TREE_VARIANTS = 4;
+/** băm ô → biến thể */
+export const tileHash = (x: number, y: number): number => (Math.imul(x, 73856093) ^ Math.imul(y, 19349663)) >>> 0;
 const CHUNKS_PER_SIDE = GRID_SIZE / CHUNK;
 
 /** Kích thước móng tại ô neo: đống tro ghi kích thước vào bLevel. */
@@ -50,6 +54,8 @@ export class ChunkLayer {
   private readonly dirty = new Set<number>();
   private readonly dirtyBuildings = new Set<number>();
   private readonly sprites = new Map<number, { node: Sprite | Graphics; label: Text | null; key: string }>();
+  /** cây (bụi tre, cây đa) theo chunk — sprite ở lớp công trình để ngọn cây che đúng thứ tự */
+  private readonly trees = new Map<number, Sprite[]>();
   /** hoạt ảnh đè lên công trình (lửa trên tro đang cháy, khói ống khói): sprite con đổi khung theo thời gian */
   private readonly anims = new Map<number, { sp: Sprite; prefix: string; count: number }>();
   private terrain: Uint16Array = new Uint16Array(GRID_SIZE * GRID_SIZE);
@@ -197,6 +203,8 @@ export class ChunkLayer {
   }
 
   private ground(key: string): Texture | null { return frameOf(this.sheets.ground, key); }
+  /** `${base}_${k}` nếu sheet có biến thể, không thì `base`. */
+  private variant(base: string, hash: number): string { const k = `${base}_${hash % GROUND_VARIANTS}`; return this.ground(k) ? k : base; }
 
   /** Hoạt ảnh đè (lửa, khói): ~6 khung/giây, lặp theo số khung của mỗi loại. Gọi mỗi frame với thời gian ms. */
   animate(ms: number): void {
@@ -242,6 +250,9 @@ export class ChunkLayer {
     const cx = c % CHUNKS_PER_SIDE, cy = (c / CHUNKS_PER_SIDE) | 0;
     const pc = this.chunks[c];
     pc.removeParticles();
+    for (const sp of this.trees.get(c) ?? []) sp.destroy();
+    const treeSprites: Sprite[] = [];
+    this.trees.set(c, treeSprites);
     const add = (key: string, wx: number, wy: number): void => {
       const tex = this.ground(key);
       if (tex) pc.addParticle(new Particle({ texture: tex, x: wx, y: wy + TILE_H, anchorX: 0.5, anchorY: 1 }));
@@ -257,8 +268,9 @@ export class ChunkLayer {
         const bt = this.bType[i];
         const dike = bt && isDike(bt as BuildingType);
         let base: string, roadKey: string | null = null;
-        const soil = t & T_SUNKEN ? 'sunken' : t & T_FLOODPLAIN ? 'floodplain' : `grass${Math.min(4, this.elevation[i])}`;
-        if (t & T_WATER) base = t & T_ROAD ? 'bridge' : 'water'; // M7: cầu gỗ
+        const hv = tileHash(x, y);
+        const soil = t & T_SUNKEN ? 'sunken' : this.variant(t & T_FLOODPLAIN ? 'floodplain' : `grass${Math.min(4, this.elevation[i])}`, hv);
+        if (t & T_WATER) base = t & T_ROAD ? 'bridge' : this.variant('water', hv); // M7: cầu gỗ
         else if (dike) base = t & T_FLOODPLAIN ? 'floodplain' : `grass${this.elevation[i]}`;
         else if (t & T_ROAD) {
           // đường đất vẽ thật: lớp phủ theo kết nối 4 phía + biến thể theo băm ô, đè lên nền cỏ / bãi bồi; thiếu frame thì ô đường tạm
@@ -271,7 +283,11 @@ export class ChunkLayer {
         if (roadKey) add(roadKey, wx, wy);
         if (t & T_FLOODED) add('flooded', wx, wy);
         else if (this.overlay && t & T_FLOODPLAIN && !(t & T_WATER)) add(t & T_UNPROTECTED ? 'overlay_unprotected' : 'overlay_protected', wx, wy);
-        if (t & T_TREE) add('tree', wx, wy);
+        if (t & T_TREE) { // cây: sprite riêng ở lớp công trình, biến thể theo băm (0–2 bụi tre, 3 cây đa — cây đa thưa hơn)
+          const tv = hv % 7 === 0 ? TREE_VARIANTS - 1 : hv % (TREE_VARIANTS - 1);
+          const tt = this.ground(`tree_${tv}`) ?? this.ground('tree');
+          if (tt) { const sp = new Sprite(tt); sp.anchor.set(0.5, 1); sp.position.set(wx, wy + TILE_H); sp.zIndex = zIndexOf(x, y, LAYER_BUILDING); this.objects.addChild(sp); treeSprites.push(sp); }
+        }
         if (t & T_RESERVED) add('reserved', wx, wy); // M6b: đất chưa cấp phủ tối
         if (dike) add(dikeFrame(bt as BuildingType, this.bLevel[i], (t & T_ROAD) !== 0), wx, wy);
       }
