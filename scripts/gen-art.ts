@@ -11,13 +11,15 @@ import { houseLevelFrames } from './art/houses';
 import { CHIMNEYS, productionFrames } from './art/production';
 import { smokeFrames } from './art/smoke';
 import { ruinFrames } from './art/ruins';
+import { serviceFrames } from './art/services';
+import { groundFrames } from './art/ground';
 import { RES_COLOR } from '../src/render/palette';
 
 const ROOT = join(import.meta.dirname, '..');
 const ASSETS = join(ROOT, 'assets');
 
 const resources = JSON.parse(readFileSync(join(ROOT, 'src/data/resources.json'), 'utf8')) as { list: { key: string }[] };
-const frames = { ...houseFrames(), ...houseLevelFrames(), ...buildingFrames(), ...productionFrames(), ...smokeFrames(CHIMNEYS), ...ruinFrames(), ...roadFrames(), ...figureFrames(resources.list.map((r, i) => ({ key: r.key, color: RES_COLOR[i] ?? 0xffffff })).filter((_, i) => i > 0)) };
+const frames = { ...houseFrames(), ...houseLevelFrames(), ...buildingFrames(), ...productionFrames(), ...smokeFrames(CHIMNEYS), ...serviceFrames(), ...ruinFrames(), ...groundFrames(), ...roadFrames(), ...figureFrames(resources.list.map((r, i) => ({ key: r.key, color: RES_COLOR[i] ?? 0xffffff })).filter((_, i) => i > 0)) };
 const files: string[] = [];
 for (const [rel, canvas] of Object.entries(frames)) {
   const file = join(ASSETS, rel);
