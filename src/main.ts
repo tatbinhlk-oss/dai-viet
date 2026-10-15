@@ -49,7 +49,7 @@ async function main() {
   };
   render.onLinePreview = (n) => { if (n > 0) hoverText.value = `${n} ô — thả chuột để xây, Esc để bỏ`; else if (hoverText.value.endsWith('Esc để bỏ')) hoverText.value = HINT; };
   tool.subscribe((t) => { render.ghostSize = toolSize(t); render.lineTool = LINE_TOOLS.has(t); });
-  overlay.subscribe((on) => render.setOverlay(on));
+  overlay.subscribe((mode) => { render.setOverlay(mode); send({ type: 'overlay', mode }); });
   showNames.value = render.placeholderArt; // còn hình tạm thì bật (nhãn Pixi chỉ vẽ lên frame có hình thật)
   showNames.subscribe((on) => render.setShowNames(on));
 

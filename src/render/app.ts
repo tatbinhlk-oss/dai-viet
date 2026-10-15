@@ -24,8 +24,8 @@ export interface RenderApp {
   tileBuilding(x: number, y: number): { type: number; level: number } | null;
   /** đưa camera tới ô (x, y) */
   lookAt(x: number, y: number): void;
-  /** M4: lớp phủ vùng ngập */
-  setOverlay(on: boolean): void;
+  /** lớp phủ: 'flood' tô theo cờ địa hình (M4); các chế độ khác lấy dữ liệu từ snapshot (QoL); '' tắt */
+  setOverlay(mode: string): void;
   /** M6-0: nhãn tên Pixi đè lên công trình có hình thật */
   setShowNames(on: boolean): void;
   /** còn dùng hình tạm (nhãn đã vẽ trong PNG) */
@@ -244,6 +244,8 @@ export async function createRenderApp(canvas: HTMLCanvasElement): Promise<Render
       if (snap.full) chunks.setFull(snap.full.terrain, snap.full.elevation, snap.full.bType, snap.full.bLevel);
       if (snap.changed) chunks.applyChanges(snap.changed.offsets, snap.changed.terrain, snap.changed.bType, snap.changed.bLevel);
       figures.setSnapshot(snap.figures);
+      chunks.setOverlayData(snap.overlay ?? null);
+      chunks.setProblems(snap.problems);
     },
     tileBuilding: (x, y) => chunks.buildingAt(x, y),
     lookAt(x, y) {
@@ -251,7 +253,7 @@ export async function createRenderApp(canvas: HTMLCanvasElement): Promise<Render
       camera.x = p.wx; camera.y = p.wy;
       applyCamera();
     },
-    setOverlay(on) { chunks.setOverlay(on); },
+    setOverlay(mode) { chunks.setOverlay(mode === 'flood'); if (!mode || mode === 'flood') chunks.setOverlayData(null); },
     setShowNames(on) { chunks.setShowNames(on); },
     placeholderArt: sheets.buildings.placeholder,
     destroy() { app.destroy(); },

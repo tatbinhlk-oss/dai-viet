@@ -1,5 +1,5 @@
 // Vòng lặp mô phỏng trong Web Worker. Nhận Command, gửi Snapshot. Không biết gì về Pixi.
-import { applyCommand, buildingIdAt, createSim, figureAt, takeSnapshot, tick, type Command, type GameState } from '../sim';
+import { applyCommand, buildingIdAt, createSim, figureAt, takeSnapshot, tick, type Command, type GameState, type OverlayMode } from '../sim';
 import { TICKS_PER_DAY } from '../sim/state';
 import { buildCourtTown, buildStressTown, demoPriorities } from '../sim/scenario/demo';
 import { createScenario, SCENARIOS } from '../sim/scenario/loader';
@@ -11,6 +11,8 @@ export type WorkerIn =
   | { type: 'cmd'; cmd: Command }
   /** nhiều lệnh một lúc (kéo vẽ đoạn đường / đê): một snapshot sau tất cả */
   | { type: 'cmds'; cmds: Command[] }
+  /** QoL: bật lớp phủ (sim tính mỗi snapshot), '' = tắt */
+  | { type: 'overlay'; mode: OverlayMode }
   /** chọn công trình tại ô để xem chi tiết; x < 0 = bỏ chọn */
   | { type: 'select'; x: number; y: number }
   /** M6a: lưu game — IndexedDB (khe 'auto' tự lưu mỗi tháng, 'manual' khi bấm Lưu), xuất / nhập file .dvsav */
@@ -80,16 +82,18 @@ let last = 0;
 let sentFull = false;
 let selectedId = 0;
 let selectedFigureId = 0; // M6c: walker đang chọn (ưu tiên công trình nếu ô có công trình)
+let overlayMode: OverlayMode = '';
 
 function post(full: boolean): void {
   if (!state) return;
   if (selectedId && state.buildings[selectedId]?.type === 0) selectedId = 0;
   if (selectedFigureId && state.figures[selectedFigureId]?.type === 0) selectedFigureId = 0;
-  const snap = takeSnapshot(state, full, selectedId, selectedFigureId);
+  const snap = takeSnapshot(state, full, selectedId, selectedFigureId, overlayMode);
   const transfer: ArrayBuffer[] = [];
   if (snap.full) transfer.push(snap.full.terrain.buffer as ArrayBuffer, snap.full.elevation.buffer as ArrayBuffer, snap.full.bType.buffer as ArrayBuffer, snap.full.bLevel.buffer as ArrayBuffer);
   if (snap.changed) transfer.push(snap.changed.offsets.buffer as ArrayBuffer, snap.changed.terrain.buffer as ArrayBuffer, snap.changed.bType.buffer as ArrayBuffer, snap.changed.bLevel.buffer as ArrayBuffer);
-  transfer.push(snap.figures.buffer as ArrayBuffer);
+  transfer.push(snap.figures.buffer as ArrayBuffer, snap.problems.buffer as ArrayBuffer);
+  if (snap.overlay) transfer.push(snap.overlay.buffer as ArrayBuffer);
   (self as unknown as Worker).postMessage({ type: 'snapshot', snap } satisfies WorkerOut, transfer);
 }
 
@@ -131,6 +135,9 @@ self.onmessage = (e: MessageEvent<WorkerIn>) => {
   } else if (m.type === 'cmd' && state) {
     applyCommand(state, m.cmd);
     if (sentFull) post(false);
+  } else if (m.type === 'overlay') {
+    overlayMode = m.mode;
+    if (state && sentFull) post(false);
   } else if (m.type === 'cmds' && state) {
     for (const c of m.cmds) applyCommand(state, c);
     if (sentFull) post(false);

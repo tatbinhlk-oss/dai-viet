@@ -28,6 +28,7 @@ export function InfoPanel() {
         <strong>{b.name}{b.flooded ? ' — đang ngập' : ''}</strong>
         <button onClick={close}>✕</button>
       </div>
+      {b.problem && !b.flooded && <p class="bad">⚠ {b.problem[0].toUpperCase() + b.problem.slice(1)}</p>}
       {b.dike && (
         <>
           <p>
