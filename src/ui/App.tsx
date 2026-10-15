@@ -2,7 +2,7 @@ import { TopBar } from './TopBar';
 import { BuildBar } from './BuildBar';
 import { InfoPanel } from './InfoPanel';
 import { Advisors } from './Advisors';
-import { Minimap } from './Minimap';
+import { SavesPanel } from './SavesPanel';
 import { bridge, briefing, campaign, hoverText, ui } from './store';
 import { num } from './format';
 import { SCENARIOS } from '../sim/scenario/list';
@@ -34,6 +34,12 @@ function Briefing() {
         <thead><tr><th>Mục tiêu</th><th>Hiện</th><th>Cần</th></tr></thead>
         <tbody>{rows.map(([n, cur, goal]) => <tr class={cur >= goal ? 'ok' : ''}><td>{n}</td><td>{num(cur)}</td><td>{num(goal)}</td></tr>)}</tbody>
       </table>
+      {s.city.tutorial.length > 0 && (
+        <>
+          <p><strong>Các bước cho người mới</strong></p>
+          <ul class="tutorial">{s.city.tutorial.map((st) => <li class={st.done ? 'done' : ''}>{st.done ? '☑' : '☐'} {st.text}</li>)}</ul>
+        </>
+      )}
       {sc.timeLimitYears > 0 && <p class="muted">Phải xong trong {sc.timeLimitYears} năm{s.time.totalDays > 0 ? ` · đang năm ${s.time.year + 1}` : ''}. Chiếu chỉ sẽ tới theo năm; lũ về tháng Sáu.</p>}
       <div class="actions"><button class="active" onClick={start}>{s.time.totalDays > 0 ? 'Tiếp tục' : 'Bắt đầu'}</button></div>
     </div>
@@ -49,7 +55,7 @@ export function App() {
       </div>
       <InfoPanel />
       <Advisors />
-      <Minimap />
+      <SavesPanel />
       {briefing.value && ui.value && ui.value.city.scenario.key !== 'sandbox' && <Briefing />}
       {ui.value?.city.scenario.gameOver && (
         <div class="gameover">

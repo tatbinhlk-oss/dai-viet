@@ -18,14 +18,25 @@ export type WorkerIn =
   /** chọn công trình tại ô để xem chi tiết; x < 0 = bỏ chọn */
   | { type: 'select'; x: number; y: number }
   /** M6a: lưu game — IndexedDB (khe 'auto' tự lưu mỗi tháng, 'manual' khi bấm Lưu), xuất / nhập file .dvsav */
-  | { type: 'save' }
-  | { type: 'load'; slot?: 'auto' | 'manual' }
+  /** QoL: nhiều khe lưu có tên ('auto' tự lưu, 'quick' nút Lưu nhanh / F5, 'slot1'…'slot8'); listSaves → danh sách */
+  | { type: 'save'; slot?: string; name?: string }
+  | { type: 'load'; slot?: string }
+  | { type: 'listSaves' }
   | { type: 'export' }
   | { type: 'import'; bytes: Uint8Array };
 export type WorkerOut =
   | { type: 'snapshot'; snap: ReturnType<typeof takeSnapshot> }
   | { type: 'file'; bytes: Uint8Array; name: string }
-  | { type: 'notice'; text: string };
+  | { type: 'notice'; text: string }
+  | { type: 'saves'; saves: SaveMeta[] };
+
+export interface SaveMeta { slot: string; name: string; savedAt: number; year: number; month: number; scenario: string; population: number; bytes: number }
+const INDEX_KEY = 'index';
+async function readIndex(): Promise<SaveMeta[]> {
+  try { const raw = await dbGet(INDEX_KEY); return raw ? (JSON.parse(new TextDecoder().decode(raw)) as SaveMeta[]) : []; } catch { return []; }
+}
+async function writeIndex(list: SaveMeta[]): Promise<void> { await dbPut(INDEX_KEY, new TextEncoder().encode(JSON.stringify(list))); }
+async function postSaves(): Promise<void> { (self as unknown as Worker).postMessage({ type: 'saves', saves: await readIndex() } satisfies WorkerOut); }
 
 // ---------- M6a: lưu game ----------
 const DB = 'dai-viet', STORE = 'saves';
@@ -50,13 +61,18 @@ async function dbGet(key: string): Promise<Uint8Array | undefined> {
 }
 const notice = (text: string) => (self as unknown as Worker).postMessage({ type: 'notice', text } satisfies WorkerOut);
 let saving = false;
-async function saveTo(slot: string, quiet = false): Promise<void> {
+async function saveTo(slot: string, quiet = false, name?: string): Promise<void> {
   if (!state || saving) return;
   saving = true;
   try {
     const bytes = await serialize(state);
     await dbPut(slot, bytes);
+    const list = (await readIndex()).filter((m) => m.slot !== slot);
+    const old = (await readIndex()).find((m) => m.slot === slot);
+    list.push({ slot, name: name ?? old?.name ?? (slot === 'auto' ? 'Tự lưu' : slot === 'quick' ? 'Lưu nhanh' : `Khe ${slot.replace('slot', '')}`), savedAt: Date.now(), year: state.time.year, month: state.time.month, scenario: state.scenario.name, population: state.population, bytes: bytes.length });
+    await writeIndex(list);
     if (!quiet) notice(`Đã lưu (${Math.round(bytes.length / 1024)} KB)`);
+    await postSaves();
   } catch (e) { notice(`Không lưu được: ${(e as Error).message}`); }
   saving = false;
 }
@@ -164,9 +180,11 @@ self.onmessage = (e: MessageEvent<WorkerIn>) => {
     else if (builds.length) runBuild(builds); // kéo đoạn / vùng: ô không đặt được thì bỏ qua lặng lẽ
     if (sentFull) post(false);
   } else if (m.type === 'save') {
-    void saveTo('manual');
+    void saveTo(m.slot ?? 'quick', false, m.name);
   } else if (m.type === 'load') {
-    void loadFrom(m.slot ?? 'manual');
+    void loadFrom(m.slot ?? 'quick');
+  } else if (m.type === 'listSaves') {
+    void postSaves();
   } else if (m.type === 'export' && state) {
     void serialize(state).then((bytes) => (self as unknown as Worker).postMessage({ type: 'file', bytes, name: `dai-viet-nam${state!.time.year + 1}.dvsav` } satisfies WorkerOut, [bytes.buffer as ArrayBuffer]));
   } else if (m.type === 'import') {

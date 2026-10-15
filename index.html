@@ -13,8 +13,6 @@
       #game { position: absolute; inset: 0; touch-action: none; }
       :root { --ui-scale: 1; }
       #ui { color: var(--ink); font-size: calc(13px * var(--ui-scale)); user-select: none; }
-      .minimap { position: absolute; right: 10px; bottom: 28px; width: 160px; height: 160px; image-rendering: pixelated; border: 1px solid var(--line); background: #111; cursor: crosshair; }
-      @media (max-width: 700px), (max-height: 520px) { .minimap { width: 96px; height: 96px; bottom: 26px; } }
       button { background: var(--btn); color: var(--ink); border: 1px solid var(--line); padding: 3px 9px; cursor: pointer; font: inherit; }
       button.active { background: var(--on); color: #111; }
       button:disabled { opacity: 0.45; cursor: default; }
@@ -56,6 +54,12 @@
       ul.problems li.bad { color: var(--bad); }
       ul.problems li.warn { color: #f0d890; }
       button.goto { padding: 0 5px; font-size: 11px; margin-left: 2px; }
+      .gameover.saves { text-align: left; max-width: 640px; width: calc(100% - 40px); }
+      .gameover.saves input { background: var(--btn); color: var(--ink); border: 1px solid var(--line); font: inherit; padding: 2px 4px; width: 120px; }
+      .gameover.saves .head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+      ul.tutorial { margin: 4px 0; padding-left: 4px; list-style: none; }
+      ul.tutorial li.done { color: var(--muted); text-decoration: line-through; }
+      .spark svg { display: block; }
       .gameover .actions { margin-top: 10px; display: flex; gap: 8px; align-items: center; justify-content: center; flex-wrap: wrap; }
       .overlaypick select { background: var(--btn); color: var(--ink); border: 1px solid var(--line); font: inherit; padding: 2px 4px; }
       .overlaypick select.active { background: var(--on); color: #111; }

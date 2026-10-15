@@ -4,7 +4,7 @@ import { RESOURCES } from '../sim/buildings/defs';
 import { bridge, ui } from './store';
 import { loads, resName } from './format';
 
-const POLICY_TEXT = ['Nhận', 'Không nhận', 'Đi lấy'];
+const POLICY_TEXT = ['Nhận', 'Không nhận', 'Đi lấy', 'Dọn hết'];
 
 export function InfoPanel() {
   const b = ui.value?.selected;
@@ -29,6 +29,10 @@ export function InfoPanel() {
         <button onClick={close}>✕</button>
       </div>
       {b.problem && !b.flooded && <p class="bad">⚠ {b.problem[0].toUpperCase() + b.problem.slice(1)}</p>}
+      {b.mothballed && <p class="muted">Đang tạm đóng cửa: không cần người làm, không chạy.</p>}
+      {!b.isHouse && b.workersNeeded > 0 && (
+        <p><button class={b.mothballed ? 'active' : ''} title="Tạm đóng cửa để trả người làm cho nơi khác; mở lại sau" onClick={() => bridge.cmd({ type: 'setMothball', buildingId: b.id, on: !b.mothballed })}>{b.mothballed ? 'Mở cửa lại' : 'Tạm đóng cửa'}</button></p>
+      )}
       {b.dike && (
         <>
           <p>
@@ -95,7 +99,7 @@ export function InfoPanel() {
               <tr>
                 <td>{resName(r)}</td>
                 <td>
-                  {[StorePolicy.Accept, StorePolicy.Refuse, StorePolicy.Get].map((p) => (
+                  {[StorePolicy.Accept, StorePolicy.Refuse, StorePolicy.Get, ...(b.type === BuildingType.Warehouse ? [StorePolicy.Empty] : [])].map((p) => (
                     <button class={b.policy![r] === p ? 'active' : ''} onClick={() => bridge.cmd({ type: 'setStorePolicy', buildingId: b.id, resource: r, policy: p })}>
                       {POLICY_TEXT[p]}
                     </button>

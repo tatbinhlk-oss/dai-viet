@@ -161,6 +161,23 @@ export function planWarehouseman(s: GameState, w: Building, door: number, f: Fig
       return setWalkPath(s, f, src.door, true);
     }
   }
+  // (c) QoL: "Dọn hết" — chở từng kiện sang kho / vựa khác còn nhận
+  for (let r = 1; r < w.policy.length; r++) {
+    if (w.policy[r] !== StorePolicy.Empty || loadsIn(w, r) < 1) continue;
+    let dst: Pick | null = null;
+    for (const b of s.buildings) {
+      if (b.id === w.id || (b.type !== BuildingType.Warehouse && b.type !== BuildingType.Granary) || !storageAccepts(b, r)) continue;
+      const bd = roadAccess(s.grid, b);
+      if (bd < 0) continue;
+      dst = better(dst, b, bd, dist[bd]);
+    }
+    if (dst) {
+      w.store[r] -= UNITS_PER_LOAD;
+      f.resource = r; f.loads = 1; f.destBuildingId = dst.b.id;
+      if (setWalkPath(s, f, dst.door, true)) return true;
+      w.store[r] += UNITS_PER_LOAD;
+    }
+  }
   return false;
 }
 

@@ -24,7 +24,7 @@ export function warehouseHasRoom(b: Building, r: Resource): boolean {
 
 /** Công trình chứa này có nhận 1 kiện r không (vựa cần đủ 100% nhân công, kho cần có người). */
 export function storageAccepts(b: Building, r: Resource): boolean {
-  if (b.policy[r] === StorePolicy.Refuse) return false;
+  if (b.policy[r] === StorePolicy.Refuse || b.policy[r] === StorePolicy.Empty) return false;
   if (b.type === BuildingType.Granary) {
     return isFood(r) && b.numWorkers >= BUILDING_DEFS[b.type].workers && totalUnits(b) + UNITS_PER_LOAD <= GRANARY_CAPACITY;
   }
