@@ -7,7 +7,8 @@ import { BuildingType, isDike } from './sim/state';
 import type { WorkerIn, WorkerOut } from './worker/sim.worker';
 import { App } from './ui/App';
 import { toolSize } from './ui/BuildBar';
-import { bridge, briefing, campaign, fps, hoverText, overlay, panel, recordWin, saves, savesOpen, settings, showNames, soundOn, tool, ui, updateSettings } from './ui/store';
+import { bridge, briefing, campaign, fps, hoverText, overlay, panel, pushToast, recordWin, saves, savesOpen, settings, showNames, soundOn, startMenu, tool, ui, updateSettings } from './ui/store';
+import { pausesGame, toastLevel } from './ui/Toasts';
 import { hotkeyAction, panVector } from './ui/hotkeys';
 import { OVERLAY_MODES } from './sim/overlay';
 import { Audio, soundForEvent } from './render/audio';
@@ -38,7 +39,8 @@ async function main() {
   bridge.tiles = () => render.tiles();
   bridge.view = () => render.view();
   // QoL: cài đặt — âm lượng, cỡ chữ
-  settings.subscribe((st) => { audio.setVolume(st.volume); document.documentElement.style.setProperty('--ui-scale', String(st.uiScale)); render.setMinimap(st.minimap); });
+  settings.subscribe((st) => { audio.setVolume(st.volume); document.documentElement.style.setProperty('--ui-scale', String(st.uiScale)); render.setMinimap(st.minimap && !startMenu.value); });
+  startMenu.subscribe((open) => render.setMinimap(settings.value.minimap && !open));
   // QoL: phím tắt (không bắt khi đang gõ vào ô nhập)
   const held = new Set<string>();
   const typing = (e: KeyboardEvent) => { const t = e.target as HTMLElement | null; return !!t && (t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.tagName === 'TEXTAREA'); };
@@ -72,6 +74,8 @@ async function main() {
   bridge.save = (slot, name) => send({ type: 'save', slot, name });
   bridge.load = (slot) => send({ type: 'load', slot });
   bridge.listSaves = () => send({ type: 'listSaves' });
+  bridge.deleteSave = (slot) => send({ type: 'deleteSave', slot });
+  bridge.renameSave = (slot, name) => send({ type: 'renameSave', slot, name });
   send({ type: 'listSaves' });
   bridge.exportFile = () => send({ type: 'export' });
   bridge.importFile = async (file) => send({ type: 'import', bytes: new Uint8Array(await file.arrayBuffer()) });
@@ -146,7 +150,11 @@ async function main() {
       // sự kiện mới → tiếng (danh sách sự kiện bị cắt bớt theo tháng nên chỉ nhìn phần đuôi)
       const ev = latest.city.events;
       if (ev.length < seenEvents) seenEvents = ev.length; // vừa cắt bớt: bỏ qua, không phát lại
-      for (let i = seenEvents; i < ev.length; i++) { const k = soundForEvent(ev[i]); if (k) audio.play(k, 2000); }
+      for (let i = seenEvents; i < ev.length; i++) {
+        const k = soundForEvent(ev[i]); if (k) audio.play(k, 2000);
+        const lv = toastLevel(ev[i]); // QoL: hộp tin nổi + tự dừng khi tin lớn
+        if (lv) { pushToast(ev[i], latest.city.eventAt[i] ?? -1, lv); if (settings.value.pauseOnEvent && pausesGame(ev[i]) && latest.speed > 0) bridge.cmd({ type: 'setSpeed', speed: 0 }); }
+      }
       seenEvents = ev.length;
       render.applySnapshot(latest);
       const sel = latest.selected;
@@ -181,7 +189,11 @@ async function main() {
   const rank = params.has('rank') ? Number(params.get('rank')) : campaign.value.rank;
   // ?stress=1: thị trấn mẫu + dải phố thử tải (M6c, ~1.650 công trình, ~800 walker) trên bản đồ phẳng
   const stress = params.has('stress');
-  send({ type: 'init', seed, demo: params.has('demo') || stress, scenario, rank, stress });
+  // QoL: không có tham số nào → menu bắt đầu (Chơi tiếp / Chuỗi màn / Chơi tự do / Nạp); ?sandbox hay ?seed vào thẳng chơi tự do
+  const direct = !!scenario || params.has('demo') || stress || params.has('sandbox') || params.has('seed');
+  bridge.start = (mode, slot) => { send({ type: 'init', seed, demo: false, rank }); if (mode === 'load' && slot) send({ type: 'load', slot }); };
+  if (!direct) { startMenu.value = true; send({ type: 'listSaves' }); }
+  else send({ type: 'init', seed, demo: params.has('demo') || stress, scenario, rank, stress });
   if (scenario && !params.has('demo') && !stress) { send({ type: 'cmd', cmd: { type: 'setSpeed', speed: 0 } }); briefing.value = true; } // QoL: màn giới thiệu nhiệm vụ, bấm Bắt đầu mới chạy
   if (stress) render.lookAt(100, 90);
   else if (params.has('demo')) render.lookAt(40, 60);

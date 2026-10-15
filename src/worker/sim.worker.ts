@@ -22,6 +22,8 @@ export type WorkerIn =
   | { type: 'save'; slot?: string; name?: string }
   | { type: 'load'; slot?: string }
   | { type: 'listSaves' }
+  | { type: 'deleteSave'; slot: string }
+  | { type: 'renameSave'; slot: string; name: string }
   | { type: 'export' }
   | { type: 'import'; bytes: Uint8Array };
 export type WorkerOut =
@@ -51,6 +53,11 @@ function openDb(): Promise<IDBDatabase> {
 async function dbPut(key: string, bytes: Uint8Array): Promise<void> {
   const db = await openDb();
   await new Promise<void>((resolve, reject) => { const tx = db.transaction(STORE, 'readwrite'); tx.objectStore(STORE).put(bytes, key); tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error); });
+  db.close();
+}
+async function dbDelete(key: string): Promise<void> {
+  const db = await openDb();
+  await new Promise<void>((resolve, reject) => { const tx = db.transaction(STORE, 'readwrite'); tx.objectStore(STORE).delete(key); tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error); });
   db.close();
 }
 async function dbGet(key: string): Promise<Uint8Array | undefined> {
@@ -137,6 +144,7 @@ function loop(now: number): void {
     acc -= 1;
     n++;
   }
+  if (n === 0 && state.speed === 0) return; // QoL: đang dừng thì không gửi snapshot 30 lần/giây (lệnh, chọn, lớp phủ tự gửi riêng)
   post(false);
   // tự lưu mỗi tháng game như Julius
   const month = state.time.year * 12 + state.time.month;
@@ -185,6 +193,10 @@ self.onmessage = (e: MessageEvent<WorkerIn>) => {
     void loadFrom(m.slot ?? 'quick');
   } else if (m.type === 'listSaves') {
     void postSaves();
+  } else if (m.type === 'deleteSave') {
+    void (async () => { await dbDelete(m.slot); await writeIndex((await readIndex()).filter((x) => x.slot !== m.slot)); await postSaves(); notice('Đã xóa bản lưu'); })();
+  } else if (m.type === 'renameSave') {
+    void (async () => { await writeIndex((await readIndex()).map((x) => (x.slot === m.slot ? { ...x, name: m.name } : x))); await postSaves(); })();
   } else if (m.type === 'export' && state) {
     void serialize(state).then((bytes) => (self as unknown as Worker).postMessage({ type: 'file', bytes, name: `dai-viet-nam${state!.time.year + 1}.dvsav` } satisfies WorkerOut, [bytes.buffer as ArrayBuffer]));
   } else if (m.type === 'import') {
