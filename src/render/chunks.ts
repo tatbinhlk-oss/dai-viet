@@ -10,6 +10,8 @@ import { blockColors, typeHeight } from './palette';
 import { frameOf, isPlaceholder, type Sheets } from './sheets';
 
 export const CHUNK = 16;
+/** số biến thể mỗi kiểu nối đường trong sheet ground (scripts/art/road.ts) */
+export const ROAD_VARIANTS = 3;
 const CHUNKS_PER_SIDE = GRID_SIZE / CHUNK;
 
 /** Kích thước móng tại ô neo: đống tro ghi kích thước vào bLevel. */
@@ -152,6 +154,11 @@ export class ChunkLayer {
       this.terrain[o] = terrain[k]; this.bType[o] = bType[k]; this.bLevel[o] = bLevel[k];
       const x = o % GRID_SIZE, y = (o / GRID_SIZE) | 0;
       this.dirty.add(((y / CHUNK) | 0) * CHUNKS_PER_SIDE + ((x / CHUNK) | 0));
+      // ô kề ở chunk khác cũng vẽ lại: hình đường nối theo 4 phía (mép chunk)
+      if (x % CHUNK === 0 && x > 0) this.dirty.add(((y / CHUNK) | 0) * CHUNKS_PER_SIDE + (((x - 1) / CHUNK) | 0));
+      if (x % CHUNK === CHUNK - 1 && x < GRID_SIZE - 1) this.dirty.add(((y / CHUNK) | 0) * CHUNKS_PER_SIDE + (((x + 1) / CHUNK) | 0));
+      if (y % CHUNK === 0 && y > 0) this.dirty.add((((y - 1) / CHUNK) | 0) * CHUNKS_PER_SIDE + ((x / CHUNK) | 0));
+      if (y % CHUNK === CHUNK - 1 && y < GRID_SIZE - 1) this.dirty.add((((y + 1) / CHUNK) | 0) * CHUNKS_PER_SIDE + ((x / CHUNK) | 0));
       this.dirtyBuildings.add(o);
     }
   }
@@ -188,6 +195,15 @@ export class ChunkLayer {
   }
 
   private ground(key: string): Texture | null { return frameOf(this.sheets.ground, key); }
+
+  /** Frame đường đất theo kết nối 4 phía (bit0 −y, bit1 +x, bit2 +y, bit3 −x) và biến thể băm theo ô; null nếu sheet chưa có. */
+  private roadFrame(x: number, y: number): string | null {
+    const road = (xx: number, yy: number): boolean => xx >= 0 && yy >= 0 && xx < GRID_SIZE && yy < GRID_SIZE && (this.terrain[yy * GRID_SIZE + xx] & T_ROAD) !== 0;
+    const mask = (road(x, y - 1) ? 1 : 0) | (road(x + 1, y) ? 2 : 0) | (road(x, y + 1) ? 4 : 0) | (road(x - 1, y) ? 8 : 0);
+    const v = (Math.imul(x, 73856093) ^ Math.imul(y, 19349663)) >>> 0;
+    const key = `road_${mask}_${v % ROAD_VARIANTS}`;
+    return this.ground(key) ? key : null;
+  }
 
   /** Lớp phủ giá trị: ô trắng tint theo giá trị — 1–100 đỏ, 101–200 lục, 201 vàng; độ mờ theo cường độ. */
   private redrawOverlayChunk(c: number): void {
@@ -231,15 +247,19 @@ export class ChunkLayer {
         const { wx, wy } = tileToWorld(x, y);
         const bt = this.bType[i];
         const dike = bt && isDike(bt as BuildingType);
-        let base: string;
+        let base: string, roadKey: string | null = null;
+        const soil = t & T_SUNKEN ? 'sunken' : t & T_FLOODPLAIN ? 'floodplain' : `grass${Math.min(4, this.elevation[i])}`;
         if (t & T_WATER) base = t & T_ROAD ? 'bridge' : 'water'; // M7: cầu gỗ
         else if (dike) base = t & T_FLOODPLAIN ? 'floodplain' : `grass${this.elevation[i]}`;
-        else if (t & T_ROAD) base = 'road';
+        else if (t & T_ROAD) {
+          // đường đất vẽ thật: lớp phủ theo kết nối 4 phía + biến thể theo băm ô, đè lên nền cỏ / bãi bồi; thiếu frame thì ô đường tạm
+          roadKey = this.roadFrame(x, y);
+          base = roadKey ? soil : 'road';
+        }
         else if (t & T_BUILDING) base = 'floor';
-        else if (t & T_SUNKEN) base = 'sunken';
-        else if (t & T_FLOODPLAIN) base = 'floodplain';
-        else base = `grass${Math.min(4, this.elevation[i])}`;
+        else base = soil;
         add(base, wx, wy);
+        if (roadKey) add(roadKey, wx, wy);
         if (t & T_FLOODED) add('flooded', wx, wy);
         else if (this.overlay && t & T_FLOODPLAIN && !(t & T_WATER)) add(t & T_UNPROTECTED ? 'overlay_unprotected' : 'overlay_protected', wx, wy);
         if (t & T_TREE) add('tree', wx, wy);
