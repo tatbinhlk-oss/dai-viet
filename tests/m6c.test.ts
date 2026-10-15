@@ -82,3 +82,25 @@ describe('tiếng theo sự kiện', () => {
     expect(soundForEvent('Nộp cống 100 quan')).toBeNull();
   });
 });
+
+describe('kéo vẽ đoạn (đường, đê, thành)', () => {
+  it('đoạn đi thẳng theo trục dài hơn rồi gấp khúc đúng một lần; một ô khi không kéo', async () => {
+    const { linePath, LINE_TOOLS } = await import('../src/render/line');
+    expect(linePath(5, 5, 5, 5)).toEqual([[5, 5]]);
+    expect(linePath(0, 0, 3, 0)).toEqual([[0, 0], [1, 0], [2, 0], [3, 0]]);
+    // lệch x nhiều hơn: đi hết x rồi mới xuống y → chỉ một chỗ rẽ
+    const p = linePath(2, 2, 7, 4);
+    expect(p[0]).toEqual([2, 2]); expect(p.at(-1)).toEqual([7, 4]); expect(p).toHaveLength(8);
+    expect(p.slice(0, 6).every(([, y]) => y === 2)).toBe(true);
+    expect(p.slice(5).every(([x]) => x === 7)).toBe(true);
+    // lệch y nhiều hơn, đi ngược
+    const q = linePath(10, 10, 8, 3);
+    expect(q).toHaveLength(10); expect(q.slice(0, 8).every(([x]) => x === 10)).toBe(true); expect(q.at(-1)).toEqual([8, 3]);
+    // mỗi bước kề nhau 4 hướng, không trùng ô
+    for (const path of [p, q]) {
+      for (let i = 1; i < path.length; i++) expect(Math.abs(path[i][0] - path[i - 1][0]) + Math.abs(path[i][1] - path[i - 1][1])).toBe(1);
+      expect(new Set(path.map((t) => t.join(','))).size).toBe(path.length);
+    }
+    expect([...LINE_TOOLS]).toEqual(['road', 'dike', 'sluice', 'earthWall', 'stoneWall']);
+  });
+});
