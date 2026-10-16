@@ -4,7 +4,7 @@ import type { Command, OverlayMode, Snapshot } from '../sim';
 import type { SaveMeta } from '../worker/sim.worker';
 import type { LinePending } from '../render/line';
 
-export type Panel = 'settings' | 'overview' | 'labor' | 'finance' | 'mood' | 'storage' | 'flood' | 'court' | 'worship' | 'ratings' | 'trade' | 'guide' | null;
+export type Panel = 'settings' | 'overview' | 'labor' | 'finance' | 'mood' | 'storage' | 'flood' | 'court' | 'worship' | 'ratings' | 'trade' | 'army' | 'guide' | null;
 
 /** Snapshot mới nhất, cập nhật ~4 lần/giây cho bảng biểu (render vẫn nhận mọi snapshot). */
 export const ui = signal<Snapshot | null>(null);
@@ -14,6 +14,8 @@ export const tool = signal<string>('road');
 export const openGroup = signal<string | null>(null);
 export const panel = signal<Panel>(null);
 export const hoverText = signal('');
+/** M8: đang điều một đội quân (id trại): ô bấm / chạm kế tiếp trên bản đồ là chỗ gác; null = không */
+export const squadOrder = signal<number | null>(null);
 /** Điện thoại: đoạn chạm hai điểm đang chờ xác nhận (thanh ✓ Xây · ↔ · ✕ Bỏ); main thêm giá và đủ tiền hay không */
 export const linePending = signal<(LinePending & { cost: number; enough: boolean }) | null>(null);
 /** Lớp phủ đang bật (sim/overlay.ts): '' tắt, 'flood' vùng ngập (M4), còn lại QoL */

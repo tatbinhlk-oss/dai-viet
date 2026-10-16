@@ -51,6 +51,8 @@ export interface RenderApp {
   setOverlay(mode: string): void;
   /** M6-0: nhãn tên Pixi đè lên công trình có hình thật */
   setShowNames(on: boolean): void;
+  /** M8: chấm đỏ nhấp nháy trên bản đồ thu nhỏ (mép giặc sắp vào) */
+  setMarkers(pts: [number, number][]): void;
   /** còn dùng hình tạm (nhãn đã vẽ trong PNG) */
   readonly placeholderArt: boolean;
   destroy(): void;
@@ -398,6 +400,7 @@ export async function createRenderApp(canvas: HTMLCanvasElement): Promise<Render
     },
     setOverlay(mode) { chunks.setOverlay(mode === 'flood'); if (!mode || mode === 'flood') chunks.setOverlayData(null); },
     setShowNames(on) { chunks.setShowNames(on); },
+    setMarkers(pts) { minimap.setMarkers(pts); },
     placeholderArt: sheets.buildings.placeholder,
     destroy() { app.destroy(); },
   };

@@ -66,7 +66,13 @@ export enum BuildingType {
   QuocTuGiam = 48, // Quốc Tử Giám 3×3, cần phẩm hàm cao — thầy giáo / thủ thư đi dạo phủ academy, tính Văn hiến như trường học
   // --- M7 ---
   Gate = 49, // cổng thành 1×1 đặt lên ô đường: dân đi qua, giặc phải phá (độ bền như thành)
+  // --- M8: quân đội ---
+  Watchtower = 50, // chòi canh biên 1×1: gần mép giặc vào thì báo giặc sớm thêm một tháng
+  ArcherCamp = 51, // trại cung thủ 2×2: vũ khí → cung thủ (bắn xa, yếu khi bị áp sát)
+  ElephantStable = 52, // tàu voi 2×2 (phẩm hàm cao): huấn luyện voi trận, mạnh nhưng đắt
 }
+/** M8: công trình có đội quân (mỗi công trình một đội; `post` là ô gác được lệnh). */
+export const isMilitaryBase = (t: BuildingType): boolean => t === BuildingType.Barracks || t === BuildingType.ArcherCamp || t === BuildingType.ElephantStable;
 /** Thành và cổng: giặc không qua được, phải phá (integrity). */
 export const isWall = (t: BuildingType): boolean => t === BuildingType.EarthWall || t === BuildingType.StoneWall || t === BuildingType.Gate;
 export const isDike = (t: BuildingType): boolean => t === BuildingType.Dike || t === BuildingType.Sluice;
@@ -135,9 +141,15 @@ export enum FigureType {
   Militia = 32, // lính từ trại lính
   // M7
   CourtTroops = 33, // quân triều đình đến cách chức: từ cửa ngõ tới nha môn theo cơ chế giặc (phá thành / cổng, bị lính chặn)
+  // M8
+  Archer = 34, // cung thủ từ trại cung thủ: bắn giặc trong tầm 3 ô, cận chiến yếu
+  Elephant = 35, // voi trận từ tàu voi: chậm, máu dày, đòn nặng
+  Corpse = 36, // xác (lính / giặc / voi) nằm một lúc rồi mờ dần; route = loại xác
 }
 /** Người ngoài thù địch: không qua cổng thành, lính đánh. */
 export const isHostile = (t: FigureType): boolean => t === FigureType.Enemy || t === FigureType.CourtTroops;
+/** M8: quân của thành (lính giáo, cung thủ, voi) — thuộc đội của công trình `buildingId`. */
+export const isSoldier = (t: FigureType): boolean => t === FigureType.Militia || t === FigureType.Archer || t === FigureType.Elephant;
 
 export enum FigureMode {
   Idle = 0,
@@ -212,6 +224,9 @@ export interface Building {
   workDone: number; // đê/cống: công đã đắp cho mức kế (người-tick)
   earthTaken: boolean; // đê/cống: đã lấy kiện đất cho mức đầu
   sluiceOpen: boolean; // cống: đang mở (nước qua)
+  // --- M8: quân đội ---
+  /** trại lính / trại cung thủ / tàu voi: ô gác người chơi điều đội tới (−1 = đứng ở cửa trại) */
+  post: number;
 }
 
 export interface Figure {
@@ -508,6 +523,7 @@ export function newBuilding(id: number, type: BuildingType, x: number, y: number
     figureId: 0, figureId2: 0, laborSeekerId: 0, spawnCounter: 0,
     flooded: false, floodedThisSeason: false, silted: false, dryYears: 0, floodMoodPeriods: 0, pollutedDays: 0, mothballed: false, merged: false,
     height: 0, targetHeight: 0, integrity: 0, workDone: 0, earthTaken: false, sluiceOpen: false,
+    post: -1,
   };
 }
 

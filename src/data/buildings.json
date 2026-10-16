@@ -48,5 +48,8 @@
   "earthWall":     { "name": "Thành đất", "short": "Thành", "group": "military", "size": 1, "cost": 12, "workers": 0, "terrain": "land", "fire": 0, "damage": 0 },
   "stoneWall":     { "name": "Thành đá", "short": "Thành đá", "group": "military", "size": 1, "cost": 40, "workers": 0, "terrain": "land", "rank": 3, "fire": 0, "damage": 0 },
   "gate":          { "name": "Cổng thành", "short": "Cổng", "group": "military", "size": 1, "cost": 30, "workers": 0, "terrain": "road", "fire": 0, "damage": 0 },
+  "watchtower":    { "name": "Chòi canh biên", "short": "Chòi canh", "group": "military", "size": 1, "cost": 60, "workers": 2, "labor": "watch", "fire": 4, "damage": 1, "desirability": [-1, 1, 1, 1] },
+  "archerCamp":    { "name": "Trại cung thủ", "short": "Cung thủ", "group": "military", "size": 2, "cost": 250, "workers": 6, "labor": "military", "input": "weapons", "fire": 5, "damage": 1, "desirability": [-3, 1, 1, 2] },
+  "elephantStable":{ "name": "Tàu voi", "short": "Tàu voi", "group": "military", "size": 2, "cost": 800, "workers": 8, "labor": "military", "rank": 4, "fire": 3, "damage": 1, "desirability": [-4, 1, 1, 3] },
   "quocTuGiam":    { "name": "Quốc Tử Giám", "short": "Quốc Tử Giám", "group": "service", "size": 3, "cost": 600, "workers": 20, "labor": "healthEdu", "rank": 4, "fire": 4, "damage": 1, "desirability": [12, 2, -2, 6], "walker": { "figure": "academic", "roam": 80, "delays": "service" } }
 }

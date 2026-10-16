@@ -1,5 +1,5 @@
 // M6c: câu thoại walker khi người chơi bấm vào (như Caesar 3): đang chở gì, đi đâu, vì sao đứng chờ.
-import { BuildingType, Deity, FigureMode, FigureType, Resource, type Figure, type GameState } from '../state';
+import { BuildingType, Deity, FigureMode, FigureType, isMilitaryBase, isSoldier, Resource, type Figure, type GameState } from '../state';
 import { BUILDING_DEFS, RESOURCES } from '../buildings/defs';
 import { ROUTES } from '../city/trade';
 import { DEITY_NAMES } from '../city/worship';
@@ -12,9 +12,10 @@ export const FIGURE_NAMES: Record<number, string> = {
   [FigureType.LevyWorker]: 'Phu đê', [FigureType.Boat]: 'Thuyền nan', [FigureType.Messenger]: 'Sứ giả triều đình', [FigureType.Convoy]: 'Đoàn xe cống nạp', [FigureType.Soldiers]: 'Đinh tráng',
   [FigureType.TempleKeeper]: 'Ông từ', [FigureType.Academic]: 'Thầy giáo', [FigureType.Puppeteer]: 'Phường rối nước', [FigureType.Mandarin]: 'Quan đi kiệu', [FigureType.Caravan]: 'Đoàn buôn',
   [FigureType.TradeShip]: 'Thuyền buôn', [FigureType.Enemy]: 'Giặc', [FigureType.Militia]: 'Lính', [FigureType.CourtTroops]: 'Quân triều đình',
+  [FigureType.Archer]: 'Cung thủ', [FigureType.Elephant]: 'Voi trận', [FigureType.Corpse]: 'Xác',
 };
 
-export interface FigureInfo { id: number; name: string; text: string; x: number; y: number }
+export interface FigureInfo { id: number; name: string; text: string; x: number; y: number; /** M8: quân thuộc đội của trại (id, tên, ô trại) */ squad: { buildingId: number; name: string; x: number; y: number } | null }
 
 const resName = (r: Resource): string => RESOURCES[r]?.name ?? 'hàng';
 const bName = (s: GameState, id: number): string => {
@@ -117,7 +118,16 @@ export function figureDialogue(s: GameState, f: Figure): FigureInfo {
       text = waiting ? 'Nha môn đây rồi. Quan huyện, hãy giao ấn!' : 'Phụng mệnh triều đình tới cách chức quan huyện. Ai cản thì chém.';
       break;
     case FigureType.Militia:
-      text = f.hp < 50 ? 'Tôi bị thương nhưng còn giữ được trại.' : 'Lính trại đây, giặc tới là đánh.';
+      text = waiting ? 'Giết! Giữ lấy đất này!' : f.hp < 50 ? 'Tôi bị thương nhưng còn giữ được chỗ gác.' : s.buildings[f.buildingId]?.post >= 0 ? 'Lính đứng gác theo lệnh quan, giặc vào tầm là đánh.' : 'Lính trại đây, giặc tới là đánh.';
+      break;
+    case FigureType.Archer:
+      text = waiting ? 'Giương cung! Bắn!' : f.hp < 40 ? 'Cung thủ bị áp sát thì khó, xin cho lính giáo che.' : 'Cung thủ đây, giặc trong ba ô là bắn.';
+      break;
+    case FigureType.Elephant:
+      text = waiting ? 'Voi gầm, giặc bạt vía!' : 'Voi trận đi tuần, chậm mà chắc. Một voi chọi bốn.';
+      break;
+    case FigureType.Corpse:
+      text = [ 'Một lính nằm lại nơi đây.', 'Xác giặc, sẽ được dọn.', 'Một cung thủ nằm lại nơi đây.', 'Xác quân triều đình.', 'Voi trận ngã xuống.' ][f.route] ?? 'Xác.';
       break;
     case FigureType.TempleKeeper: {
       const b = s.buildings[f.buildingId];
@@ -128,5 +138,7 @@ export function figureDialogue(s: GameState, f: Figure): FigureInfo {
     default:
       text = f.mode === FigureMode.Roam ? `${name} từ ${home || 'công trình'} đi quanh xóm, còn ${Math.max(0, f.maxRoamLength - f.roamLength)} bước nữa thì về.` : f.returning ? `${name} về ${home || 'công trình'}.` : `${name} đi tới ${dest || 'nơi cần đến'}.`;
   }
-  return { id: f.id, name, text, x: f.x, y: f.y };
+  const hb = s.buildings[f.buildingId];
+  const squad = isSoldier(f.type) && hb && isMilitaryBase(hb.type) ? { buildingId: hb.id, name: BUILDING_DEFS[hb.type].name, x: hb.x, y: hb.y } : null;
+  return { id: f.id, name, text, x: f.x, y: f.y, squad };
 }

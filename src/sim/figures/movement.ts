@@ -5,10 +5,11 @@ import { gridOffset, isGateTile, isRoad, isWater, neighbors4, offsetX, offsetY, 
 import { findPath, passHostileTo, passLandTo, passRoad, passWater } from '../map/routing';
 import { nextInt } from '../rng';
 import { flood } from '../buildings/defs';
+import tradeJson from '../../data/trade.json';
 
 /** Số tick đi một ô: thuyền nan nhanh hơn người đi bộ (M4). */
 export const onWater = (f: Figure): boolean => f.type === FigureType.Boat || f.type === FigureType.TradeShip;
-export const ticksPerTile = (f: Figure): number => (onWater(f) ? flood.boat.ticksPerTile : TICKS_PER_TILE);
+export const ticksPerTile = (f: Figure): number => (onWater(f) ? flood.boat.ticksPerTile : f.type === FigureType.Elephant ? tradeJson.war.elephantTicksPerTile : TICKS_PER_TILE); // M8: voi chậm
 
 const nb = new Int32Array(4);
 const cands = new Int32Array(4);
