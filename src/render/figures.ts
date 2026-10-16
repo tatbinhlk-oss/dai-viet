@@ -2,7 +2,7 @@
 // vị trí nội suy giữa ô hiện tại và ô kế theo progress/15, làm mượt giữa hai snapshot. zIndex = (x + y) × 8 + 3 chung với công trình.
 // Thiếu frame thì vẽ hình đơn giản bằng Graphics như trước.
 import { Container, Graphics, Sprite } from 'pixi.js';
-import { FIG_STRIDE } from '../sim';
+import { FIG_FIGHTING, FIG_STRIDE } from '../sim';
 import { FigureType, TICKS_PER_TILE } from '../sim/state';
 import { HALF_H, LAYER_FIGURE, tileToWorld, zIndexOf } from './iso';
 import { FIG_COLOR, RES_COLOR } from './palette';
@@ -45,7 +45,7 @@ export class FigureLayer {
     }
     for (let i = 0; i < n; i++) {
       const k = i * FIG_STRIDE;
-      const x = figs[k], y = figs[k + 1], nx = figs[k + 2], ny = figs[k + 3], progress = figs[k + 4], type = figs[k + 5], res = figs[k + 6];
+      const x = figs[k], y = figs[k + 1], nx = figs[k + 2], ny = figs[k + 3], progress = figs[k + 4], type = figs[k + 5], res = figs[k + 6], variant = figs[k + 7];
       const a = tileToWorld(x, y), b = tileToWorld(nx, ny);
       const p = progress / TICKS_PER_TILE;
       const wx = a.wx + (b.wx - a.wx) * p, wy = a.wy + (b.wy - a.wy) * p + HALF_H;
@@ -56,9 +56,14 @@ export class FigureLayer {
       slot.dir = dirOf(nx - x, ny - y, slot.dir);
       const frame = Math.floor(p * 4) % 4;
       const full = isCarrier(type) && res > 0;
-      const key = `${FIG_KEYS[type] ?? 'none'}${full ? '_full' : ''}_${DIRS[slot.dir]}_${frame}`;
-      const cargoKey = full ? `cargo_${RES_KEYS[res] ?? 'none'}` : '';
+      // M8: biến thể hình (giặc theo nguồn, loại xác) và khung đánh nhau (`_fight`, thiếu thì dùng khung đi)
+      const v = variant & 15, fighting = (variant & FIG_FIGHTING) !== 0;
+      const base = `${FIG_KEYS[type] ?? 'none'}${v ? `_v${v}` : ''}${full ? '_full' : ''}`;
+      const fightKey = fighting ? `${base}_fight_${DIRS[slot.dir]}_${frame}` : '';
+      const key = fightKey && frameOf(this.sheets.figures, fightKey) ? fightKey : `${base}_${DIRS[slot.dir]}_${frame}`;
+      const cargoKey = full || (type === FigureType.Enemy && res > 0) ? `cargo_${RES_KEYS[res] ?? 'none'}` : ''; // giặc vác kiện vừa cướp
       if (slot.key !== key + '|' + cargoKey) { slot.key = key + '|' + cargoKey; this.restyle(slot, type, key, cargoKey, res); }
+      slot.node.alpha = type === FigureType.Corpse ? 1 - p * 0.9 : 1; // xác mờ dần
     }
     for (let i = 0; i < this.pool.length; i++) this.pool[i].node.visible = i < n;
     this.count = n;
@@ -68,6 +73,7 @@ export class FigureLayer {
     const tex = frameOf(this.sheets.figures, key);
     if (tex) {
       if (!slot.sprite) { slot.sprite = new Sprite(); slot.sprite.anchor.set(0.5, 1); slot.node.addChild(slot.sprite); }
+      // hình xác / voi không có đủ biến thể thì frameOf đã trả null → xuống dự phòng; ở đây có frame
       slot.sprite.texture = tex;
       slot.sprite.visible = true;
       if (slot.fallback) slot.fallback.visible = false;
@@ -91,6 +97,10 @@ export class FigureLayer {
     if (isCarrier(type)) {
       g.rect(-7, -10, 14, 8).fill(color);
       if (res) g.rect(-5, -14, 10, 5).fill(RES_COLOR[res] ?? 0xffffff);
+    } else if (type === FigureType.Elephant) {
+      g.ellipse(0, -10, 12, 7).fill(color).rect(-10, -6, 3, 6).fill(0x3a3a3a).rect(7, -6, 3, 6).fill(0x3a3a3a);
+    } else if (type === FigureType.Corpse) {
+      g.ellipse(0, -2, 8, 3).fill(color);
     } else {
       g.circle(0, -6, 4).fill(color).rect(-2, -3, 4, 6).fill(0x2a2a2a);
     }

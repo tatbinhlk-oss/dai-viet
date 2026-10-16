@@ -1,5 +1,6 @@
 // Lệnh từ UI vào sim. Đây là đường DUY NHẤT để thay đổi state từ ngoài, nên replay/undo làm được.
-import { BuildingType, isDike, isWall, LABOR_CATS, LaborCat, StorePolicy, type GameState, type Resource, type TradeOrder } from './state';
+import { BuildingType, isDike, isMilitaryBase, isWall, LABOR_CATS, LaborCat, StorePolicy, type GameState, type Resource, type TradeOrder } from './state';
+import { GRID_SIZE, gridOffset, isLand, T_BUILDING } from './map/grid';
 import { logEvent } from './log';
 import { dispatchEdict, sendGift, setSalary } from './city/court';
 import { holdFestival } from './city/worship';
@@ -32,7 +33,10 @@ export type Command =
   | { type: 'openRoute'; route: number }
   | { type: 'setTradeOrder'; resource: Resource; order: TradeOrder }
   /** QoL: tạm đóng cửa công trình (không cần người làm, không chạy) */
-  | { type: 'setMothball'; buildingId: number; on: boolean };
+  | { type: 'setMothball'; buildingId: number; on: boolean }
+  /** M8: điều đội quân của trại tới đứng gác tại ô (đất trống đi được); về trại = bỏ ô gác */
+  | { type: 'squadGoto'; buildingId: number; x: number; y: number }
+  | { type: 'squadReturn'; buildingId: number };
 
 export function applyCommand(s: GameState, c: Command): void {
   switch (c.type) {
@@ -79,6 +83,19 @@ export function applyCommand(s: GameState, c: Command): void {
     case 'setStockpile':
       s.stockpile[c.resource] = c.on;
       break;
+    case 'squadGoto': {
+      const b = s.buildings[c.buildingId];
+      if (!b || !isMilitaryBase(b.type) || c.x < 0 || c.y < 0 || c.x >= GRID_SIZE || c.y >= GRID_SIZE) break;
+      const o = gridOffset(c.x, c.y);
+      if (!isLand(s.grid, o) || (s.grid.terrain[o] & T_BUILDING)) { logEvent(s, 'Không điều quân tới đó được: phải là ô đất trống'); break; }
+      b.post = o;
+      break;
+    }
+    case 'squadReturn': {
+      const b = s.buildings[c.buildingId];
+      if (b && isMilitaryBase(b.type)) b.post = -1;
+      break;
+    }
     case 'openSluice': {
       const b = s.buildings[c.buildingId];
       if (b && b.type === BuildingType.Sluice) setSluice(s, b, c.open);

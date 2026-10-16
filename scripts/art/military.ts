@@ -1,7 +1,7 @@
 // Quản trị và quân sự: điếm canh, trại thợ, nha môn, bến cảng, trại lính, thành đất, thành đá, cổng thành, bến thuyền.
 // Thành đất / thành đá là ô nâng cao trọn hình thoi (như đê) để các đoạn kề nhau nối liền không lộ khe.
 import { darken, hex, lighten, line, poly, polyUV, rng, scene, shadow, type Canvas, type Scene } from './lib';
-import { earthFloor, thatchPlane, waterJar } from './house';
+import { earthFloor, haystack, thatchPlane, waterJar } from './house';
 import { plankWall, post, tilePlane } from './buildings';
 import { gate as yardGate, homestead, tree, yardWall } from './houses';
 
@@ -182,8 +182,105 @@ export function dock(): Canvas {
   return s.c;
 }
 
+/** Hàng rào gỗ nhọn (dùng chung trại lính / trại cung thủ). */
+function palisade(s: Scene, a: [number, number], b: [number, number], n = 14): void {
+  for (let i = 0; i <= n; i++) { const u = a[0] + ((b[0] - a[0]) * i) / n, v = a[1] + ((b[1] - a[1]) * i) / n; const [x, y] = s.p(u, v); line(s.g, [x, y], [x, y - 9], hex(i % 2 ? WOOD_DARK : WOOD), 1.6); s.g.fillStyle = hex(WOOD_LIGHT); s.g.fillRect(x - 0.8, y - 10, 1.6, 1.5); }
+  line(s.g, s.p(a[0], a[1], 5), s.p(b[0], b[1], 5), hex(WOOD), 1);
+}
+
+/** M8: chòi canh biên — tháp gỗ cao bốn cột, sàn gác có lan can, mái rơm, thang dài, cờ đỏ trên đỉnh, đống củi báo hiệu dưới chân. */
+export function watchtower(): Canvas {
+  const s = scene(1, 66);
+  earthFloor(s, 0, 0, 1, 1, 581);
+  shadow(s, 0.55, 0.55, 0.42, 0.42, 0.2);
+  const u0 = 0.3, v0 = 0.3, u1 = 0.7, v1 = 0.7, h1 = 34, h2 = 11;
+  // chân cột xòe rộng hơn sàn: vẽ cột nghiêng từ góc ô vào sàn
+  for (const [[ua, va], [ub, vb]] of [[[0.15, 0.15], [u0, v0]], [[0.85, 0.15], [u1, v0]], [[0.15, 0.85], [u0, v1]], [[0.85, 0.85], [u1, v1]]] as [[number, number], [number, number]][]) line(s.g, s.p(ua, va, 0), s.p(ub, vb, h1), hex(WOOD_DARK), 1.6);
+  // giằng chéo hai mặt trước
+  for (const z of [10, 22]) { line(s.g, s.p(0.15 + (u0 - 0.15) * (z / h1), 0.85 - (0.85 - v1) * (z / h1), z), s.p(0.85 - (0.85 - u1) * ((z + 10) / h1), 0.85 - (0.85 - v1) * ((z + 10) / h1), z + 10), hex(WOOD), 0.9); line(s.g, s.p(0.85 - (0.85 - u1) * (z / h1), 0.85 - (0.85 - v1) * (z / h1), z), s.p(0.85 - (0.85 - u1) * ((z + 10) / h1), 0.15 + (v0 - 0.15) * ((z + 10) / h1), z + 10), hex(WOOD), 0.9); }
+  // sàn gác dày + lan can
+  polyUV(s, [[u0 - 0.06, v1 + 0.06, h1], [u1 + 0.06, v1 + 0.06, h1], [u1 + 0.06, v1 + 0.06, h1 + 2], [u0 - 0.06, v1 + 0.06, h1 + 2]], hex(WOOD_DARK));
+  polyUV(s, [[u1 + 0.06, v1 + 0.06, h1], [u1 + 0.06, v0 - 0.06, h1], [u1 + 0.06, v0 - 0.06, h1 + 2], [u1 + 0.06, v1 + 0.06, h1 + 2]], hex(darken(WOOD_DARK, 0.3)));
+  polyUV(s, [[u0 - 0.06, v0 - 0.06, h1 + 2], [u1 + 0.06, v0 - 0.06, h1 + 2], [u1 + 0.06, v1 + 0.06, h1 + 2], [u0 - 0.06, v1 + 0.06, h1 + 2]], hex(WOOD));
+  for (let u = u0 - 0.02; u <= u1 + 0.06; u += 0.09) line(s.g, s.p(u, v1 + 0.06, h1 + 2), s.p(u, v1 + 0.06, h1 + 7), hex(WOOD_LIGHT), 0.8);
+  for (let v = v0 - 0.02; v <= v1 + 0.06; v += 0.09) line(s.g, s.p(u1 + 0.06, v, h1 + 2), s.p(u1 + 0.06, v, h1 + 7), hex(WOOD_LIGHT), 0.8);
+  line(s.g, s.p(u0 - 0.06, v1 + 0.06, h1 + 7), s.p(u1 + 0.06, v1 + 0.06, h1 + 7), hex(WOOD), 1); line(s.g, s.p(u1 + 0.06, v1 + 0.06, h1 + 7), s.p(u1 + 0.06, v0 - 0.06, h1 + 7), hex(WOOD), 1);
+  // người gác cầm giáo và mõ treo
+  const [px, py] = s.p(0.5, 0.5, h1 + 2); s.g.fillStyle = hex(0x5a3a2a); s.g.fillRect(px - 2.5, py - 9, 5, 6); s.g.fillStyle = hex(0xd8a878); s.g.fillRect(px - 1.5, py - 12, 3, 3); line(s.g, [px + 4, py - 2], [px + 4, py - 18], hex(WOOD_DARK), 0.9);
+  const [mx, my] = s.p(u0, v1 + 0.06, h1 + 7); s.g.fillStyle = hex(WOOD_LIGHT); s.g.fillRect(mx - 2, my + 1, 4, 3);
+  // cột mái và mái rơm bốn mái dốc
+  for (const [u, v] of [[u0, v0], [u1, v0], [u0, v1], [u1, v1]] as [number, number][]) post(s, u, v, h2, h1 + 2, 1.2);
+  thatchPlane(s, [u0 - 0.14, 0.5, h1 + 2 + h2 + 7], [u1 + 0.14, 0.5, h1 + 2 + h2 + 7], [u1 + 0.14, v0 - 0.16, h1 + 2 + h2 - 2], [u0 - 0.14, v0 - 0.16, h1 + 2 + h2 - 2], lighten(STRAW, 0.12), 582);
+  thatchPlane(s, [u0 - 0.14, 0.5, h1 + 2 + h2 + 7], [u1 + 0.14, 0.5, h1 + 2 + h2 + 7], [u1 + 0.14, v1 + 0.16, h1 + 2 + h2 - 2], [u0 - 0.14, v1 + 0.16, h1 + 2 + h2 - 2], STRAW, 583);
+  // thang dài từ chân lên sàn
+  const la = s.p(0.97, 0.6, 0), lb = s.p(u1 + 0.06, 0.6, h1 + 2); line(s.g, la, lb, hex(WOOD_LIGHT), 1.2); line(s.g, [la[0] + 3, la[1] - 1], [lb[0] + 3, lb[1] - 1], hex(WOOD_LIGHT), 1.2);
+  for (let k = 1; k < 10; k++) { const t = k / 10; line(s.g, [la[0] + (lb[0] - la[0]) * t, la[1] + (lb[1] - la[1]) * t], [la[0] + (lb[0] - la[0]) * t + 3, la[1] + (lb[1] - la[1]) * t - 1], hex(WOOD_DARK), 0.8); }
+  // đống củi báo hiệu
+  const [fx, fy] = s.p(0.2, 0.85); for (let i = 0; i < 4; i++) line(s.g, [fx - 4 + i * 2.5, fy], [fx - 1 + (i - 1.5) * 1.2, fy - 6], hex(i % 2 ? WOOD_DARK : WOOD), 1.2);
+  flag(s, 0.5, 0.5, 14, RED, h1 + 2 + h2 + 7);
+  return s.c;
+}
+
+/** M8: trại cung thủ — rào gỗ nhọn, nhà ván mái rơm, hai bia rơm tập bắn, giá cung, bó tên, cờ vàng. */
+export function archerCamp(): Canvas {
+  const s = scene(2, 50);
+  earthFloor(s, 0, 0, 2, 2, 591);
+  palisade(s, [0.06, 0.06], [1.94, 0.06]); palisade(s, [0.06, 0.06], [0.06, 1.94]);
+  homestead(s, 0.25, 0.2, 1.25, 0.95, { wall: 'plank', roof: 'thatch', wallH: 12, ridge: 24, bays: 2, seed: 592 });
+  // bãi tập: hai bia rơm tròn trên cọc, vạch đứng bắn
+  for (const [u, v] of [[1.6, 0.35], [1.75, 0.7]] as [number, number][]) {
+    const [x, y] = s.p(u, v); line(s.g, [x, y], [x, y - 10], hex(WOOD_DARK), 1.2);
+    for (const [r, col] of [[6, 0xd8c890], [4.2, 0xb02020], [2.4, 0xe8e0d0], [1, 0x202020]] as [number, number][]) { s.g.fillStyle = hex(col); s.g.beginPath(); s.g.ellipse(x, y - 14, r, r * 0.9, 0, 0, Math.PI * 2); s.g.fill(); }
+    line(s.g, [x - 3, y - 15], [x + 1, y - 13], hex(WOOD_LIGHT), 0.8); // tên cắm
+  }
+  const [vx, vy] = s.p(1.05, 1.1); line(s.g, [vx - 10, vy + 5], [vx + 10, vy - 5], hex(0xe8e0d0), 1); // vạch vôi
+  // giá cung: hàng cung cong treo trên xà
+  const u0 = 0.3, v = 1.45; line(s.g, s.p(u0, v, 14), s.p(u0 + 0.7, v, 14), hex(WOOD), 1.2); post(s, u0, v, 14, 0, 1.3); post(s, u0 + 0.7, v, 14, 0, 1.3);
+  for (let i = 0; i < 5; i++) { const [x, y] = s.p(u0 + 0.1 + i * 0.13, v, 13); s.g.strokeStyle = hex(WOOD_DARK); s.g.lineWidth = 1; s.g.beginPath(); s.g.moveTo(x, y); s.g.quadraticCurveTo(x + 3.5, y + 5, x, y + 10); s.g.stroke(); line(s.g, [x, y], [x, y + 10], hex(0xe8e0d0), 0.5); }
+  // thùng tên
+  const [bx, by] = s.p(1.3, 1.5); s.g.fillStyle = hex(WOOD_DARK); s.g.fillRect(bx - 4, by - 7, 8, 7); s.g.fillStyle = hex(WOOD); s.g.fillRect(bx - 4, by - 7, 8, 1.5); for (let i = 0; i < 5; i++) { line(s.g, [bx - 3 + i * 1.5, by - 7], [bx - 3.5 + i * 1.6, by - 15], hex(0xd8c8a0), 0.7); s.g.fillStyle = hex(0xd0d0d8); s.g.fillRect(bx - 4 + i * 1.6, by - 16.5, 1.2, 1.8); }
+  palisade(s, [0.06, 1.94], [0.85, 1.94], 6); palisade(s, [1.25, 1.94], [1.94, 1.94], 5); palisade(s, [1.94, 0.06], [1.94, 1.94]);
+  post(s, 0.85, 1.94, 13, 0, 2); post(s, 1.25, 1.94, 13, 0, 2); line(s.g, s.p(0.83, 1.94, 13), s.p(1.27, 1.94, 13), hex(WOOD_DARK), 2);
+  flag(s, 0.18, 1.75, 28, GOLD);
+  return s.c;
+}
+
+/** M8: tàu voi — mái rơm lớn trên sáu cột, voi đứng trong, đống cỏ, máng nước, cọc xích, vải đỏ. */
+export function elephantStable(): Canvas {
+  const s = scene(2, 62);
+  earthFloor(s, 0, 0, 2, 2, 601);
+  const g = s.g;
+  // sân: cọc xích và máng nước phía trước
+  const [cx, cy] = s.p(1.7, 1.7); post(s, 1.7, 1.7, 9, 0, 2); g.strokeStyle = hex(0x4a4a50); g.lineWidth = 1; g.beginPath(); g.moveTo(cx, cy - 7); g.quadraticCurveTo(cx - 8, cy - 2, cx - 14, cy - 6); g.stroke();
+  const [tx, ty] = s.p(0.35, 1.7); g.fillStyle = hex(WOOD_DARK); g.fillRect(tx - 8, ty - 5, 16, 5); g.fillStyle = hex(0x4a8ac0); g.fillRect(tx - 7, ty - 4.5, 14, 2);
+  haystack(s, 1.65, 0.35, 6);
+  // sáu cột và mái rơm cao
+  const u0 = 0.2, v0 = 0.2, u1 = 1.5, v1 = 1.35, h = 26;
+  for (const [u, v] of [[u0, v0], [0.85, v0], [u1, v0], [u0, v1], [0.85, v1], [u1, v1]] as [number, number][]) post(s, u, v, h, 0, 2);
+  // voi trong chuồng (nhìn nghiêng, đầu về phải)
+  const E = 0x6e6a70, ED = 0x4a4650, EL = 0x8a868e;
+  const [ex, ey] = s.p(0.85, 0.85);
+  for (const dx of [-12, -5, 6, 12]) { g.fillStyle = hex(ED); g.fillRect(ex + dx, ey - 10, 4, 10); }
+  g.fillStyle = hex(E); g.beginPath(); g.ellipse(ex, ey - 17, 16, 9, 0, 0, Math.PI * 2); g.fill();
+  g.fillStyle = hex(EL); g.beginPath(); g.ellipse(ex - 2, ey - 21, 10, 4, 0, 0, Math.PI * 2); g.fill();
+  g.fillStyle = hex(E); g.beginPath(); g.ellipse(ex + 16, ey - 19, 7, 6.5, 0, 0, Math.PI * 2); g.fill();
+  g.fillStyle = hex(ED); g.beginPath(); g.ellipse(ex + 10, ey - 19, 4, 6, 0, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = hex(E); g.lineWidth = 3.2; g.lineCap = 'round'; g.beginPath(); g.moveTo(ex + 21, ey - 16); g.quadraticCurveTo(ex + 27, ey - 9, ex + 24, ey - 2); g.stroke(); g.lineCap = 'butt';
+  for (const dy of [0, 2.5]) line(g, [ex + 19, ey - 15 + dy], [ex + 26, ey - 12 + dy], hex(0xf0e8d0), 1.5);
+  g.fillStyle = hex(RED); g.fillRect(ex - 8, ey - 27, 14, 5); g.fillStyle = hex(GOLD); g.fillRect(ex - 8, ey - 23, 14, 1); // vải phủ lưng
+  line(g, [ex - 16, ey - 19], [ex - 20, ey - 10], hex(ED), 1.2);
+  // xà và mái
+  line(g, s.p(u0, v1, h), s.p(u1, v1, h), hex(WOOD_DARK), 1.5); line(g, s.p(u0, v0, h), s.p(u1, v0, h), hex(WOOD_DARK), 1.5);
+  thatchPlane(s, [u0 - 0.15, (v0 + v1) / 2, h + 16], [u1 + 0.15, (v0 + v1) / 2, h + 16], [u1 + 0.15, v0 - 0.2, h - 1], [u0 - 0.15, v0 - 0.2, h - 1], lighten(STRAW, 0.1), 602);
+  thatchPlane(s, [u0 - 0.15, (v0 + v1) / 2, h + 16], [u1 + 0.15, (v0 + v1) / 2, h + 16], [u1 + 0.15, v1 + 0.2, h - 1], [u0 - 0.15, v1 + 0.2, h - 1], STRAW, 603);
+  line(g, s.p(u0 - 0.15, (v0 + v1) / 2, h + 16), s.p(u1 + 0.15, (v0 + v1) / 2, h + 16), hex(darken(STRAW, 0.35)), 1.5);
+  yardWall(s, [0.06, 1.94], [1.94, 1.94], 5); yardWall(s, [1.94, 0.06], [1.94, 1.94], 5);
+  flag(s, 0.12, 1.8, 24, RED);
+  return s.c;
+}
+
 export function militaryFrames(): Record<string, Canvas> {
-  const list: [string, () => Canvas][] = [['watchPost', watchPost], ['builderPost', builderPost], ['yamen', yamen], ['port', port], ['barracks', barracks], ['earthWall', earthWall], ['stoneWall', stoneWall], ['gate', gate], ['dock', dock]];
+  const list: [string, () => Canvas][] = [['watchPost', watchPost], ['builderPost', builderPost], ['yamen', yamen], ['port', port], ['barracks', barracks], ['earthWall', earthWall], ['stoneWall', stoneWall], ['gate', gate], ['dock', dock], ['watchtower', watchtower], ['archerCamp', archerCamp], ['elephantStable', elephantStable]];
   const out: Record<string, Canvas> = {};
   for (const [k, f] of list) out[`buildings/${k}.png`] = f();
   return out;

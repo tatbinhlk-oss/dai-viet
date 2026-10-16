@@ -4,7 +4,7 @@ import type { Edict, EdictState, EdictType, Goals, GameOver } from './state';
 import { createGrid, GRID_SIZE, gridOffset, T_WATER } from './map/grid';
 import { generateTerrain, type TerrainOptions } from './map/terrain';
 import { applyMapFile, type MapDef } from './map/mapfile';
-import { BuildingType, emptyLedger, FigureType, isDike, isWall, LABOR_CATS, RES_COUNT, Resource, TICKS_PER_TILE, type Ledger, type MoodCause } from './state';
+import { BuildingType, emptyLedger, FigureType, isDike, isMilitaryBase, isWall, LABOR_CATS, RES_COUNT, Resource, TICKS_PER_TILE, type Ledger, type MoodCause } from './state';
 import { newBuilding, type GameState } from './state';
 import { tick } from './tick';
 import { applyCommand, type Command } from './commands';
@@ -24,7 +24,8 @@ import { cultureBreakdown, initRatings, prosperityCap } from './city/ratings';
 import { currentRatings } from './scenario/victory';
 import { court as courtCfg } from './buildings/defs';
 import { initTrade, PRICES, quotaOf, ROUTES, routeBuys, routeSells } from './city/trade';
-import { initWar, nextInvasion, SOURCE_TEXT, WAR } from './city/war';
+import { initWar, invasionEntry, nextInvasion, SOURCE_TEXT, squadKind, squadMembers, WAR, watchtowerCovers } from './city/war';
+import { offsetX, offsetY } from './map/grid';
 import { figureDialogue, type FigureInfo } from './figures/dialogue';
 import { findExpansion, houseCapacity, houseMinSize } from './buildings/merge';
 import { buildingProblem, computeOverlay, problemAnchors, type OverlayMode } from './overlay';
@@ -73,6 +74,33 @@ export interface BuildingInfo {
   /** ruộng lúa */
   paddy: { silted: boolean; dryYears: number; yieldPct: number } | null;
   pollutedDays: number;
+  /** M8: đội quân của trại lính / trại cung thủ / tàu voi */
+  squad: SquadInfo | null;
+}
+export interface SquadInfo {
+  buildingId: number; name: string; kind: 'militia' | 'archer' | 'elephant';
+  count: number; max: number; hpPct: number;
+  /** ô gác được lệnh; null = đứng ở cửa trại */
+  post: { x: number; y: number } | null;
+  /** ô đang đứng (trung bình) để nút → tới */
+  at: { x: number; y: number };
+  /** trại: số kiện vũ khí trong kho trại; tàu voi: % huấn luyện */
+  weapons: number; trainPct: number;
+  x: number; y: number;
+}
+export function squadInfo(s: GameState, b: GameState['buildings'][number]): SquadInfo {
+  const k = squadKind(b.type), members = squadMembers(s, b);
+  let hp = 0, sx = 0, sy = 0;
+  for (const m of members) { hp += m.hp / k.hp; sx += m.x; sy += m.y; }
+  const n = members.length;
+  return {
+    buildingId: b.id, name: BUILDING_DEFS[b.type].name, kind: b.type === BuildingType.ArcherCamp ? 'archer' : b.type === BuildingType.ElephantStable ? 'elephant' : 'militia',
+    count: n, max: k.max, hpPct: n ? Math.round((hp * 100) / n) : 0,
+    post: b.post >= 0 ? { x: offsetX(b.post), y: offsetY(b.post) } : null,
+    at: n ? { x: Math.round(sx / n), y: Math.round(sy / n) } : { x: b.x, y: b.y },
+    weapons: Math.floor(b.store[Resource.Weapons] / 100), trainPct: b.type === BuildingType.ElephantStable ? Math.min(100, Math.floor((b.progress * 100) / WAR.elephantTrainDays)) : 0,
+    x: b.x, y: b.y,
+  };
 }
 
 export function inspectBuilding(s: GameState, id: number): BuildingInfo | null {
@@ -113,6 +141,7 @@ export function inspectBuilding(s: GameState, id: number): BuildingInfo | null {
     problem: buildingProblem(s, b),
     mothballed: b.mothballed,
     range: def.waterLevel > 0 ? def.waterRange : 0,
+    squad: isMilitaryBase(b.type) ? squadInfo(s, b) : null,
   };
 }
 
@@ -166,7 +195,13 @@ export interface TradeStats {
   shipsThisYear: number;
   caravansThisYear: number;
 }
-export interface WarStats { enemiesAlive: number; militia: number; killedThisYear: number; warning: string | null; wallHp: Record<string, number> }
+export interface WarStats {
+  enemiesAlive: number; militia: number; killedThisYear: number; warning: string | null; wallHp: Record<string, number>;
+  /** M8: các đội quân, giặc sắp tới (đã báo) với ô mép vào, vũ khí trong kho / vựa toàn thành */
+  squads: SquadInfo[];
+  incoming: { source: string; text: string; x: number; y: number; months: number; size: number; watched: boolean }[];
+  weaponsStored: number;
+}
 
 export interface RatingStats {
   culture: number; prosperity: number; prosperityCap: number; peace: number; health: number;
@@ -278,12 +313,23 @@ export function cityStats(s: GameState): CityStats {
     orders: [...s.trade.orders], prices: PRICES, shipsThisYear: s.trade.shipsThisYear, caravansThisYear: s.trade.caravansThisYear,
   };
   const inv = nextInvasion(s);
-  let militia = 0;
-  for (const f of s.figures) if (f.type === FigureType.Militia) militia++;
+  let militia = 0, weaponsStored = 0;
+  for (const f of s.figures) if (f.type === FigureType.Militia || f.type === FigureType.Archer || f.type === FigureType.Elephant) militia++;
+  const squads: SquadInfo[] = [];
+  for (const b of s.buildings) {
+    if (b.type === BuildingType.Warehouse) weaponsStored += Math.floor(b.store[Resource.Weapons] / 100);
+    if (isMilitaryBase(b.type)) squads.push(squadInfo(s, b));
+  }
+  const now = s.time.year * 12 + s.time.month;
+  const incoming = s.war.invasions.filter((i) => !i.done && i.warned).map((i) => {
+    const at = invasionEntry(s, i.source);
+    const months = (i.year - 1) * 12 + (i.month - 1) - now;
+    return { source: i.source, text: `${i.size} tên ${SOURCE_TEXT[i.source]}`, x: offsetX(at), y: offsetY(at), months, size: i.size, watched: watchtowerCovers(s, i.source) };
+  });
   const warStats: WarStats = {
     enemiesAlive: s.war.enemiesAlive, militia, killedThisYear: s.war.killedThisYear,
     warning: inv && inv.warned ? `${inv.size} tên ${SOURCE_TEXT[inv.source]} sẽ tới tháng ${inv.month} năm ${inv.year}` : null,
-    wallHp: WAR.wallHp,
+    wallHp: WAR.wallHp, squads, incoming, weaponsStored,
   };
   return {
     sentiment: s.sentiment, lowMoodCause: s.lowMoodCause, taxRate: s.taxRate,

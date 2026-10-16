@@ -23,6 +23,11 @@
     "_note": "giặc giã (Julius invasion rút gọn): giặc đi bộ tới công trình gần nhất, đứng cạnh attackTicks tick thì đốt; mỗi tên phá tối đa raidBudget công trình rồi rút; thành (tường) chặn đường, giặc đứng cạnh wallTicks tick thì phá. Lính từ trại lính (mỗi lính tốn 1 kiện vũ khí, tối đa perBarracks), đánh giặc trong tầm engageRange; đòn mỗi hitEveryTicks tick.",
     "enemyHp": 100, "enemyDamage": 10, "militiaHp": 100, "militiaDamage": 15, "hitEveryTicks": 10, "attackTicks": 40, "wallTicks": 80, "raidBudget": 3,
     "perBarracks": 4, "engageRange": 30, "warningMonths": 2, "wallHp": { "earthWall": 3, "stoneWall": 8, "gate": 4 },
-    "dismissalTroops": 6
+    "dismissalTroops": 6,
+    "_m8": "M8 quân đội: đội lính đứng gác tại ô được lệnh (post), đánh giặc trong engageRange quanh chỗ gác rồi quay lại. Cung thủ bắn xa archerRange ô (không bị đánh lại), cận chiến đòn chia đôi. Voi: huấn luyện elephantTrainDays ngày mỗi con, tối đa perStable, đi elephantTicksPerTile tick một ô. Chòi canh biên có người làm trong watchtowerRange ô quanh mép giặc vào thì báo sớm thêm watchtowerBonusMonths tháng. Giặc nhắm vựa / kho có hàng trước (khoảng cách nhân lootBias) để cướp một kiện rồi mới đốt nơi khác. Xác nằm corpseTicks tick rồi biến mất.",
+    "archerHp": 80, "archerDamage": 12, "archerRange": 3, "perArcherCamp": 4,
+    "elephantHp": 400, "elephantDamage": 40, "elephantTrainDays": 48, "perStable": 1, "elephantTicksPerTile": 20,
+    "watchtowerRange": 40, "watchtowerBonusMonths": 1,
+    "corpseTicks": 400, "lootBias": 0.5
   }
 }

@@ -2,7 +2,7 @@
 import { FigureType, type GameState } from '../state';
 import { updateBoatFigure, updateCartPusher, updateWarehouseman } from './cartpusher';
 import { updateTrader } from './trader';
-import { updateEnemy, updateMilitia } from './enemy';
+import { updateCorpse, updateEnemy, updateSoldier } from './enemy';
 import { updateMarketBuyer } from './market';
 import { updateEmigrant, updateImmigrant, updateMessenger } from './migrant';
 import { updateRoamer } from './service';
@@ -21,7 +21,8 @@ export function updateFigures(s: GameState): void {
       case FigureType.Messenger: updateMessenger(s, f); break;
       case FigureType.Caravan: case FigureType.TradeShip: updateTrader(s, f); break;
       case FigureType.Enemy: case FigureType.CourtTroops: updateEnemy(s, f); break;
-      case FigureType.Militia: updateMilitia(s, f); break;
+      case FigureType.Militia: case FigureType.Archer: case FigureType.Elephant: updateSoldier(s, f); break; // M8: đội quân
+      case FigureType.Corpse: updateCorpse(s, f); break;
       case FigureType.LevyWorker: updateLevyWorker(s, f); break;
       case FigureType.Boat: updateBoatFigure(s, f); break;
       default: updateRoamer(s, f); break; // mọi loại đi dạo

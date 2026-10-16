@@ -14,6 +14,7 @@ const EventList = ({ events, at }: { events: string[]; at: number[] }) => (event
 import { loads, num } from './format';
 import { YamenPanel } from './YamenPanel';
 import { Guide } from './Guide';
+import { ArmyPanel } from './ArmyPanel';
 
 const FEST_NAMES = ['Lễ nhỏ', 'Lễ vừa', 'Lễ lớn'];
 
@@ -27,10 +28,11 @@ export function Advisors() {
   return (
     <div class={`panel advisor${p === 'guide' ? ' guide-panel' : ''}`}>
       <div class="head">
-        <strong>{{ settings: 'Cài đặt và phím tắt', overview: 'Tổng quan — cố vấn', labor: 'Lao động', finance: 'Tài chính', mood: 'Dân tình', storage: 'Kho hàng', flood: 'Thủy lợi', court: 'Nha môn — triều đình', worship: 'Tín ngưỡng', ratings: 'Bốn chỉ số', trade: 'Thương mại', guide: 'Sổ tay — công trình' }[p]}</strong>
+        <strong>{{ settings: 'Cài đặt và phím tắt', overview: 'Tổng quan — cố vấn', labor: 'Lao động', finance: 'Tài chính', mood: 'Dân tình', storage: 'Kho hàng', flood: 'Thủy lợi', court: 'Nha môn — triều đình', worship: 'Tín ngưỡng', ratings: 'Bốn chỉ số', trade: 'Thương mại', army: 'Quân đội — các đội, tin giặc', guide: 'Sổ tay — công trình' }[p]}</strong>
         <button onClick={() => (panel.value = null)}>✕</button>
       </div>
       {p === 'guide' && <Guide />}
+      {p === 'army' && <ArmyPanel />}
       {p === 'settings' && (
         <>
           <p>

@@ -34,6 +34,8 @@ export class Minimap {
   private readonly texture: Texture;
   private readonly sprite: Sprite;
   private readonly frame = new Graphics();
+  private readonly markers = new Graphics(); // M8: chấm đỏ nhấp nháy nơi giặc vào
+  private markerPts: [number, number][] = [];
   private readonly border = new Graphics();
   private readonly mask = new Graphics();
   private hash = 0;
@@ -53,9 +55,10 @@ export class Minimap {
     this.texture = Texture.from(this.canvas);
     this.texture.source.scaleMode = 'nearest';
     this.sprite = new Sprite(this.texture);
-    this.node.addChild(this.border, this.sprite, this.frame, this.mask);
+    this.node.addChild(this.border, this.sprite, this.frame, this.markers, this.mask);
     this.sprite.mask = this.mask;
     this.frame.mask = this.mask;
+    this.markers.mask = this.mask;
     this.node.eventMode = 'none';
   }
 
@@ -117,5 +120,13 @@ export class Minimap {
     this.frame.clear();
     const pts = corners.flatMap(([x, y]) => [(x - y + GRID_SIZE - this.ox) * this.scale, ((x + y) / 2 - this.oy) * this.scale]);
     this.frame.poly(pts).stroke({ color: 0xfff6e0, width: 2 });
+    this.markers.clear();
+    const on = Math.floor(performance.now() / 400) % 2 === 0;
+    for (const [x, y] of this.markerPts) {
+      const px = (x - y + GRID_SIZE - this.ox) * this.scale, py = ((x + y) / 2 - this.oy) * this.scale;
+      this.markers.circle(px, py, on ? 4 : 3).fill({ color: 0xff3020, alpha: 0.95 }).stroke({ color: 0xfff0e0, width: 1 });
+    }
   }
+  /** M8: ô đánh dấu (mép giặc sắp vào) — vẽ lại ở lần update kế. */
+  setMarkers(pts: [number, number][]): void { this.markerPts = pts; }
 }

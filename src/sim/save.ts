@@ -2,7 +2,7 @@
 // RNG có seed nằm trong state nên nạp lại chạy tiếp y hệt. Set `dirty` không lưu: nạp xong gửi trọn lưới.
 import type { GameState } from './state';
 
-export const SAVE_VERSION = 2; // 2 (M6b): cửa sông, mép giặc, màn kế / vua / lũ riêng / đất cấp trong scenario
+export const SAVE_VERSION = 3; // 2 (M6b): cửa sông, mép giặc, màn kế / vua / lũ riêng / đất cấp trong scenario; 3 (M8): ô gác của đội quân (post)
 const TYPED: Record<string, new (b: ArrayBuffer) => ArrayBufferView> = { Uint8Array, Uint16Array, Uint32Array, Int8Array, Int16Array, Int32Array, Float32Array };
 
 function b64(bytes: Uint8Array): string {
@@ -49,7 +49,7 @@ export function fromJson(json: string): GameState {
     Object.assign(s.scenario, { king: '', peakChances: null, promoteTo: 0, next: '', map: '', land: [] });
   }
   if (!s.history) s.history = { pop: [], treasury: [], favor: [] };
-  for (const b of s.buildings) if (b.mothballed === undefined) b.mothballed = false;
+  for (const b of s.buildings) { if (b.mothballed === undefined) b.mothballed = false; if (b.post === undefined) b.post = -1; } // M8: bản lưu cũ
   if (!Array.isArray(s.eventAt) || s.eventAt.length !== s.events.length) s.eventAt = s.events.map(() => -1); // QoL: bản lưu cũ
   s.dirty = new Set();
   return s;

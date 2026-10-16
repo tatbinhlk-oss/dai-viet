@@ -5,7 +5,7 @@ import { MONTHS, num } from './format';
 import { MOOD_CAUSE_TEXT } from '../sim/city/sentiment';
 import type { FloodStats } from '../sim';
 
-const PANELS: [Exclude<Panel, null>, string][] = [['overview', 'Tổng quan'], ['labor', 'Lao động'], ['finance', 'Tài chính'], ['mood', 'Dân tình'], ['storage', 'Kho hàng'], ['flood', 'Thủy lợi'], ['court', 'Nha môn'], ['worship', 'Tín ngưỡng'], ['ratings', 'Chỉ số'], ['trade', 'Thương mại'], ['settings', 'Cài đặt']];
+const PANELS: [Exclude<Panel, null>, string][] = [['overview', 'Tổng quan'], ['labor', 'Lao động'], ['finance', 'Tài chính'], ['mood', 'Dân tình'], ['storage', 'Kho hàng'], ['flood', 'Thủy lợi'], ['court', 'Nha môn'], ['worship', 'Tín ngưỡng'], ['ratings', 'Chỉ số'], ['trade', 'Thương mại'], ['army', 'Quân đội'], ['settings', 'Cài đặt']];
 
 /** Dòng lũ trên thanh trên: chỉ hiện từ tháng 4 đến tháng 9. */
 function floodText(f: FloodStats): string {

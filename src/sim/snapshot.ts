@@ -4,7 +4,7 @@ import type { Edict, EdictState, EdictType, Goals, GameOver } from './state';
 import { createGrid, GRID_SIZE, gridOffset, T_WATER } from './map/grid';
 import { generateTerrain, type TerrainOptions } from './map/terrain';
 import { applyMapFile, type MapDef } from './map/mapfile';
-import { BuildingType, emptyLedger, FigureType, isDike, isWall, LABOR_CATS, RES_COUNT, Resource, TICKS_PER_TILE, type Ledger, type MoodCause } from './state';
+import { BuildingType, emptyLedger, FigureType, isDike, isHostile, isSoldier, isWall, LABOR_CATS, RES_COUNT, Resource, TICKS_PER_TILE, type Ledger, type MoodCause } from './state';
 import { newBuilding, type GameState } from './state';
 import { tick } from './tick';
 import { applyCommand, type Command } from './commands';
@@ -51,11 +51,12 @@ export interface Snapshot {
   entryOffset: number;
   full?: { terrain: Uint16Array; elevation: Uint8Array; bType: Uint8Array; bLevel: Uint8Array };
   changed?: { offsets: Uint32Array; terrain: Uint16Array; bType: Uint8Array; bLevel: Uint8Array };
-  /** [x, y, nx, ny, progress, type, resource] × n */
+  /** [x, y, nx, ny, progress, type, resource, variant] × n — variant (M8): 4 bit thấp = biến thể hình (giặc: nguồn 0 Chiêm / 1 cướp biển / 2 phương Bắc; xác: loại), bit 16 = đang đánh */
   figures: Int16Array;
 }
 
-export const FIG_STRIDE = 7;
+export const FIG_STRIDE = 8;
+export const FIG_FIGHTING = 16;
 
 export function takeSnapshot(s: GameState, full: boolean, selectedId = 0, selectedFigureId = 0, overlayMode: OverlayMode = ''): Snapshot {
   let n = 0;
@@ -66,7 +67,9 @@ export function takeSnapshot(s: GameState, full: boolean, selectedId = 0, select
     if (f.type === FigureType.None) continue;
     // progress quy về thang TICKS_PER_TILE để render nội suy chung (thuyền nan đi nhanh hơn)
     figures[k++] = f.x; figures[k++] = f.y; figures[k++] = f.nx; figures[k++] = f.ny; figures[k++] = Math.round((f.progress * TICKS_PER_TILE) / ticksPerTile(f)); figures[k++] = f.type;
-    figures[k++] = f.loads > 0 ? f.resource : 0;
+    figures[k++] = f.type === FigureType.Enemy ? f.resource : f.loads > 0 ? f.resource : 0; // giặc: kiện vừa cướp (M8)
+    const variant = f.type === FigureType.Enemy || f.type === FigureType.Corpse ? Math.max(0, f.route) & 15 : 0;
+    figures[k++] = variant | ((isSoldier(f.type) || isHostile(f.type)) && f.waitTicks > 0 ? FIG_FIGHTING : 0);
   }
   const snap: Snapshot = {
     time: { ...s.time },

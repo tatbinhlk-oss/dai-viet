@@ -10,9 +10,9 @@ const OX = 0x7a4a2c, OX_DARK = 0x46281a, OX_LIGHT = 0x9a6a44, HORN = 0xf0e8d0;
 const WOOD = 0x9a7040, WOOD_DARK = 0x5e4020, WOOD_LIGHT = 0xc09060;
 const BASKET = 0xb89a5a, WATER = 0x4a8ac0;
 
-type Hat = 'non' | 'khan' | 'none' | 'helmet' | 'bald';
-type Prop = 'none' | 'pole' | 'buckets' | 'bundle' | 'staff' | 'spear' | 'torch' | 'flag' | 'hoe' | 'book' | 'fan' | 'box' | 'drum' | 'raised' | 'whip' | 'puppet' | 'scroll';
-export interface Style { shirt: number; pants?: number; hat: Hat; prop?: Prop; group?: number; long?: boolean /** áo dài (che quần) */ }
+type Hat = 'non' | 'khan' | 'none' | 'helmet' | 'bald' | 'scarf' /** khăn buộc đầu (cướp biển) */ | 'ironHelm' /** mũ sắt có chỏm (quân phương Bắc) */;
+type Prop = 'none' | 'pole' | 'buckets' | 'bundle' | 'staff' | 'spear' | 'torch' | 'flag' | 'hoe' | 'book' | 'fan' | 'box' | 'drum' | 'raised' | 'whip' | 'puppet' | 'scroll' | 'bow' | 'sword';
+export interface Style { shirt: number; pants?: number; hat: Hat; prop?: Prop; group?: number; long?: boolean /** áo dài (che quần) */; fight?: boolean /** M8: khung đánh — giáo đâm ngang / cung giương / kiếm chém */ }
 
 /** Bảng kiểu người theo loại walker. */
 export const STYLE: Partial<Record<FigureType, Style>> = {
@@ -42,6 +42,12 @@ export const STYLE: Partial<Record<FigureType, Style>> = {
   [FigureType.Enemy]: { shirt: 0x301010, hat: 'helmet', prop: 'spear' },
   [FigureType.Militia]: { shirt: 0xa02020, hat: 'helmet', prop: 'spear' },
   [FigureType.CourtTroops]: { shirt: 0xc8a020, hat: 'helmet', prop: 'spear', group: 2 },
+  [FigureType.Archer]: { shirt: 0x806020, hat: 'helmet', prop: 'bow' },
+};
+/** M8: giặc theo nguồn (frame `enemy_v1` cướp biển, `enemy_v2` quân phương Bắc; v0 = quân Chiêm là STYLE[Enemy]). */
+export const ENEMY_VARIANTS: Record<number, Style> = {
+  1: { shirt: 0x204060, pants: 0x4a3a2a, hat: 'scarf', prop: 'sword' },
+  2: { shirt: 0x50505c, pants: 0x2a2a30, hat: 'ironHelm', prop: 'spear' },
 };
 
 /** Người nhỏ (cao ~13 px) đứng tại chân (x, y); `back` = nhìn từ sau; chân bước theo `frame`. */
@@ -73,6 +79,8 @@ export function person(g: Ctx, x: number, y: number, frame: number, back: boolea
     case 'helmet': g.fillStyle = hex(0x3a3028); g.beginPath(); g.ellipse(x, y - 14, 3.5, 2.5, 0, Math.PI, 0); g.fill(); g.fillStyle = hex(0x8a7a50); g.fillRect(x - 1, y - 17, 2, 1); break;
     case 'none': g.fillStyle = hex(0x201810); g.fillRect(x - 2, y - 15, 4, 1); g.fillRect(x - 3, y - 14, 1, 2); break;
     case 'bald': break;
+    case 'scarf': g.fillStyle = hex(0xc02828); g.fillRect(x - 3, y - 16, 6, 2); g.fillRect(x - 2, y - 17, 4, 1); if (!back) { g.fillStyle = hex(0x8a1a1a); g.fillRect(x + 2, y - 15, 2, 3); } break; // khăn đỏ, đuôi khăn
+    case 'ironHelm': g.fillStyle = hex(0x6a6a74); g.beginPath(); g.ellipse(x, y - 14, 3.8, 2.8, 0, Math.PI, 0); g.fill(); g.fillStyle = hex(0x9a9aa4); g.fillRect(x - 1, y - 18, 2, 2); g.fillStyle = hex(0xc02828); g.fillRect(x - 0.5, y - 20, 1, 2); break; // mũ sắt chỏm nhọn, ngù đỏ
   }
   // đồ cầm
   switch (st.prop) {
@@ -87,7 +95,27 @@ export function person(g: Ctx, x: number, y: number, frame: number, back: boolea
       break;
     }
     case 'staff': line(g, [x + 4, y], [x + 4, y - 14], hex(WOOD_DARK), 1); break;
-    case 'spear': line(g, [x + 4, y - 1], [x + 4, y - 19], hex(WOOD_DARK), 1); g.fillStyle = hex(0xd0d0d8); g.fillRect(x + 3, y - 21, 2, 3); break;
+    case 'spear':
+      if (st.fight) { g.fillStyle = hex(st.long ? shirt : SKIN); g.fillRect(x + 3, y - 10, 6, 1); line(g, [x - 3, y - 8], [x + 13, y - 12], hex(WOOD_DARK), 1); poly(g, [[x + 13, y - 11], [x + 13, y - 13], [x + 16, y - 12.5]], hex(0xd0d0d8)); } // đâm ngang
+      else { line(g, [x + 4, y - 1], [x + 4, y - 19], hex(WOOD_DARK), 1); g.fillStyle = hex(0xd0d0d8); g.fillRect(x + 3, y - 21, 2, 3); }
+      break;
+    case 'bow':
+      if (st.fight) {
+        // giương cung ngang về phía trước, mũi tên trên dây
+        g.fillStyle = hex(SKIN); g.fillRect(x + 3, y - 11, 6, 1);
+        g.strokeStyle = hex(WOOD_DARK); g.lineWidth = 1; g.beginPath(); g.moveTo(x + 9, y - 17); g.quadraticCurveTo(x + 13, y - 11, x + 9, y - 5); g.stroke();
+        line(g, [x + 9, y - 17], [x + 9, y - 5], hex(0xe8e0d0), 0.5); line(g, [x + 2, y - 11], [x + 13, y - 11], hex(0xd8c8a0), 0.8); g.fillStyle = hex(0xd0d0d8); g.fillRect(x + 12, y - 11.5, 2, 1);
+      } else {
+        // cung đeo chéo sau vai + ống tên
+        g.strokeStyle = hex(WOOD_DARK); g.lineWidth = 1; g.beginPath(); g.moveTo(x - 5, y - 17); g.quadraticCurveTo(x - 8, y - 9, x - 4, y - 2); g.stroke();
+        line(g, [x - 5, y - 17], [x - 4, y - 2], hex(0xe8e0d0), 0.5);
+        g.fillStyle = hex(0x7a5a30); g.fillRect(x + 3, y - 13, 2, 5); g.fillStyle = hex(0xd8c8a0); g.fillRect(x + 3, y - 15, 2, 2);
+      }
+      break;
+    case 'sword':
+      if (st.fight) { g.fillStyle = hex(SKIN); g.fillRect(x + 3, y - 11, 4, 1); line(g, [x + 7, y - 11], [x + 14, y - 16], hex(0xd8d8e0), 1.4); g.fillStyle = hex(0x3a2a20); g.fillRect(x + 6, y - 12, 2, 2); } // chém chéo
+      else { line(g, [x + 4, y - 9], [x + 9, y - 15], hex(0xd8d8e0), 1.2); g.fillStyle = hex(0x3a2a20); g.fillRect(x + 3, y - 10, 2, 2); }
+      break;
     case 'torch': line(g, [x + 4, y - 4], [x + 4, y - 15], hex(WOOD_DARK), 1); g.fillStyle = hex(0xf0a020); g.fillRect(x + 3, y - 18, 3, 3); g.fillStyle = hex(0xf8e040); g.fillRect(x + 4, y - 19, 1, 2); break;
     case 'flag': line(g, [x + 4, y - 2], [x + 4, y - 20], hex(WOOD_DARK), 1); poly(g, [[x + 5, y - 20], [x + 11, y - 18], [x + 5, y - 15]], hex(0xd02020)); break;
     case 'hoe': line(g, [x + 3, y - 6], [x + 7, y - 17], hex(WOOD_DARK), 1); g.fillStyle = hex(0x6a6a70); g.fillRect(x + 6, y - 19, 4, 2); break;
@@ -247,6 +275,68 @@ export function cargoSack(color: number): Canvas {
   return c;
 }
 
+/** M8: voi trận có bành và quản tượng. 56×40. `fight`: vòi vung lên, đầu cúi. */
+export function elephantFrame(dir: string, frame: number, fight = false): Canvas {
+  const { c, g, back } = base(56, 48, dir);
+  const E = 0x6e6a70, ED = 0x4a4650, EL = 0x8a868e, TUSK = 0xf0e8d0, CLOTH = 0xa82a2a;
+  const step = [2, 0, -2, 0][frame];
+  shadow(g, 0, 20);
+  const x = 0, y = 0;
+  // chân (bốn, bước so le)
+  g.fillStyle = hex(ED);
+  g.fillRect(x - 14 + step / 2, y - 9, 4, 9); g.fillRect(x - 7 - step / 2, y - 9, 4, 9); g.fillRect(x + 4 + step / 2, y - 9, 4, 9); g.fillRect(x + 11 - step / 2, y - 9, 4, 9);
+  g.fillStyle = hex(E); g.fillRect(x - 14 + step / 2, y - 2, 4, 1.5); g.fillRect(x + 11 - step / 2, y - 2, 4, 1.5);
+  // thân
+  g.fillStyle = hex(E); g.beginPath(); g.ellipse(x, y - 16, 17, 10, 0, 0, Math.PI * 2); g.fill();
+  g.fillStyle = hex(EL); g.beginPath(); g.ellipse(x - 2, y - 20, 11, 5, 0, 0, Math.PI * 2); g.fill();
+  // đuôi
+  line(g, [x - 16, y - 18], [x - 20, y - 9 + step / 2], hex(ED), 1.2);
+  // bành (thùng gỗ phủ vải đỏ) và quản tượng
+  g.fillStyle = hex(CLOTH); g.fillRect(x - 9, y - 30, 16, 6); g.fillStyle = hex(0xd8b040); g.fillRect(x - 9, y - 25, 16, 1);
+  g.fillStyle = hex(WOOD_DARK); g.fillRect(x - 9, y - 32, 16, 2); line(g, [x - 10, y - 30], [x - 10, y - 24], hex(WOOD_DARK), 1); line(g, [x + 7, y - 30], [x + 7, y - 24], hex(WOOD_DARK), 1);
+  g.save(); g.translate(x + 9, y - 31); g.scale(0.75, 0.75); person(g, 0, 0, frame, back, { shirt: 0x8a3030, hat: 'khan', prop: fight ? 'flag' : 'none' }); g.restore(); // quản tượng nhỏ ngồi trên bành
+  // đầu, tai, vòi, ngà (nhìn từ sau thì chỉ thấy tai và gáy)
+  if (back) {
+    g.fillStyle = hex(E); g.beginPath(); g.ellipse(x + 15, y - 18, 7, 7, 0, 0, Math.PI * 2); g.fill();
+    g.fillStyle = hex(ED); g.beginPath(); g.ellipse(x + 10, y - 19, 4, 6, 0, 0, Math.PI * 2); g.fill(); g.beginPath(); g.ellipse(x + 21, y - 19, 3, 6, 0, 0, Math.PI * 2); g.fill();
+  } else {
+    g.fillStyle = hex(E); g.beginPath(); g.ellipse(x + 14, y - 19, 7.5, 7, 0, 0, Math.PI * 2); g.fill();
+    g.fillStyle = hex(ED); g.beginPath(); g.ellipse(x + 11, y - 19, 4, 6.5, 0, 0, Math.PI * 2); g.fill(); // tai
+    g.fillStyle = hex(darken(E, 0.5)); g.fillRect(x + 19, y - 22, 1.5, 1.5); // mắt
+    // vòi: đi thì buông xuống đung đưa, đánh thì vung lên
+    g.strokeStyle = hex(E); g.lineWidth = 3.5; g.lineCap = 'round'; g.beginPath(); g.moveTo(x + 22, y - 16);
+    if (fight) g.quadraticCurveTo(x + 32, y - 20, x + 29, y - 32); else g.quadraticCurveTo(x + 27 + step, y - 8, x + 24 + step / 2, y - 1);
+    g.stroke(); g.lineCap = 'butt';
+    for (const dy of [0, 2.5]) line(g, [x + 20, y - 15 + dy], [x + 27, y - 12 + dy], hex(TUSK), 1.6); // ngà
+  }
+  return c;
+}
+
+/** M8: xác nằm (30×16): 0 lính giáo, 1 giặc, 2 cung thủ, 3 quân triều đình, 4 voi (48×24). Render mờ dần theo thời gian. */
+export function corpseFrame(kind: number, dir: string): Canvas {
+  const big = kind === 4;
+  const { c, g } = base(big ? 48 : 30, big ? 24 : 16, dir);
+  if (big) {
+    const E = 0x6e6a70;
+    g.fillStyle = 'rgba(60,20,20,0.35)'; g.beginPath(); g.ellipse(0, -2, 20, 5, 0, 0, Math.PI * 2); g.fill(); // vũng
+    g.fillStyle = hex(E); g.beginPath(); g.ellipse(-2, -7, 16, 6, 0, 0, Math.PI * 2); g.fill();
+    g.fillStyle = hex(darken(E, 0.2)); g.beginPath(); g.ellipse(14, -6, 6, 5, 0, 0, Math.PI * 2); g.fill();
+    for (const dx of [-10, -4, 4, 10]) line(g, [dx, -4], [dx + 3, 0], hex(darken(E, 0.35)), 2.5); // chân duỗi
+    line(g, [18, -5], [24, -2], hex(0xf0e8d0), 1.5);
+    g.fillStyle = hex(0xa82a2a); g.fillRect(-9, -12, 12, 4); // bành đổ
+    return c;
+  }
+  const shirt = [0xa02020, 0x301010, 0x806020, 0xc8a020, 0][kind] ?? 0x606060;
+  g.fillStyle = 'rgba(60,20,20,0.3)'; g.beginPath(); g.ellipse(0, -1, 12, 3, 0, 0, Math.PI * 2); g.fill();
+  g.fillStyle = hex(PANTS); g.fillRect(-11, -4, 7, 2.5); // chân
+  g.fillStyle = hex(shirt); g.fillRect(-5, -5, 8, 4); // thân nằm nghiêng
+  g.fillStyle = hex(SKIN); g.fillRect(3, -5.5, 4, 3.5); g.fillRect(-2, -1.5, 5, 1.2); // đầu, tay
+  if (kind === 1) { g.fillStyle = hex(0xc02828); g.fillRect(3, -6.5, 4, 1.2); } else { g.fillStyle = hex(0x3a3028); g.beginPath(); g.ellipse(5, -5.5, 2.5, 1.5, 0, Math.PI, 0); g.fill(); } // khăn / mũ rơi
+  if (kind === 2) { g.strokeStyle = hex(WOOD_DARK); g.lineWidth = 0.8; g.beginPath(); g.moveTo(-9, -8); g.quadraticCurveTo(-3, -11, 3, -8); g.stroke(); }
+  else line(g, [-12, -7], [8, -8], hex(WOOD_DARK), 0.9); // giáo / cung rơi cạnh
+  return c;
+}
+
 export function figureFrames(resources: { key: string; color: number }[]): Record<string, Canvas> {
   const out: Record<string, Canvas> = {};
   const key = (t: FigureType) => { const n = FigureType[t]; return n[0].toLowerCase() + n.slice(1); };
@@ -256,7 +346,16 @@ export function figureFrames(resources: { key: string; color: number }[]): Recor
       if (full) out[`figures/${key(t)}_full_${dir}_${f}.png`] = draw(dir, f);
     }
   };
+  const putKey = (name: string, draw: (dir: string, f: number) => Canvas) => { for (const dir of ['ne', 'se', 'sw', 'nw']) for (let f = 0; f < 4; f++) out[`figures/${name}_${dir}_${f}.png`] = draw(dir, f); };
   for (const [k, st] of Object.entries(STYLE)) put(Number(k) as FigureType, (d, f) => walkerFrame(st, d, f), false);
+  // M8: giặc theo nguồn, khung đánh nhau, voi, xác
+  for (const [v, st] of Object.entries(ENEMY_VARIANTS)) putKey(`enemy_v${v}`, (d, f) => walkerFrame(st, d, f));
+  const fighters: [string, Style][] = [['militia', STYLE[FigureType.Militia]!], ['archer', STYLE[FigureType.Archer]!], ['enemy', STYLE[FigureType.Enemy]!], ['enemy_v1', ENEMY_VARIANTS[1]], ['enemy_v2', ENEMY_VARIANTS[2]], ['courtTroops', STYLE[FigureType.CourtTroops]!]];
+  for (const [name, st] of fighters) putKey(`${name}_fight`, (d, f) => walkerFrame({ ...st, fight: true }, d, f));
+  put(FigureType.Elephant, (d, f) => elephantFrame(d, f), false);
+  putKey('elephant_fight', (d, f) => elephantFrame(d, f, true));
+  put(FigureType.Corpse, (d) => corpseFrame(0, d), false);
+  for (let k = 1; k <= 4; k++) putKey(`corpse_v${k}`, (d) => corpseFrame(k, d));
   put(FigureType.CartPusher, (d, f) => oxCartFrame(d, f), true);
   put(FigureType.Convoy, (d, f) => oxCartFrame(d, f, 0x3a4a6a), true);
   put(FigureType.Warehouseman, handcartFrame, true);

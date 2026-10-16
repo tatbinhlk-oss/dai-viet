@@ -7,14 +7,14 @@ import { BuildingType, isDike } from './sim/state';
 import type { WorkerIn, WorkerOut } from './worker/sim.worker';
 import { App } from './ui/App';
 import { toolSize } from './ui/BuildBar';
-import { bridge, briefing, campaign, fps, hoverText, linePending, overlay, panel, pushToast, recordWin, saves, savesOpen, settings, showNames, soundOn, startMenu, tool, ui, updateSettings } from './ui/store';
+import { bridge, briefing, campaign, fps, hoverText, linePending, overlay, panel, pushToast, recordWin, saves, savesOpen, settings, showNames, soundOn, squadOrder, startMenu, tool, ui, updateSettings } from './ui/store';
 import { pausesGame, toastLevel } from './ui/Toasts';
 import { hotkeyAction, panVector } from './ui/hotkeys';
 import { OVERLAY_MODES } from './sim/overlay';
 import { Audio, soundForEvent } from './render/audio';
 import { LINE_TOOLS, RECT_TOOLS } from './render/line';
 import { placementCheck } from './sim';
-import { GRID_SIZE, T_BUILDING, T_ROAD } from './sim/map/grid';
+import { GRID_SIZE, T_BUILDING, T_ROAD, T_WATER } from './sim/map/grid';
 import { registerSW } from 'virtual:pwa-register';
 
 const touchUI = matchMedia('(pointer: coarse)').matches;
@@ -52,7 +52,7 @@ async function main() {
   window.addEventListener('keydown', (e) => {
     if (typing(e)) return;
     if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key) || ['a', 'd', 'w', 's'].includes(e.key.toLowerCase())) { held.add(e.key.length === 1 ? e.key.toLowerCase() : e.key); e.preventDefault(); return; }
-    if (e.key === 'Escape') { panel.value = null; return; }
+    if (e.key === 'Escape') { panel.value = null; squadOrder.value = null; return; }
     const a = hotkeyAction(e.key, e.ctrlKey || e.metaKey);
     if (!a) return;
     e.preventDefault();
@@ -95,6 +95,8 @@ async function main() {
   };
   render.onTileClick = (x, y) => {
     const t = tool.value;
+    // M8: đang điều đội quân → ô này là chỗ gác
+    if (squadOrder.value !== null) { bridge.cmd({ type: 'squadGoto', buildingId: squadOrder.value, x, y }); squadOrder.value = null; audio.play('click'); return; }
     if (t === 'inspect') bridge.select(x, y);
     else if (t === 'raze') razeTiles([[x, y]]);
     else bridge.cmd({ type: 'build', kind: t, x, y });
@@ -134,7 +136,8 @@ async function main() {
     }
     return placementCheck(v, kind, ty, x, y);
   };
-  tool.subscribe((t) => { render.ghostSize = toolSize(t); render.lineTool = LINE_TOOLS.has(t); render.rectTool = RECT_TOOLS.has(t); render.cancelLine(); });
+  tool.subscribe((t) => { render.ghostSize = toolSize(t); render.lineTool = LINE_TOOLS.has(t); render.rectTool = RECT_TOOLS.has(t); render.cancelLine(); if (t !== 'inspect') squadOrder.value = null; });
+  squadOrder.subscribe((id) => { if (id !== null) hoverText.value = 'Điều quân: bấm / chạm một ô đất trống để đội tới đứng gác · Esc để thôi'; else if (hoverText.value.startsWith('Điều quân')) hoverText.value = HINT; });
   overlay.subscribe((mode) => { render.setOverlay(mode); send({ type: 'overlay', mode }); });
   showNames.value = render.placeholderArt; // còn hình tạm thì bật (nhãn Pixi chỉ vẽ lên frame có hình thật)
   showNames.subscribe((on) => render.setShowNames(on));
@@ -145,6 +148,7 @@ async function main() {
     const under = !b ? '' : b.type === BuildingType.House ? `${HOUSE_LEVELS[b.level].name} (bậc ${b.level})`
       : isDike(b.type) ? `${BUILDING_DEFS[b.type].name} cao ${b.level & 15}${b.level & 16 ? ' (đang mở)' : ''}` : BUILDING_DEFS[b.type].name;
     const kind = tool.value;
+    if (squadOrder.value !== null) { const v = render.tiles(); const o = y * GRID_SIZE + x; hoverText.value = v.terrain[o] & (T_BUILDING | T_WATER) ? 'Điều quân: cần ô đất trống' : 'Điều quân: bấm / chạm để đội tới gác ở đây · Esc để thôi'; return; }
     if (kind === 'inspect' || kind === 'raze') { hoverText.value = under || HINT; return; }
     // đang cầm công cụ xây: tên, giá, lý do không đặt được
     const ty = BUILDING_KEYS.get(kind);
@@ -155,6 +159,7 @@ async function main() {
   };
 
   let latest: Snapshot | null = null;
+  let markerCount = -1;
   worker.onmessage = (e: MessageEvent<WorkerOut>) => {
     if (e.data.type === 'snapshot') {
       latest = e.data.snap;
@@ -170,7 +175,10 @@ async function main() {
       seenEvents = ev.length;
       render.applySnapshot(latest);
       const sel = latest.selected;
-      render.setRange(sel && sel.range > 0 ? { x: sel.x, y: sel.y, size: (BUILDING_DEFS[sel.type]?.size ?? 1), range: sel.range } : null);
+      // M8: trại có ô gác → khung quanh ô gác (đội hình 3×3); không thì vùng phục vụ (giếng)
+      render.setRange(sel?.squad?.post ? { x: sel.squad.post.x, y: sel.squad.post.y, size: 1, range: 1 } : sel && sel.range > 0 ? { x: sel.x, y: sel.y, size: (BUILDING_DEFS[sel.type]?.size ?? 1), range: sel.range } : null);
+      const inc = latest.city.war.incoming;
+      if (inc.length !== markerCount) { markerCount = inc.length; render.setMarkers(inc.map((i) => [i.x, i.y])); }
     } else if (e.data.type === 'file') {
       const url = URL.createObjectURL(new Blob([e.data.bytes as BlobPart], { type: 'application/gzip' }));
       const a = Object.assign(document.createElement('a'), { href: url, download: e.data.name });

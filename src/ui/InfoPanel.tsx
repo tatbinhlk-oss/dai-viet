@@ -1,7 +1,8 @@
 // Bảng chi tiết công trình đang chọn (công cụ "Xem").
 import { BuildingType, FOODS, StorePolicy } from '../sim/state';
 import { RESOURCES } from '../sim/buildings/defs';
-import { bridge, ui } from './store';
+import { bridge, squadOrder, ui } from './store';
+import { beginSquadOrder, SquadButtons } from './ArmyPanel';
 import { loads, resName } from './format';
 
 const POLICY_TEXT = ['Nhận', 'Không nhận', 'Đi lấy', 'Dọn hết'];
@@ -17,6 +18,13 @@ export function InfoPanel() {
         <div class="head"><strong>{f.name}</strong><button onClick={close}>✕</button></div>
         <p class="speech">“{f.text}”</p>
         <p class="muted">Ô ({f.x}, {f.y})</p>
+        {f.squad && (
+          <p>
+            Đội của <button class="small" onClick={() => bridge.select(f.squad!.x, f.squad!.y)}>{f.squad.name}</button>{' '}
+            <button class={squadOrder.value === f.squad.buildingId ? 'active' : ''} title="Rồi bấm / chạm một ô đất trống: cả đội tới đứng gác ở đó" onClick={() => beginSquadOrder(f.squad!.buildingId)}>Điều đội này</button>{' '}
+            <button onClick={() => bridge.cmd({ type: 'squadReturn', buildingId: f.squad!.buildingId })}>Về trại</button>
+          </p>
+        )}
       </div>
     );
   }
@@ -60,6 +68,19 @@ export function InfoPanel() {
       )}
       {b.pollutedDays > 0 && <p class="bad">Giếng nhiễm bẩn sau lũ, còn {b.pollutedDays} ngày</p>}
       {b.hp !== null && <p>Độ bền: chịu thêm {b.hp} đòn giặc</p>}
+      {b.squad && (
+        <>
+          <p>
+            Đội: {b.squad.count}/{b.squad.max} {b.squad.kind === 'archer' ? 'cung thủ' : b.squad.kind === 'elephant' ? 'voi trận' : 'lính'}
+            {b.squad.count > 0 && <> · máu <span class={b.squad.hpPct < 50 ? 'bad' : ''}>{b.squad.hpPct}%</span></>}
+            {b.squad.kind === 'elephant' && b.squad.count < b.squad.max && <> · huấn luyện {b.squad.trainPct}%</>}
+            {' '}· gác {b.squad.post ? `ô (${b.squad.post.x}, ${b.squad.post.y})` : 'ở cửa trại'}
+          </p>
+          <p><SquadButtons sq={b.squad} /></p>
+          {squadOrder.value === b.id && <p class="muted">Bấm / chạm một ô đất trống trên bản đồ để đội tới gác; Esc để thôi.</p>}
+          <p class="muted">Giặc vào tầm 30 ô quanh chỗ gác thì đội tới đánh rồi quay lại. {b.squad.kind === 'elephant' ? 'Tàu voi không cần vũ khí.' : 'Mỗi kiện vũ khí một quân.'}</p>
+        </>
+      )}
       {b.isHouse && (
         <>
           <p>Bậc {b.level} · {b.population}/{b.capacity} người · lòng dân {b.happiness}</p>
